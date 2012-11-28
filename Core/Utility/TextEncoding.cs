@@ -10,7 +10,7 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Powershell.Provider.Utility {
+namespace ClrPlus.Core.Utility {
     using System;
     using System.Text;
 

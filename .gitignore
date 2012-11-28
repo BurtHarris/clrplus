@@ -4,6 +4,7 @@
 *.user
 *.sdf
 *.opensdf
+*.nupkg
 output
 intermediate
 obj

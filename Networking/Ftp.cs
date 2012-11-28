@@ -905,7 +905,8 @@ namespace ClrPlus.Networking {
         /// <summary>
         ///     Open an upload with resume support
         /// </summary>
-        /// <param name="filename">Local file to upload (Can include path to file)</param>
+        /// <param name="fileToUpload">Local file to upload (Can include path to file)</param>
+        /// <param name="length">length of stream</param>
         /// <param name="remote_filename">Filename to store file as on ftp server</param>
         /// <param name="resume">Attempt resume if exists</param>
         public void OpenUpload(Stream fileToUpload, long length, string remote_filename, bool resume) {
@@ -917,7 +918,6 @@ namespace ClrPlus.Networking {
         /// <summary>
         ///     Open an upload with resume support
         /// </summary>
-        /// <param name="filename">Local file to upload (Can include path to file)</param>
         /// <param name="remote_filename">Filename to store file as on ftp server</param>
         /// <param name="resume">Attempt resume if exists</param>
         private void UploadImpl(string remote_filename, bool resume) {

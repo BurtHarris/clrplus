@@ -128,8 +128,10 @@
     <Compile Include="Utility\AccessPrivateWrapper.cs" />
     <Compile Include="Utility\AsyncLazy.cs" />
     <Compile Include="Utility\HttpUtility.cs" />
+    <Compile Include="Utility\MultibyteRank.cs" />
     <Compile Include="Utility\MultifactorProgressTracker.cs" />
     <Compile Include="Utility\PathEqualityComparer.cs" />
+    <Compile Include="Utility\TextEncoding.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

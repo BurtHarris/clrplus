@@ -57,13 +57,11 @@
     <Compile Include="Commands\SourceSet.cs" />
     <Compile Include="Filesystem\FilesystemLocationProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utility\MultibyteRank.cs" />
     <Compile Include="Utility\Path.cs" />
     <Compile Include="Utility\PathExtensions.cs" />
     <Compile Include="Utility\ProgressStream.cs" />
     <Compile Include="Utility\ProgressStreamReportDelegate.cs" />
     <Compile Include="Utility\ProgressStreamReportEventArgs.cs" />
-    <Compile Include="Utility\TextEncoding.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">

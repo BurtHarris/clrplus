@@ -819,7 +819,7 @@ namespace ClrPlus.Windows.PeBinary.Utility {
         ///     This puts the strong name into the actual file on disk. The file MUST be delay signed by this point.
         /// </summary>
         /// <param name="filename"> </param>
-        /// <param name="?"> </param>
+        /// <param name="certificate"> </param>
         public static void ApplyStrongName(string filename, CertificateReference certificate) {
             filename = filename.GetFullPath();
             filename.TryHardToMakeFileWriteable();

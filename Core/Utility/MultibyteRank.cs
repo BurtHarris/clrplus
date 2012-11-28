@@ -10,7 +10,7 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Powershell.Provider.Utility {
+namespace ClrPlus.Core.Utility {
     public enum MultibyteRank {
         None = 0,
         One = 1,

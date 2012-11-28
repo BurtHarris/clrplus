@@ -134,7 +134,7 @@ namespace ClrPlus.Tasks {
         }
 
         /// <summary>
-        ///     Performs an implicit conversion from <see cref="TriggeredProperty{T}" /> to type <see cref="T" />.
+        ///     Performs an implicit conversion from <see cref="TriggeredProperty{T}" /> to type
         /// </summary>
         /// <param name="v">The v.</param>
         /// <returns>The result of the conversion.</returns>

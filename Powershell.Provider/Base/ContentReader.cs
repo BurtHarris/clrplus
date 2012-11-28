@@ -17,6 +17,7 @@ namespace ClrPlus.Powershell.Provider.Base {
     using System.IO;
     using System.Management.Automation.Provider;
     using System.Text;
+    using Core.Utility;
     using Utility;
 
     public class ContentReader : IContentReader {

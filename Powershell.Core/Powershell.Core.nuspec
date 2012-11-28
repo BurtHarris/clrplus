@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Powershell.Core</id>
-    <version>1.8.0.38</version>
+    <version>1.8.0.39</version>
     <title>CLRPlus Powershell Core Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -21,9 +21,9 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Powershell</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
-        <dependency  id="ClrPlus.Scripting" version="1.8.0.38" />
-        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.39" />
+        <dependency  id="ClrPlus.Scripting" version="1.8.0.39" />
+        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.39" />
         <dependency  id="ServiceStack" version="3.9.28" />
     </dependencies>
     
