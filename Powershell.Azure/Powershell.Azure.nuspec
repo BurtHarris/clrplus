@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Powershell.Azure</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Powershell Azure Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing a provider for Azure Storage.</summary>
+    <description>A library containing a provider for Azure Storage:
+- Lets you treat Azure storage like a filesystem
+- Provides functionality to give clients an upload token for anonymous uploading to storage.
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus Powershell.Azure package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp Powershell Azure Storage</tags>
+    <dependencies>
+        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Scripting" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.38" />
+        <dependency  id="ServiceStack" version="3.9.28" />
+        <dependency  id="WindowsAzure.Storage" version="2.0.1.0" />
+    </dependencies>
+    
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Powershell.Azure.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Powershell.Azure.xml" target="lib\net40" /> 
+</files>
+</package>

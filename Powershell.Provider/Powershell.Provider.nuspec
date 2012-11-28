@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Powershell.Provider</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Powershell Provider Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing classes for creating powershell providers</summary>
+    <description>A library containing classes for creating powershell providers:
+- A universal base implementation that does all the heavy lifting for you
+- a Copy-ItemEx cmdlet that actually lets you copy between differnt providers (silly/lazy PS!)
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus Powershell.Provider package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp Powershell PSProvider</tags>
+    <dependencies>
+        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Scripting" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.38" />
+        <dependency  id="ServiceStack" version="3.9.28" />
+    </dependencies>
+    
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Powershell.Provider.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Powershell.Provider.xml" target="lib\net40" /> 
+</files>
+</package>

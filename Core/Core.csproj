@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(SolutionDir)\Common.props" Condition="Exists('$(SolutionDir)\Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C8506264-EE4F-442C-B2C3-4C0BD4975A2A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ClrPlus.Core</RootNamespace>
+    <AssemblyName>ClrPlus.Core</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="Collections\EasyDictionary.cs" />
+    <Compile Include="Collections\EasyListDictionary.cs" />
+    <Compile Include="Collections\EnumerableForMutatingCollection.cs" />
+    <Compile Include="Collections\InternalDictionary.cs" />
+    <Compile Include="Collections\LazyEnumerable.cs" />
+    <Compile Include="Collections\VirtualEnumerator.cs" />
+    <Compile Include="Collections\XDictionary.cs" />
+    <Compile Include="Collections\XList.cs" />
+    <Compile Include="Configuration\RegistryView.cs" />
+    <Compile Include="DynamicXml\CodeGenerator.cs" />
+    <Compile Include="DynamicXml\Compiler.cs" />
+    <Compile Include="DynamicXml\CompilerException.cs" />
+    <Compile Include="DynamicXml\CompilerImpl.cs" />
+    <Compile Include="DynamicXml\DomainUtil.cs" />
+    <Compile Include="DynamicXml\DynamicAttributes.cs" />
+    <Compile Include="DynamicXml\DynamicDataRow.cs" />
+    <Compile Include="DynamicXml\DynamicDataSet.cs" />
+    <Compile Include="DynamicXml\DynamicDataTable.cs" />
+    <Compile Include="DynamicXml\DynamicNode.cs" />
+    <Compile Include="Exceptions\ClrPlusException.cs" />
+    <Compile Include="Exceptions\ConflictingFileOrFolderException.cs" />
+    <Compile Include="Exceptions\OperationCompletedBeforeResultException.cs" />
+    <Compile Include="Exceptions\PathIsNotFileUriException.cs" />
+    <Compile Include="Exceptions\PathIsNotSymlinkException.cs" />
+    <Compile Include="Extensions\AssemblyExtensions.cs" />
+    <Compile Include="Extensions\CollectionExtensions.cs" />
+    <Compile Include="Extensions\Comparer.cs" />
+    <Compile Include="Extensions\EnumExtensions.cs" />
+    <Compile Include="Extensions\ExceptionExtensions.cs" />
+    <Compile Include="Extensions\LinqExtensions.cs" />
+    <Compile Include="Extensions\ObjectExtensions.cs" />
+    <Compile Include="Extensions\SortedObservableCollection.cs" />
+    <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="Extensions\TypeExtensions.cs" />
+    <Compile Include="Extensions\XmlExtensions.cs" />
+    <Compile Include="Linq\BooleanExpression.cs" />
+    <Compile Include="Linq\BooleanOperation.cs" />
+    <Compile Include="Linq\ExpressionBase.cs" />
+    <Compile Include="Linq\Filter.cs" />
+    <Compile Include="Linq\FilterExpression.cs" />
+    <Compile Include="Linq\FilterOperation.cs" />
+    <Compile Include="Linq\PropertyExpression.cs" />
+    <Compile Include="Linq\QualifierOperation.cs" />
+    <Compile Include="Linq\Serialization\Evaluator.cs" />
+    <Compile Include="Linq\Serialization\Extn.cs" />
+    <Compile Include="Linq\Serialization\LinqHelper.cs" />
+    <Compile Include="Linq\Serialization\Query.cs" />
+    <Compile Include="Linq\Serialization\Xml\CustomExpressionXmlConverter.cs" />
+    <Compile Include="Linq\Serialization\Xml\ExpressionXmlSerializer.cs" />
+    <Compile Include="Linq\Serialization\Xml\KnownTypeExpressionXmlConverter.cs" />
+    <Compile Include="Linq\Serialization\Xml\TypeResolver.cs" />
+    <Compile Include="Linq\UnaryExpression.cs" />
+    <Compile Include="Linq\UnaryOperation.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Sgml\AttDef.cs" />
+    <Compile Include="Sgml\Attribute.cs" />
+    <Compile Include="Sgml\AttributePresence.cs" />
+    <Compile Include="Sgml\AttributeType.cs" />
+    <Compile Include="Sgml\CaseFolding.cs" />
+    <Compile Include="Sgml\ContentModel.cs" />
+    <Compile Include="Sgml\DeclaredContent.cs" />
+    <Compile Include="Sgml\ElementDecl.cs" />
+    <Compile Include="Sgml\Entity.cs" />
+    <Compile Include="Sgml\Group.cs" />
+    <Compile Include="Sgml\GroupType.cs" />
+    <Compile Include="Sgml\HtmlStream.cs" />
+    <Compile Include="Sgml\HWStack.cs" />
+    <Compile Include="Sgml\LiteralType.cs" />
+    <Compile Include="Sgml\Node.cs" />
+    <Compile Include="Sgml\Occurrence.cs" />
+    <Compile Include="Sgml\SgmlDtd.cs" />
+    <Compile Include="Sgml\SgmlParseException.cs" />
+    <Compile Include="Sgml\SgmlReader.cs" />
+    <Compile Include="Sgml\State.cs" />
+    <Compile Include="Sgml\StringUtilities.cs" />
+    <Compile Include="Sgml\Ucs4Decoder.cs" />
+    <Compile Include="Sgml\Ucs4DecoderBigEngian.cs" />
+    <Compile Include="Sgml\Ucs4DecoderLittleEndian.cs" />
+    <Compile Include="Utility\AccessPrivateWrapper.cs" />
+    <Compile Include="Utility\AsyncLazy.cs" />
+    <Compile Include="Utility\HttpUtility.cs" />
+    <Compile Include="Utility\MultifactorProgressTracker.cs" />
+    <Compile Include="Utility\PathEqualityComparer.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

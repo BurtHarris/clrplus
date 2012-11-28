@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Windows.PeBinary</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Windows.PeBinary Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library for manipulating Managed and Native PE binaries.</summary>
+    <description>A library for manipulating Managed and Native PE binaries:
+- digital signing, 
+- strong naming,
+- manifests
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+</description>
+    <releaseNotes>Initial Build of the new ClrPlus Windows.PeBinary package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp PEBinary StrongNaming DigitalSigning Authenticode</tags>
+    <dependencies>
+        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Platform" version="1.8.0.38" />
+        <dependency  id="CCI" version="1.0.12" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Windows.PeBinary.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Windows.PeBinary.xml" target="lib\net40" /> 
+</files>
+</package>

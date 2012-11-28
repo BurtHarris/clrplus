@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Networking</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Networking Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing a few classes with dealing with network file transfers</summary>
+    <description>A library containing a few classes with dealing with network file transfers
+
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus Networking package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp FTP Networking</tags>
+    <dependencies>
+        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Networking.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Networking.xml" target="lib\net40" /> 
+</files>
+</package>

@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(SolutionDir)\Common.props" Condition="Exists('$(SolutionDir)\Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ClrPlus.Platform</RootNamespace>
+    <AssemblyName>ClrPlus.Platform</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="AdminPrivilege.cs" />
+    <Compile Include="AlternateDataStreamInfo.cs" />
+    <Compile Include="Architecture.cs" />
+    <Compile Include="ClipboardNotifier.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CommandLine.cs" />
+    <Compile Include="EnvironmentUtility.cs" />
+    <Compile Include="Exceptions\UnsupportedPlatformException.cs" />
+    <Compile Include="FileSystem.cs" />
+    <Compile Include="FilesystemExtensions.cs" />
+    <Compile Include="HardLink.cs" />
+    <Compile Include="Information.cs" />
+    <Compile Include="ISymlink.cs" />
+    <Compile Include="LegacySymlink.cs" />
+    <Compile Include="ModernSymlink.cs" />
+    <Compile Include="NativeWindowWithEvent.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Rehash.cs" />
+    <Compile Include="ReparsePoint.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="SafeNativeMethods.cs" />
+    <Compile Include="Scheduling\Action.cs" />
+    <Compile Include="Scheduling\ActionCollection.cs" />
+    <Compile Include="Scheduling\CultureSwitcher.cs" />
+    <Compile Include="Scheduling\EnumGlobalizer.cs" />
+    <Compile Include="Scheduling\Impersonation.cs" />
+    <Compile Include="Scheduling\NamedValueCollection.cs" />
+    <Compile Include="Scheduling\NotV1SupportedException.cs" />
+    <Compile Include="Scheduling\Task.cs" />
+    <Compile Include="Scheduling\TaskCollection.cs" />
+    <Compile Include="Scheduling\TaskFolder.cs" />
+    <Compile Include="Scheduling\TaskFolderCollection.cs" />
+    <Compile Include="Scheduling\TaskHandlerInterfaces.cs" />
+    <Compile Include="Scheduling\TaskService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Scheduling\Trigger.cs" />
+    <Compile Include="Scheduling\TriggerCollection.cs" />
+    <Compile Include="Scheduling\V1\TaskSchedulerV1Interop.cs" />
+    <Compile Include="Scheduling\V2\TaskSchedulerV2Interop.cs" />
+    <Compile Include="Scheduling\Wildcard.cs" />
+    <Compile Include="Shell\ColorTable.cs" />
+    <Compile Include="Shell\ConsoleProperties.cs" />
+    <Compile Include="Shell\Coordinate.cs" />
+    <Compile Include="Shell\ICommiter.cs" />
+    <Compile Include="Shell\IconLocation.cs" />
+    <Compile Include="Shell\Internal\COORD.cs" />
+    <Compile Include="Shell\Internal\DATABLOCK_HEADER.cs" />
+    <Compile Include="Shell\Internal\EXP_DARWIN_LINK.cs" />
+    <Compile Include="Shell\Internal\EXP_SPECIAL_FOLDER .cs" />
+    <Compile Include="Shell\Internal\EXP_SZ_ICON.cs" />
+    <Compile Include="Shell\Internal\EXP_SZ_LINK.cs" />
+    <Compile Include="Shell\Internal\IPersistFile.cs" />
+    <Compile Include="Shell\Internal\IShellLink.cs" />
+    <Compile Include="Shell\Internal\IShellLinkDataList.cs" />
+    <Compile Include="Shell\Internal\NT_CONSOLE_PROPS.cs" />
+    <Compile Include="Shell\Internal\NT_FE_CONSOLE_PROPS.cs" />
+    <Compile Include="Shell\Internal\ShellLinkCoClass.cs" />
+    <Compile Include="Shell\Internal\SLGP_FLAGS.cs" />
+    <Compile Include="Shell\Internal\SLR_FLAGS.cs" />
+    <Compile Include="Shell\Internal\STGM_FLAGS.cs" />
+    <Compile Include="Shell\Internal\WIN32_FIND_DATAW.cs" />
+    <Compile Include="Shell\ResolveFlags.cs" />
+    <Compile Include="Shell\ShellLink.cs" />
+    <Compile Include="Shell\ShellLinkFlags.cs" />
+    <Compile Include="Shell\ShowWindowCommand.cs" />
+    <Compile Include="StreamName.cs" />
+    <Compile Include="Symlink.cs" />
+    <Compile Include="SystemHotkey.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Verifier.cs" />
+    <Compile Include="WindowsVersionInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj">
+      <Project>{C8506264-EE4F-442C-B2C3-4C0BD4975A2A}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Windows.Api\Windows.Api.csproj">
+      <Project>{84C32936-45B7-42C0-A94D-562EADC7A779}</Project>
+      <Name>Windows.Api</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

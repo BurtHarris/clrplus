@@ -1,0 +1,226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(SolutionDir)\Common.props" Condition="Exists('$(SolutionDir)\Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B1BD48CC-CAAE-4D32-A011-C77BB23DF156}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ClrPlus.Windows.PeBinary</RootNamespace>
+    <AssemblyName>ClrPlus.Windows.PeBinary</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Cci.Analysis.ControlAndDataFlowGraph">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.Analysis.ControlAndDataFlowGraph.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.AstsProjectedAsCodeModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.AstsProjectedAsCodeModel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.CodeModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.CodeModel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.CodeModelToIL">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.CodeModelToIL.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.ContractExtractor">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.ContractExtractor.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.CSharpSourceEmitter">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.CSharpSourceEmitter.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.ILGenerator">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.ILGenerator.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.MetadataHelper">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.MetadataHelper.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.MetadataModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.MetadataModel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.MutableCodeModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.MutableCodeModel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.MutableMetadataModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.MutableMetadataModel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.NewILToCodeModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.NewILToCodeModel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.PdbReader">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.PdbReader.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.PdbWriter">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.PdbWriter.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.PeReader">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.PeReader.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.PeWriter">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.PeWriter.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.ReflectionEmitter">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.ReflectionEmitter.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.SourceEmitter">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.SourceEmitter.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Cci.SourceModel">
+      <HintPath>..\packages\CCI.1.0.12\lib\net40\Microsoft.Cci.SourceModel.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResourceLib\Accelerator.cs" />
+    <Compile Include="ResourceLib\AcceleratorResource.cs" />
+    <Compile Include="ResourceLib\BitmapFile.cs" />
+    <Compile Include="ResourceLib\BitmapResource.cs" />
+    <Compile Include="ResourceLib\CursorDirectoryResource.cs" />
+    <Compile Include="ResourceLib\CursorResource.cs" />
+    <Compile Include="ResourceLib\DeviceIndependentBitmap.cs" />
+    <Compile Include="ResourceLib\DialogExTemplate.cs" />
+    <Compile Include="ResourceLib\DialogExTemplateControl.cs" />
+    <Compile Include="ResourceLib\DialogResource.cs" />
+    <Compile Include="ResourceLib\DialogTemplate.cs" />
+    <Compile Include="ResourceLib\DialogTemplateBase.cs" />
+    <Compile Include="ResourceLib\DialogTemplateControl.cs" />
+    <Compile Include="ResourceLib\DialogTemplateControlBase.cs" />
+    <Compile Include="ResourceLib\DialogTemplateUtil.cs" />
+    <Compile Include="ResourceLib\DirectoryResource.cs" />
+    <Compile Include="ResourceLib\FixedFileInfo.cs" />
+    <Compile Include="ResourceLib\FontDirectoryEntry.cs" />
+    <Compile Include="ResourceLib\FontDirectoryResource.cs" />
+    <Compile Include="ResourceLib\FontResource.cs" />
+    <Compile Include="ResourceLib\GenericResource.cs" />
+    <Compile Include="ResourceLib\IconDirectoryResource.cs" />
+    <Compile Include="ResourceLib\IconFile.cs" />
+    <Compile Include="ResourceLib\IconFileIcon.cs" />
+    <Compile Include="ResourceLib\IconImageResource.cs" />
+    <Compile Include="ResourceLib\IconResource.cs" />
+    <Compile Include="ResourceLib\LoadException.cs" />
+    <Compile Include="ResourceLib\ManifestResource.cs" />
+    <Compile Include="ResourceLib\MenuExTemplate.cs" />
+    <Compile Include="ResourceLib\MenuExTemplateItem.cs" />
+    <Compile Include="ResourceLib\MenuExTemplateItemCollection.cs" />
+    <Compile Include="ResourceLib\MenuExTemplateItemCommand.cs" />
+    <Compile Include="ResourceLib\MenuExTemplateItemPopup.cs" />
+    <Compile Include="ResourceLib\MenuResource.cs" />
+    <Compile Include="ResourceLib\MenuTemplate.cs" />
+    <Compile Include="ResourceLib\MenuTemplateBase.cs" />
+    <Compile Include="ResourceLib\MenuTemplateItem.cs" />
+    <Compile Include="ResourceLib\MenuTemplateItemCollection.cs" />
+    <Compile Include="ResourceLib\MenuTemplateItemCommand.cs" />
+    <Compile Include="ResourceLib\MenuTemplateItemPopup.cs" />
+    <Compile Include="ResourceLib\Resource.cs" />
+    <Compile Include="ResourceLib\ResourceId.cs" />
+    <Compile Include="ResourceLib\ResourceInfo.cs" />
+    <Compile Include="ResourceLib\ResourceTableHeader.cs" />
+    <Compile Include="ResourceLib\ResourceUtil.cs" />
+    <Compile Include="ResourceLib\StringFileInfo.cs" />
+    <Compile Include="ResourceLib\StringResource.cs" />
+    <Compile Include="ResourceLib\StringTable.cs" />
+    <Compile Include="ResourceLib\StringTableEntry.cs" />
+    <Compile Include="ResourceLib\VarFileInfo.cs" />
+    <Compile Include="ResourceLib\VarTable.cs" />
+    <Compile Include="ResourceLib\VersionResource.cs" />
+    <Compile Include="Utility\AsmV3Application.cs" />
+    <Compile Include="Utility\AssemblyFile.cs" />
+    <Compile Include="Utility\AssemblyIdentity.cs" />
+    <Compile Include="Utility\AssemblyNotFoundException.cs" />
+    <Compile Include="Utility\AssemblyReference.cs" />
+    <Compile Include="Utility\AssemblyType.cs" />
+    <Compile Include="Utility\Binary.cs" />
+    <Compile Include="Utility\BinaryLoadOptions.cs" />
+    <Compile Include="Utility\BindingRedirect.cs" />
+    <Compile Include="Utility\CertificateReference.cs" />
+    <Compile Include="Utility\CoAppBinaryException.cs" />
+    <Compile Include="Utility\Compatibility.cs" />
+    <Compile Include="Utility\DependencyInformation.cs" />
+    <Compile Include="Utility\DependentAssemblies.cs" />
+    <Compile Include="Utility\DigitalSignFailure.cs" />
+    <Compile Include="Utility\ExecutableInfo.cs" />
+    <Compile Include="Utility\ExecutionLevel.cs" />
+    <Compile Include="Utility\FailedTimestampException.cs" />
+    <Compile Include="Utility\InvalidManifestElement.cs" />
+    <Compile Include="Utility\ManifestElement.cs" />
+    <Compile Include="Utility\ManifestException.cs" />
+    <Compile Include="Utility\MatchExtensions.cs" />
+    <Compile Include="Utility\Namespaces.cs" />
+    <Compile Include="Utility\NativeManifest.cs" />
+    <Compile Include="Utility\NoInherit.cs" />
+    <Compile Include="Utility\PEAnalyzer.cs" />
+    <Compile Include="Utility\PeBinary.cs" />
+    <Compile Include="Utility\PEInfo.cs" />
+    <Compile Include="Utility\Prerequisite.cs" />
+    <Compile Include="Utility\TaskList.cs" />
+    <Compile Include="Utility\TrustInfo.cs" />
+    <Compile Include="Utility\UnknownManifestElement.cs" />
+    <Compile Include="Utility\XElementExtensions.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ResourceLib\License.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj">
+      <Project>{C8506264-EE4F-442C-B2C3-4C0BD4975A2A}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Platform\Platform.csproj">
+      <Project>{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}</Project>
+      <Name>Platform</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Tasks\Tasks.csproj">
+      <Project>{e0a006fb-3492-41f0-8793-85afd656bfed}</Project>
+      <Name>Tasks</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Windows.Api\Windows.Api.csproj">
+      <Project>{84C32936-45B7-42C0-A94D-562EADC7A779}</Project>
+      <Name>Windows.Api</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

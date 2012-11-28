@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(SolutionDir)\Common.props" Condition="Exists('$(SolutionDir)\Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ClrPlus.Scripting</RootNamespace>
+    <AssemblyName>ClrPlus.Scripting</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="Engine\UniversalEngine.cs" />
+    <Compile Include="Exceptions\EndUserException.cs" />
+    <Compile Include="Exceptions\EndUserParseException.cs" />
+    <Compile Include="Exceptions\EndUserPropertyException.cs" />
+    <Compile Include="Exceptions\EndUserRuleException.cs" />
+    <Compile Include="Exceptions\MissingFieldCsvException.cs" />
+    <Compile Include="Languages\CSharp\CSharpTokenizer.cs" />
+    <Compile Include="Languages\CSV\CachedCsvReader.cs" />
+    <Compile Include="Languages\CSV\CachedCsvReader.CsvBindingList.cs" />
+    <Compile Include="Languages\CSV\CachedCsvReader.CsvPropertyDescriptor.cs" />
+    <Compile Include="Languages\CSV\CachedCsvReader.CsvRecordComparer.cs" />
+    <Compile Include="Languages\CSV\CsvReader.cs" />
+    <Compile Include="Languages\CSV\CsvReader.DataReaderValidations.cs" />
+    <Compile Include="Languages\CSV\CsvReader.RecordEnumerator.cs" />
+    <Compile Include="Languages\CSV\Events\ParseErrorEventArgs.cs" />
+    <Compile Include="Exceptions\MalformedCsvException.cs" />
+    <Compile Include="Languages\CSV\MissingFieldAction.cs" />
+    <Compile Include="Languages\CSV\ParseErrorAction.cs" />
+    <Compile Include="Languages\CSV\Resources\ExceptionMessage.cs" />
+    <Compile Include="Languages\CSV\ValueTrimmingOptions.cs" />
+    <Compile Include="Languages\GSharp\GSharpProcessor.cs" />
+    <Compile Include="Languages\GSharp\GSharpTokenizer.cs" />
+    <Compile Include="Languages\PropertySheet\ActualPropertyValue.cs" />
+    <Compile Include="Languages\PropertySheet\Indexer.cs" />
+    <Compile Include="Languages\PropertySheet\IPropertyValue.cs" />
+    <Compile Include="Languages\PropertySheet\PropertyRule.cs" />
+    <Compile Include="Languages\PropertySheet\PropertySheet.cs" />
+    <Compile Include="Languages\PropertySheet\PropertySheetItem.cs" />
+    <Compile Include="Languages\PropertySheet\PropertySheetParser.cs" />
+    <Compile Include="Languages\PropertySheet\PropertySheetTokenizer.cs" />
+    <Compile Include="Languages\PropertySheet\PropertyValue.cs" />
+    <Compile Include="Languages\PropertySheet\Rule.cs" />
+    <Compile Include="Languages\PropertySheet\ScriptedPropertyRule.cs" />
+    <Compile Include="Languages\PropertySheet\SourceLocation.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utility\ActiveScriptHost.cs" />
+    <Compile Include="Utility\IActiveScript.cs" />
+    <Compile Include="Utility\IActiveScriptError.cs" />
+    <Compile Include="Utility\IActiveScriptParse.cs" />
+    <Compile Include="Utility\IActiveScriptParseProcedure.cs" />
+    <Compile Include="Utility\IActiveScriptSite.cs" />
+    <Compile Include="Utility\IDispatch.cs" />
+    <Compile Include="Utility\JScript.cs" />
+    <Compile Include="Utility\ScriptInfo.cs" />
+    <Compile Include="Utility\ScriptItem.cs" />
+    <Compile Include="Utility\ScriptLanguage.cs" />
+    <Compile Include="Utility\ScriptState.cs" />
+    <Compile Include="Utility\ScriptText.cs" />
+    <Compile Include="Utility\ScriptThreadState.cs" />
+    <Compile Include="Utility\Token.cs" />
+    <Compile Include="Utility\Tokenizer.cs" />
+    <Compile Include="Utility\TokenType.cs" />
+    <Compile Include="Utility\VBScript.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Languages\CSV\Resources\ExceptionMessage.resx">
+      <DependentUpon>ExceptionMessage.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj">
+      <Project>{C8506264-EE4F-442C-B2C3-4C0BD4975A2A}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Platform\Platform.csproj">
+      <Project>{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}</Project>
+      <Name>Platform</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

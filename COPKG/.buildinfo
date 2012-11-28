@@ -1,0 +1,117 @@
+@import "version.inc" ;
+
+#define {
+    next-version: "${version++}";
+};
+
+
+#product-info {
+    product-name: "clrplus";
+    version: "${version}";
+    original-source-location: "git@github.com:perpetual-motion/clrplus.git";
+    original-source-website: "https://github.com/perpetual-motion/clrplus";
+    license: "Apache2.0";
+    packager: "garrett serack <garretts@microsoft.com>";
+}
+
+set-version { 
+    compiler:vc11;
+    build-command: @"
+        REM REQUIRES NODE.JS 
+        REM REQUIRES npm -g replace
+        
+        call replace.cmd ""version: .*;"" ""version: ${new-version};"" copkg\version.inc
+        call replace.cmd ""\[assembly: AssemblyVersion.*"" ""[assembly: AssemblyVersion(""""${new-version}"""")]"" common\assemblystrongname.cs
+        call replace.cmd ""\[assembly: AssemblyFileVersion.*"" ""[assembly: AssemblyFileVersion(""""${new-version}"""")]"" common\assemblystrongname.cs
+        for /d %%v in (*) do (for %%z in (%%v\*.nuspec) do call replace.cmd ""<version>.*</version>"" ""<version>${new-version}</version>"" %%z)
+        for /d %%v in (*) do (for %%z in (%%v\*.nuspec) do call replace.cmd ""(id=.ClrPlus.*version=.)(\d*\.\d*\.\d*\.\d*)(.*)"" ""$1${new-version}$3""  %%z)
+    ";
+}
+
+increment-version { 
+    compiler:vc11;
+    build-command: @"
+        ptk set-version --new-version=${next-version} 
+    ";
+}
+
+package {
+    compiler:vc11;
+    build-command: @"
+        ptk build-release           || goto FAILED
+        ptk make-nuget-packages     || goto FAILED
+        ptk increment-version       || goto FAILED
+    ";
+}
+
+publish {
+   compiler:vc11;
+    build-command: @"
+        ptk build-release           || goto FAILED
+        ptk make-nuget-packages     || goto FAILED
+        ptk publish-nuget-packages  || goto FAILED
+        ptk increment-version       || goto FAILED
+    ";
+}
+
+build-release {
+    compiler:vc11;
+    build-command: @"
+        msbuild /t:Clean ClrPlus.sln /p:Configuration=Release 
+        msbuild /t:Rebuild ClrPlus.sln /p:Configuration=Release 
+    ";
+}
+
+publish-nuget-packages { 
+    compiler:vc11;
+    build-command: @"
+        nuget push  ClrPlus.Core.${version}.nupkg
+        nuget push  ClrPlus.Windows.Api.${version}.nupkg
+        nuget push  ClrPlus.Platform.${version}.nupkg
+        nuget push  ClrPlus.Azure.${version}.nupkg
+        nuget push  ClrPlus.CommandLine.${version}.nupkg
+        nuget push  ClrPlus.Console.${version}.nupkg
+        nuget push  ClrPlus.Crypto.${version}.nupkg
+        nuget push  ClrPlus.Networking.${version}.nupkg
+        nuget push  ClrPlus.Remoting.${version}.nupkg
+        nuget push  ClrPlus.Scripting.${version}.nupkg
+        nuget push  ClrPlus.Tasks.${version}.nupkg
+        nuget push  ClrPlus.Windows.Debugging.${version}.nupkg
+        nuget push  ClrPlus.Windows.PeBinary.${version}.nupkg
+        nuget push  ClrPlus.Powershell.Core.${version}.nupkg
+        nuget push  ClrPlus.Powershell.Provider.${version}.nupkg
+        nuget push  ClrPlus.Powershell.Azure.${version}.nupkg
+    ";
+}
+
+make-nuget-packages {
+    compiler:vc11;
+    build-command: @"
+        nuget pack  Core\Core.nuspec
+        nuget pack  Windows.Api\Windows.Api.nuspec
+        nuget pack  Platform\Platform.nuspec
+        nuget pack  Azure\Azure.nuspec
+        nuget pack  CommandLine\CommandLine.nuspec
+        nuget pack  Console\Console.nuspec
+        nuget pack  Crypto\Crypto.nuspec
+        nuget pack  Networking\Networking.nuspec
+        nuget pack  Remoting\Remoting.nuspec
+        nuget pack  Scripting\Scripting.nuspec
+        nuget pack  Tasks\Tasks.nuspec
+        nuget pack  Windows.Debugging\Windows.Debugging.nuspec
+        nuget pack  Windows.PeBinary\Windows.PeBinary.nuspec        
+        nuget pack  Powershell.Core\Powershell.Core.nuspec        
+        nuget pack  Powershell.Provider\Powershell.Provider.nuspec        
+        nuget pack  Powershell.Azure\Powershell.Azure.nuspec        
+    ";
+}
+
+default {
+    default:true;
+    compiler:vc11;
+    
+    clean-command: @"
+        rmdir /s /q output
+        for /d %%v in (*) do (for /d %%z in (%%v\obj*) do rmdir /s /q %%z )
+    ";
+}

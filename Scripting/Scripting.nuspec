@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Scripting</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Scripting Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing classes to assist in scripting and dynamic code use</summary>
+    <description>A library containing classes to assist in scripting and dynamic code use.
+    
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+</description>
+    <releaseNotes>Initial Build of the new ClrPlus Scripting package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp Scripting</tags>
+    <dependencies>
+        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Platform" version="1.8.0.38" />
+    </dependencies>
+    
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Scripting.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Scripting.xml" target="lib\net40" /> 
+</files>
+</package>

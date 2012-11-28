@@ -1,0 +1,163 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import Project="$(SolutionDir)\Common.props" Condition="Exists('$(SolutionDir)\Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{84C32936-45B7-42C0-A94D-562EADC7A779}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ClrPlus.Windows.Api</RootNamespace>
+    <AssemblyName>ClrPlus.Windows.Api</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="Advapi32.cs" />
+    <Compile Include="CryptUi.cs" />
+    <Compile Include="Enumerations\BitmapCompression.cs" />
+    <Compile Include="Enumerations\ButtonControlStyles.cs" />
+    <Compile Include="Enumerations\ConsoleEventTypes.cs" />
+    <Compile Include="Enumerations\DialogStyles.cs" />
+    <Compile Include="Enumerations\DIBColors.cs" />
+    <Compile Include="Enumerations\EditControlStyles.cs" />
+    <Compile Include="Enumerations\ExtendedDialogStyles.cs" />
+    <Compile Include="Enumerations\FileStreamType.cs" />
+    <Compile Include="Enumerations\FileType.cs" />
+    <Compile Include="Enumerations\IoReparseTag.cs" />
+    <Compile Include="Enumerations\Kernel32Contants.cs" />
+    <Compile Include="Enumerations\KnownFolders.cs" />
+    <Compile Include="Enumerations\ManifestType.cs" />
+    <Compile Include="Enumerations\MenuFlags.cs" />
+    <Compile Include="Enumerations\MenuResourceType.cs" />
+    <Compile Include="Enumerations\Miim.cs" />
+    <Compile Include="Enumerations\ReparsePointError.cs" />
+    <Compile Include="Enumerations\ResourceHeaderType.cs" />
+    <Compile Include="Enumerations\ResourceTypes.cs" />
+    <Compile Include="Enumerations\SecurityImpersonationLevel.cs" />
+    <Compile Include="Enumerations\StandardHandle.cs" />
+    <Compile Include="Enumerations\StaticControlStyles.cs" />
+    <Compile Include="Enumerations\TokenElevationType.cs" />
+    <Compile Include="Enumerations\TokenInformationClass.cs" />
+    <Compile Include="Enumerations\Verifier.cs" />
+    <Compile Include="Enumerations\VirtualKeys.cs" />
+    <Compile Include="Enumerations\WellKnownSidType.cs" />
+    <Compile Include="Enumerations\Win32Msgs.cs" />
+    <Compile Include="Enumerations\WindowStyles.cs" />
+    <Compile Include="Enumerations\Winver.cs" />
+    <Compile Include="Flags\AcceleratorVirtualKey.cs" />
+    <Compile Include="Flags\AllocationType.cs" />
+    <Compile Include="Flags\CreateRemoteThreadFlags.cs" />
+    <Compile Include="Flags\FileStreamAttributes.cs" />
+    <Compile Include="Flags\KeyModifiers.cs" />
+    <Compile Include="Flags\MemoryProtection.cs" />
+    <Compile Include="Flags\MoveFileFlags.cs" />
+    <Compile Include="Flags\NativeFileAccess.cs" />
+    <Compile Include="Flags\NativeFileAttributesAndFlags.cs" />
+    <Compile Include="Gdi32.cs" />
+    <Compile Include="ImageHlp.cs" />
+    <Compile Include="Kernel32.cs" />
+    <Compile Include="MPR.cs" />
+    <Compile Include="Mscoree.cs" />
+    <Compile Include="Ntdll.cs" />
+    <Compile Include="Enumerations\ControlCodes.cs" />
+    <Compile Include="Flags\PageProtection.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Enumerations\ConsoleEvents.cs" />
+    <Compile Include="Structures\Accel.cs" />
+    <Compile Include="Structures\BitmapFileHeader.cs" />
+    <Compile Include="Structures\BitmapInfo.cs" />
+    <Compile Include="Structures\BitmapInfoHeader.cs" />
+    <Compile Include="Structures\ByHandleFileInformation.cs" />
+    <Compile Include="Structures\ConsoleFontInfo.cs" />
+    <Compile Include="Structures\ConsoleScreenBufferInfo.cs" />
+    <Compile Include="Structures\Coord.cs" />
+    <Compile Include="Structures\DialogExItemTemplate.cs" />
+    <Compile Include="Structures\DialogExTemplate.cs" />
+    <Compile Include="Structures\DialogItemClass.cs" />
+    <Compile Include="Structures\DialogItemTemplate.cs" />
+    <Compile Include="Structures\Dialogtemplate.cs" />
+    <Compile Include="Structures\FileGrpIconDir.cs" />
+    <Compile Include="Structures\FileGrpIconDirEntry.cs" />
+    <Compile Include="Structures\FocusInputRecord.cs" />
+    <Compile Include="Structures\FontDirEntry.cs" />
+    <Compile Include="Structures\GrpIconDir.cs" />
+    <Compile Include="Structures\GrpIconDirEntry.cs" />
+    <Compile Include="Structures\Iconinfo.cs" />
+    <Compile Include="Structures\ImageCoffHeader.cs" />
+    <Compile Include="Structures\ImageCor20Header.cs" />
+    <Compile Include="Structures\ImageDataDirectory.cs" />
+    <Compile Include="Structures\ImageOptionalHeaderNt.cs" />
+    <Compile Include="Structures\ImageSectionHeader.cs" />
+    <Compile Include="Structures\KeyInputRecord.cs" />
+    <Compile Include="Structures\MenuExItemTemplate.cs" />
+    <Compile Include="Structures\MenuExTemplate.cs" />
+    <Compile Include="Structures\MenuItemInfo.cs" />
+    <Compile Include="Structures\MenuItemTemplate.cs" />
+    <Compile Include="Structures\MenuTemplate.cs" />
+    <Compile Include="Structures\ProcessInformation.cs" />
+    <Compile Include="Structures\Rect.cs" />
+    <Compile Include="Structures\ReparseData.cs" />
+    <Compile Include="Structures\ResourceHeader.cs" />
+    <Compile Include="Structures\RgbQuad.cs" />
+    <Compile Include="Structures\SafeHGlobalHandle.cs" />
+    <Compile Include="Structures\SafeTokenHandle.cs" />
+    <Compile Include="Structures\SecurityAttributes.cs" />
+    <Compile Include="Structures\SidAndAttributes.cs" />
+    <Compile Include="Structures\SizeT.cs" />
+    <Compile Include="Structures\SmallRect.cs" />
+    <Compile Include="Structures\Startupinfo.cs" />
+    <Compile Include="Structures\SystemInfo.cs" />
+    <Compile Include="Structures\TokenElevation.cs" />
+    <Compile Include="Structures\TokenMandatoryLabel.cs" />
+    <Compile Include="Structures\VarHeader.cs" />
+    <Compile Include="Structures\VsFixedfileinfo.cs" />
+    <Compile Include="Structures\Win32StreamId.cs" />
+    <Compile Include="Structures\WindowInfo.cs" />
+    <Compile Include="User32.cs" />
+    <Compile Include="WinCrypt.cs" />
+    <Compile Include="Winmm.cs" />
+    <Compile Include="WinTrust.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

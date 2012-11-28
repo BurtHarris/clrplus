@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Platform</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Platform Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing a platform abstraction layer that will eventually allow the other ClrPlus libraries to work on something other than Windows</summary>
+    <description>A library containing a platform abstraction layer that will eventually allow the other ClrPlus libraries to work on something other than Windows.
+
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus Platform package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp</tags>
+    <dependencies>
+        <dependency  id="ClrPlus.Core" version="1.8.0.38" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.38" />
+    </dependencies>
+    
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Platform.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Platform.xml" target="lib\net40" /> 
+</files>
+</package>

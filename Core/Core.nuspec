@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Core</id>
+    <version>1.8.0.38</version>
+    <title>CLRPlus Core Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing a ton of useful stuff that really should be in the CLR itself</summary>
+    <description>A library containing a ton of useful stuff that really should be in the CLR itself:
+Lots of useful extension methods
+Some extended collection classes
+Some DynamicXML classes
+Some serializable Linq classes
+An SGML Parser
+Some misc Utility classes 
+
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus Core package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp</tags>
+  </metadata>
+  <files>
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Core.dll" target="lib\net40" /> 
+    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Core.xml" target="lib\net40" /> 
+</files>
+</package>
