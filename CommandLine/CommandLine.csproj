@@ -44,6 +44,8 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="CommandLineExtensions.cs" />
+    <Compile Include="ComplexOption.cs" />
+    <Compile Include="ParsedCommandLine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

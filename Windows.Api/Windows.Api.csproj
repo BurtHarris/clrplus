@@ -127,6 +127,7 @@
     <Compile Include="Structures\MenuItemInfo.cs" />
     <Compile Include="Structures\MenuItemTemplate.cs" />
     <Compile Include="Structures\MenuTemplate.cs" />
+    <Compile Include="Structures\ParentProcess.cs" />
     <Compile Include="Structures\ProcessInformation.cs" />
     <Compile Include="Structures\Rect.cs" />
     <Compile Include="Structures\ReparseData.cs" />

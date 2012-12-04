@@ -129,7 +129,7 @@ namespace ClrPlus.Core.Extensions {
         /// <param name="newItem"> </param>
         /// <returns> </returns>
         public static IEnumerable<T> UnionSingleItem<T>(this IEnumerable<T> collection, T newItem) {
-            return collection.Union(new[] {
+            return collection.Concat(new[] {
                 newItem
             });
         }

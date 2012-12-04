@@ -70,7 +70,7 @@ namespace ClrPlus.Platform {
 
             try {
                 // Open the access token of the current process for query and duplicate.
-                if (!Advapi32.OpenProcessToken(Process.GetCurrentProcess().Handle, Advapi32.TOKEN_QUERY | Advapi32.TOKEN_DUPLICATE, out hToken)) {
+                if(!Advapi32.OpenProcessToken(System.Diagnostics.Process.GetCurrentProcess().Handle, Advapi32.TOKEN_QUERY | Advapi32.TOKEN_DUPLICATE, out hToken)) {
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
 
@@ -241,7 +241,7 @@ namespace ClrPlus.Platform {
 
             try {
                 // Open the access token of the current process with TOKEN_QUERY.
-                if (!Advapi32.OpenProcessToken(Process.GetCurrentProcess().Handle, Advapi32.TOKEN_QUERY, out hToken)) {
+                if(!Advapi32.OpenProcessToken(System.Diagnostics.Process.GetCurrentProcess().Handle, Advapi32.TOKEN_QUERY, out hToken)) {
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
 

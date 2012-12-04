@@ -99,7 +99,6 @@ namespace ClrPlus.Windows.Api {
         [DllImport("user32.dll")]
         public static extern IntPtr GetFocus();
 
-#if !COAPP_ENGINE_CORE
         /// <summary>
         ///     Retrieve a handle to a device context (DC) for the client area of a specified window or for the entire screen.
         /// </summary>
@@ -132,6 +131,10 @@ namespace ClrPlus.Windows.Api {
         /// <returns> If the function succeeds, the return value is a handle to the icon or cursor that is created. If the function fails, the return value is NULL. </returns>
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr CreateIconIndirect(ref Iconinfo piconInfo);
-#endif
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+
     }
 }

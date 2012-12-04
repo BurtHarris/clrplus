@@ -21,10 +21,6 @@ namespace ClrPlus.Crypto {
     using Windows.Api.Enumerations;
     using FILETIME = System.Runtime.InteropServices.ComTypes.FILETIME;
 
-#if COAPP_ENGINE_CORE
-    using Packaging.Service;
-#endif
-
     public class Verifier {
         private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
         // GUID of the action to perform

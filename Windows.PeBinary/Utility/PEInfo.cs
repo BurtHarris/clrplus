@@ -123,7 +123,7 @@ namespace ClrPlus.Windows.PeBinary.Utility {
                                 (((ulong)_fileVersionInfo.Value.FileBuildPart) << 16) + (ulong)_fileVersionInfo.Value.FilePrivatePart);
 
 #if TODO
-                DependencyInformation = new LazyEnumerable<DependencyInformation>(DependencyInformationImpl);
+                DependencyInformation = new CacheEnumerable<DependencyInformation>(DependencyInformationImpl);
 #endif
                 using (var reader = new BinaryReader(File.OpenRead(_filename))) {
                     // Skip DOS Header and seek to PE signature

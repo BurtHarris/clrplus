@@ -18,38 +18,11 @@
 // -----------------------------------------------------------------------
 
 namespace ClrPlus.CommandLine {
-    using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
-    using System.Reflection;
     using System.Text.RegularExpressions;
-    using Core.Collections;
     using Core.Extensions;
     using Platform;
-
-    /// <summary>
-    ///     Storage Class for complex options from the command line.
-    /// </summary>
-    /// <remarks>
-    /// </remarks>
-    public class ComplexOption {
-        /// <summary>
-        /// </summary>
-        public string WholePrefix; // stuff in the []
-
-        /// <summary>
-        /// </summary>
-        public string WholeValue; // stuff after the []
-
-        /// <summary>
-        /// </summary>
-        public List<string> PrefixParameters = new List<string>(); // individual items in the []
-
-        /// <summary>
-        /// </summary>
-        public IDictionary<string, string> Values = new XDictionary<string, string>(); // individual key/values after the []
-    }
 
     /// <summary>
     /// </summary>
@@ -57,34 +30,6 @@ namespace ClrPlus.CommandLine {
     ///     NOTE: Explicity Ignore, testing this will produce no discernable value, and will only lead to heartbreak.
     /// </remarks>
     public static class CommandLineExtensions {
-        /// <summary>
-        /// </summary>
-        private static IDictionary<string, IEnumerable<string>> _switches;
-
-        /// <summary>
-        /// </summary>
-        private static IEnumerable<string> _parameters;
-
-        /// <summary>
-        ///     Gets the parameters for switch or null.
-        /// </summary>
-        /// <param name="args"> The args. </param>
-        /// <param name="key"> The key. </param>
-        /// <returns> </returns>
-        /// <remarks>
-        /// </remarks>
-        public static IEnumerable<string> GetParametersForSwitchOrNull(this IEnumerable<string> args, string key) {
-            if (_switches == null) {
-                Switches(args);
-            }
-
-            if (_switches.ContainsKey(key)) {
-                return _switches[key];
-            }
-
-            return null;
-        }
-
         /// <summary>
         ///     Gets the parameters for switch.
         /// </summary>
@@ -94,15 +39,7 @@ namespace ClrPlus.CommandLine {
         /// <remarks>
         /// </remarks>
         public static IEnumerable<string> GetParametersForSwitch(this IEnumerable<string> args, string key) {
-            if (_switches == null) {
-                Switches(args);
-            }
-
-            if (_switches.ContainsKey(key)) {
-                return _switches[key];
-            }
-
-            return new List<string>();
+            return ParsedCommandLine.Parse(args).With(p => p.Switches.ContainsKey(key) ? p.Switches[key] : Enumerable.Empty<string>());
         }
 
         /// <summary>
@@ -114,10 +51,7 @@ namespace ClrPlus.CommandLine {
         /// <remarks>
         /// </remarks>
         public static string SwitchValue(this IEnumerable<string> args, string key) {
-            if (args.Switches().ContainsKey(key)) {
-                return args.GetParametersForSwitch(key).FirstOrDefault();
-            }
-            return null;
+            return ParsedCommandLine.Parse(args).With(p => p.Switches.ContainsKey(key) ? p.Switches[key].FirstOrDefault() : null);
         }
 
         public static IEnumerable<string> SplitArgs(string unsplitArgumentLine) {
@@ -131,77 +65,8 @@ namespace ClrPlus.CommandLine {
         /// <returns> </returns>
         /// <remarks>
         /// </remarks>
-        public static IDictionary<string, IEnumerable<string>> Switches(this IEnumerable<string> args) {
-            if (_switches != null) {
-                return _switches;
-            }
-            var assemblypath = Assembly.GetEntryAssembly().Location;
-
-            _switches = new XDictionary<string, IEnumerable<string>>();
-
-            var v = Environment.GetEnvironmentVariable("_" + Path.GetFileNameWithoutExtension(assemblypath) + "_");
-            if (!string.IsNullOrEmpty(v)) {
-                var extraSwitches = SplitArgs(v).Where(each => each.StartsWith("--"));
-                if (!args.IsNullOrEmpty()) {
-                    args = args.Union(extraSwitches);
-                }
-            }
-
-            // load a <exe>.properties file in the same location as the executing assembly.
-
-            var propertiespath = "{0}\\{1}.properties".format(Path.GetDirectoryName(assemblypath), Path.GetFileNameWithoutExtension(assemblypath));
-            if (File.Exists(propertiespath)) {
-                propertiespath.LoadConfiguration();
-            }
-
-            var argEnumerator = args.GetEnumerator();
-            //while(firstarg < args.Length && args[firstarg].StartsWith("--")) {
-            while (argEnumerator.MoveNext() && argEnumerator.Current.StartsWith("--")) {
-                var arg = argEnumerator.Current.Substring(2).ToLower();
-                var param = "";
-                int pos;
-
-                if ((pos = arg.IndexOf("=")) > -1) {
-                    param = argEnumerator.Current.Substring(pos + 3);
-                    arg = arg.Substring(0, pos);
-                    /*
-                    if(string.IsNullOrEmpty(param) || string.IsNullOrEmpty(arg)) {
-                        "Invalid Option :{0}".Print(argEnumerator.Current.Substring(2).ToLower());
-                        switches.Clear();
-                        switches.Add("help", new List<string>());
-                        return switches;
-                    } */
-                }
-                if (arg.Equals("load-config")) {
-                    // loads the config file, and then continues parsing this line.
-                    LoadConfiguration(param);
-                    // firstarg++;
-                    continue;
-                }
-#if TODO 
-    // make an extensibility model for intercepting arguments 
-    // so that console project can do this.
-
-                if (arg.Equals("list-bugtracker") || arg.Equals("list-bugtrackers")) {
-                    // the user is asking for the bugtracker URLs for this application.
-                    ListBugTrackers();
-                    continue;
-                }
-
-                if (arg.Equals("open-bugtracker") || arg.Equals("open-bugtrackers")) {
-                    // the user is asking for the bugtracker URLs for this application.
-                    OpenBugTracker();
-                    continue;
-                }
-#endif
-                if (!_switches.ContainsKey(arg)) {
-                    _switches.Add(arg, new List<string>());
-                }
-
-                ((List<string>)_switches[arg]).Add(param);
-                // firstarg++;
-            }
-            return _switches;
+        public static IDictionary<string, List<string>> Switches(this IEnumerable<string> args) {
+            return ParsedCommandLine.Parse(args).Switches;
         }
 
 #if TODO
@@ -239,72 +104,6 @@ namespace ClrPlus.CommandLine {
                 select new KeyValuePair<Assembly, string>(a, attribute.ToString());
         }
 #endif
-
-        /// <summary>
-        ///     Loads the configuration.
-        /// </summary>
-        /// <param name="file"> The file. </param>
-        /// <remarks>
-        /// </remarks>
-        public static void LoadConfiguration(this string file) {
-            if (_switches == null) {
-                _switches = new XDictionary<string, IEnumerable<string>>();
-            }
-
-            var param = "";
-            var category = "";
-
-            if (File.Exists(file)) {
-                var lines = File.ReadAllLines(file);
-                for (var ln = 0; ln < lines.Length; ln++) {
-                    var line = lines[ln].Trim();
-                    while (line.EndsWith("\\") && ln < lines.Length) {
-                        line = line.Substring(0, line.Length - 1);
-                        if (++ln < lines.Length) {
-                            line += lines[ln].Trim();
-                        }
-                    }
-                    var arg = line;
-
-                    param = "";
-
-                    if (arg.IndexOf("[") == 0) {
-                        // category 
-                        category = arg.Substring(1, arg.IndexOf(']') - 1).Trim();
-                        continue;
-                    }
-
-                    if (string.IsNullOrEmpty(arg) || arg.StartsWith(";") || arg.StartsWith("#")) // comments
-                    {
-                        continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(category)) {
-                        arg = "{0}-{1}".format(category, arg);
-                    }
-
-                    int pos;
-                    if ((pos = arg.IndexOf("=")) > -1) {
-                        param = arg.Substring(pos + 1);
-                        arg = arg.Substring(0, pos).ToLower();
-
-                        if (string.IsNullOrEmpty(param) || string.IsNullOrEmpty(arg)) {
-                            Console.WriteLine("Invalid Option in config file [{0}]: {1}", file, line.Trim());
-                            _switches.Add("help", new List<string>());
-                            return;
-                        }
-                    }
-
-                    if (!_switches.ContainsKey(arg)) {
-                        _switches.Add(arg, new List<string>());
-                    }
-
-                    ((List<string>)_switches[arg]).Add(param);
-                }
-            } else {
-                Console.WriteLine("Unable to find configuration file [{0}]", param);
-            }
-        }
 
         // handles complex option switches
         // RX for splitting comma seperated values:
@@ -363,17 +162,7 @@ namespace ClrPlus.CommandLine {
         /// <remarks>
         /// </remarks>
         public static IEnumerable<string> Parameters(this IEnumerable<string> args) {
-            var v = Environment.GetEnvironmentVariable("_" + Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + "_");
-            if (!string.IsNullOrEmpty(v)) {
-                var extraSwitches = SplitArgs(v).Where(each => !each.StartsWith("--"));
-                if (!args.IsNullOrEmpty()) {
-                    args = args.Union(extraSwitches);
-                }
-            }
-
-            return _parameters ?? (_parameters = from argument in args
-                where !(argument.StartsWith("--"))
-                select argument);
+            return ParsedCommandLine.Parse(args).Parameters;
         }
 
         /// <summary>

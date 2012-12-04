@@ -32,6 +32,11 @@ namespace ClrPlus.Core.Extensions {
     [AttributeUsage(AttributeTargets.Interface)]
     public class ImplementedByAttribute : Attribute {
         public Type[] Types;
+        public string[] TypeNames {get {
+            return Types.Select(each => each.FullName).ToArray();
+        } set {
+            Types = value.Select(Type.GetType).ToArray();
+        }}
     }
 
     public enum PersistableCategory {
@@ -138,17 +143,34 @@ namespace ClrPlus.Core.Extensions {
         public Type NullableType {get; set;}
     }
 
-    public static class AutoCache {
+   
+
+    public static class AssociativeLazyCache {
         private static class C<TKey, TValue> {
-            internal static readonly IDictionary<TKey, TValue> Cache = new XDictionary<TKey, TValue>();
+            internal static readonly IDictionary<object, IDictionary<TKey, TValue>> Cache = new XDictionary<object, IDictionary<TKey, TValue>>();
         }
 
         public static TValue Get<TKey, TValue>(TKey key, Func<TValue> valueFunc) {
-            lock (C<TKey, TValue>.Cache) {
-                if (!C<TKey, TValue>.Cache.ContainsKey(key)) {
-                    C<TKey, TValue>.Cache[key] = valueFunc();
+            return Get(null, key, valueFunc);
+        }
+
+        public static TValue Get<TKey, TValue>( Object scope, TKey key, Func<TValue> valueFunc) {
+            var cache = C<TKey, TValue>.Cache;
+            IDictionary<TKey, TValue> inner;
+
+            lock (cache) {
+                if (!cache.ContainsKey(scope)) {
+                    cache.Add(scope, (inner = new XDictionary<TKey, TValue>()));
+                } else {
+                    inner = cache[scope];
                 }
-                return C<TKey, TValue>.Cache[key];
+            }
+
+            lock (inner) {
+                if (!inner.ContainsKey(key)) {
+                    inner[key] = valueFunc();
+                }
+                return inner[key];
             }
         }
     }
@@ -163,21 +185,24 @@ namespace ClrPlus.Core.Extensions {
     }
 
     public static class TypeExtensions {
-        private static readonly IDictionary<Type, MethodInfo> TryParsers = new XDictionary<Type, MethodInfo>();
-        private static readonly IDictionary<Type, ConstructorInfo> TryStrings = new XDictionary<Type, ConstructorInfo>();
-        private static readonly MethodInfo CastMethod = typeof (Enumerable).GetMethod("Cast");
-        private static readonly MethodInfo ToArrayMethod = typeof (Enumerable).GetMethod("ToArray");
-        private static readonly IDictionary<Type, MethodInfo> CastMethods = new XDictionary<Type, MethodInfo>();
-        private static readonly IDictionary<Type, MethodInfo> ToArrayMethods = new XDictionary<Type, MethodInfo>();
-        private static readonly IDictionary<Type, Func<object, object>> OpImplicitMethods = new XDictionary<Type, Func<object, object>>();
-        public static readonly IDictionary<Type, Type> TypeSubtitution = new XDictionary<Type, Type>();
+        private static readonly IDictionary<Type, MethodInfo> _tryParsers = new XDictionary<Type, MethodInfo>();
+        private static readonly IDictionary<Type, ConstructorInfo> _tryStrings = new XDictionary<Type, ConstructorInfo>();
+        private static readonly MethodInfo _castMethod = typeof (Enumerable).GetMethod("Cast");
+        private static readonly MethodInfo _toArrayMethod = typeof (Enumerable).GetMethod("ToArray");
+        private static readonly IDictionary<Type, MethodInfo> _castMethods = new XDictionary<Type, MethodInfo>();
+        private static readonly IDictionary<Type, MethodInfo> _toArrayMethods = new XDictionary<Type, MethodInfo>();
+        
+        
+
+        private static readonly XDictionary<Type, PersistableInfo> _piCache = new XDictionary<Type, PersistableInfo>();
+        private static readonly XDictionary<Type, PersistablePropertyInformation[]> _ppiCache = new XDictionary<Type, PersistablePropertyInformation[]>();
 
         public static PersistableInfo GetPersistableInfo(this Type t) {
-            return AutoCache.Get(t, () => new PersistableInfo(t));
+            return _piCache.GetOrAdd(t, () => new PersistableInfo(t));
         }
 
         public static PersistablePropertyInformation[] GetPersistableElements(this Type type) {
-            return AutoCache.Get(type, () =>
+            return _ppiCache.GetOrAdd(type, () =>
                 (from each in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                     let persistableAttribute = each.GetCustomAttributes(typeof (PersistableAttribute), true).FirstOrDefault() as PersistableAttribute
                     where
@@ -230,88 +255,10 @@ namespace ClrPlus.Core.Extensions {
                     }).ToArray()*/
         }
 
-        private static Func<object, object> GetOpImplicit(Type sourceType, Type destinationType) {
-            lock (OpImplicitMethods) {
-                if (!OpImplicitMethods.ContainsKey(sourceType)) {
-                    var opImplicit =
-                        (from method in sourceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                            where method.Name == "op_Implicit" && method.ReturnType == destinationType && method.GetParameters()[0].ParameterType == sourceType
-                            select method).Union(
-                                (from method in destinationType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                                    where method.Name == "op_Implicit" && method.ReturnType == destinationType && method.GetParameters()[0].ParameterType == sourceType
-                                    select method
-                                    )).FirstOrDefault();
-
-                    if (opImplicit != null) {
-                        OpImplicitMethods.Add(sourceType, obj => opImplicit.Invoke(null, new[] {
-                            obj
-                        }));
-                    } else {
-                        // let's 'try harder'
-                        var result =
-                            destinationType.GetCustomAttributes(typeof (ImplementedByAttribute), false).Select(i => i as ImplementedByAttribute).SelectMany(attribute => attribute.Types).Select(target => GetOpImplicit(sourceType, target)).FirstOrDefault();
-                        if (result == null) {
-                            // still not found one? is it an IEnumerable conversion?
-                            if (sourceType.IsIEnumerable() && destinationType.IsIEnumerable()) {
-                                var sourceElementType = sourceType.GetPersistableInfo().ElementType;
-                                var destElementType = destinationType.GetPersistableInfo().ElementType;
-                                var elemConversion = GetOpImplicit(sourceElementType, destElementType);
-                                if (elemConversion != null) {
-                                    // it looks like we can translate the elements of the collection.
-                                    if (destinationType.IsArray) {
-                                        // get an array of converted values.
-                                        result = obj => ((IEnumerable<object>)(obj)).Select(each => each.ImplicitlyConvert(destElementType)).ToArrayOfType(destElementType);
-                                    } else if (destinationType.Name.StartsWith("IEnumerable")) {
-                                        // just get an IEnumerable of the converted elements
-                                        result = obj => ((IEnumerable<object>)(obj)).Select(each => each.ImplicitlyConvert(destElementType)).CastToIEnumerableOfType(destElementType);
-                                    } else {
-                                        // create the target collection type, and stuff the values into that.
-                                        result = obj => {
-                                            var v = (IList)destinationType.CreateInstance();
-                                            foreach (object each in ((IEnumerable<object>)(obj))) {
-                                                v.Add(each.ImplicitlyConvert(destElementType));
-                                            }
-                                            return v;
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                        OpImplicitMethods.Add(sourceType, result);
-                    }
-                }
-                return OpImplicitMethods[sourceType];
-            }
-        }
-
-        public static object ImplicitlyConvert(this object obj, Type destinationType) {
-            if (obj == null) {
-                return null;
-            }
-            if (destinationType == typeof (string)) {
-                return obj.ToString();
-            }
-
-            var opImplicit = GetOpImplicit(obj.GetType(), destinationType);
-            if (opImplicit != null) {
-                // return opImplicit.Invoke(null, new[] {obj});
-                return opImplicit(obj);
-            }
-            return obj;
-        }
-
-        public static bool ImplicitlyConvertsTo(this Type type, Type destinationType) {
-            if (type == destinationType) {
-                return false;
-            }
-            if (typeof (string) == destinationType) {
-                return true;
-            }
-            return GetOpImplicit(type, destinationType) != null;
-        }
+        
 
         public static object ToArrayOfType(this IEnumerable<object> enumerable, Type collectionType) {
-            return ToArrayMethods.GetOrAdd(collectionType, () => ToArrayMethod.MakeGenericMethod(collectionType))
+            return _toArrayMethods.GetOrAdd(collectionType, () => _toArrayMethod.MakeGenericMethod(collectionType))
                                  .Invoke(null, new[] {
                                      enumerable.CastToIEnumerableOfType(collectionType)
                                  });
@@ -319,43 +266,41 @@ namespace ClrPlus.Core.Extensions {
 
         public static object CastToIEnumerableOfType(this IEnumerable<object> enumerable, Type collectionType) {
             lock (collectionType) {
-                return CastMethods.GetOrAdd(collectionType, () => CastMethod.MakeGenericMethod(collectionType)).Invoke(null, new object[] {
+                return _castMethods.GetOrAdd(collectionType, () => _castMethod.MakeGenericMethod(collectionType)).Invoke(null, new object[] {
                     enumerable
                 });
             }
         }
 
-        public static object CreateInstance(this Type type) {
-            return Activator.CreateInstance(TypeSubtitution[type] ?? type, true);
-        }
+      
 
         private static MethodInfo GetTryParse(Type parsableType) {
-            lock (TryParsers) {
-                if (!TryParsers.ContainsKey(parsableType)) {
+            lock (_tryParsers) {
+                if (!_tryParsers.ContainsKey(parsableType)) {
                     if (parsableType.IsPrimitive || parsableType.IsValueType || parsableType.GetConstructor(new Type[] {
                     }) != null) {
-                        TryParsers.Add(parsableType, parsableType.GetMethod("TryParse", new[] {
+                        _tryParsers.Add(parsableType, parsableType.GetMethod("TryParse", new[] {
                             typeof (string), parsableType.MakeByRefType()
                         }));
                     } else {
                         // if they don't have a default constructor, 
                         // it's not going to be 'parsable'
-                        TryParsers.Add(parsableType, null);
+                        _tryParsers.Add(parsableType, null);
                     }
                 }
             }
-            return TryParsers[parsableType];
+            return _tryParsers[parsableType];
         }
 
         private static ConstructorInfo GetStringConstructor(Type parsableType) {
-            lock (TryStrings) {
-                if (!TryStrings.ContainsKey(parsableType)) {
-                    TryStrings.Add(parsableType, parsableType.GetConstructor(new[] {
+            lock (_tryStrings) {
+                if (!_tryStrings.ContainsKey(parsableType)) {
+                    _tryStrings.Add(parsableType, parsableType.GetConstructor(new[] {
                         typeof (string)
                     }));
                 }
             }
-            return TryStrings[parsableType];
+            return _tryStrings[parsableType];
         }
 
         public static bool IsConstructableFromString(this Type stringableType) {

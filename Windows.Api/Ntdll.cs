@@ -27,5 +27,9 @@ namespace ClrPlus.Windows.Api {
         //public static extern UInt32 RtlCreateUserThread(SafeProcessHandle processHandle, IntPtr lpThreadSecurity, bool createSuspended, int stackZeroBits, IntPtr stackReserved, IntPtr stackCommit, IntPtr startAddress, IntPtr parameter, out uint threadId, out IntPtr clientId);
         public static extern UInt32 RtlCreateUserThread(SafeProcessHandle processHandle, IntPtr lpThreadSecurity, bool createSuspended, int stackZeroBits, IntPtr stackReserved, IntPtr stackCommit, IntPtr startAddress, IntPtr parameter, out uint threadId,
             IntPtr clientId);
+
+        [DllImport("ntdll.dll")]
+        public static extern int NtQueryInformationProcess(IntPtr processHandle, int processInformationClass, ref ParentProcess processInformation, int processInformationLength, out int returnLength);
+
     }
 }

@@ -16,9 +16,9 @@ namespace ClrPlus.Core.Exceptions {
     using System.Runtime.Serialization;
 
     public class ClrPlusException : Exception {
-        internal bool Logged;
+        public bool Logged;
 
-        internal string Stacktrace;
+        public string Stacktrace;
 
         public bool IsCanceled {get; set;}
 

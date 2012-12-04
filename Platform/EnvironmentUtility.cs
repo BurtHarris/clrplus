@@ -11,9 +11,11 @@
 namespace ClrPlus.Platform {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using Core.Extensions;
     using Windows.Api;
@@ -22,6 +24,39 @@ namespace ClrPlus.Platform {
         private const Int32 HWND_BROADCAST = 0xffff;
         private const Int32 WM_SETTINGCHANGE = 0x001A;
         private const Int32 SMTO_ABORTIFHUNG = 0x0002;
+
+        public static string CommandLineArguments {
+            get {
+                var args = Environment.CommandLine;
+
+                var s = args.IndexOf(' ');
+                var q = args.IndexOf('"');
+
+                while(q > -1 && s > q) {
+                    // quotes come before first space
+                    // jump to the next quote
+                    q = args.IndexOf('"', q + 1);
+
+                    if(q == -1) {
+                        s = -1;
+                        return string.Empty;
+                    }
+
+                    // drop whatever we skipped over.
+                    args = args.Substring(q + 1);
+
+                    // recheck to see if we finally got past this stuff
+                    s = args.IndexOf(' ');
+                    if(s == -1) {
+                        break;
+                    }
+
+                    q = args.IndexOf('"');
+                }
+
+                return (s > -1) ? args.Substring(s + 1) : string.Empty;
+            }
+        }
 
         public static void BroadcastChange() {
 #if COAPP_ENGINE_CORE
@@ -113,7 +148,7 @@ namespace ClrPlus.Platform {
             return searchPath.Where(s => !s.Equals(pathToRemove, StringComparison.CurrentCultureIgnoreCase));
         }
 
-        internal static string FindInPath(string filename, string searchPath = null) {
+        public static string FindInPath(string filename, string searchPath = null) {
             if (string.IsNullOrEmpty(filename)) {
                 return string.Empty;
             }

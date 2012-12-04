@@ -35,10 +35,6 @@ namespace ClrPlus.Platform {
     using Windows.Api.Enumerations;
     using Windows.Api.Flags;
 
-#if COAPP_ENGINE_CORE
-    using Tasks;
-    using Packaging.Service;
-#endif
 
     public class PushDirectory : IDisposable {
         private readonly string _originalDirectory;
@@ -62,7 +58,7 @@ namespace ClrPlus.Platform {
         /// <summary>
         ///     a running counter of for funtions wanting to number files with increasing numbers.
         /// </summary>
-        private static int _counter = Process.GetCurrentProcess().Id << 16;
+        private static int _counter = System.Diagnostics.Process.GetCurrentProcess().Id << 16;
 
         public static int Counter {
             get {
@@ -235,13 +231,8 @@ namespace ClrPlus.Platform {
             return GetCustomFilePath(filename) ?? WalkUpPath(filename, currentDirectory);
         }
 
-#if COAPP_ENGINE_CORE 
-
-    // in the engine, we'd like disposable filenames to be session-local
-        private static List<string> DisposableFilenames { get { return SessionData.Current.DisposableFilenames; } }
-#else
         private static readonly List<string> DisposableFilenames = new List<string>();
-#endif
+
         private static bool _triedCleanup;
 
         public static void RemoveTemporaryFiles() {
@@ -655,7 +646,7 @@ namespace ClrPlus.Platform {
             return pathMasks.Aggregate(Enumerable.Empty<string>(), (current, p) => current.Union(p.FindFilesSmarter()));
         }
 
-#if !COAPP_ENGINE_CORE
+
         /// <summary>
         ///     always call IsWildcardMatch with a prefix!!!!
         /// </summary>
@@ -731,7 +722,7 @@ namespace ClrPlus.Platform {
         public static IEnumerable<string> FindFilesSmarterComplex(this IEnumerable<string> pathMasks) {
             return pathMasks.Aggregate(Enumerable.Empty<string>(), (current, p) => current.Union(p.FindFilesSmarterComplex()));
         }
-#endif
+
 
         /// <summary>
         ///     Gets the name of a file minus it's extension, ie: if the file name is "test.exe", returns "test".

@@ -107,22 +107,22 @@ namespace ClrPlus.Windows.Api {
         [DllImport("kernel32.dll")]
         public static extern Int32 GetCurrentThreadId();
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool AllocConsole();
 
         [DllImport("kernel32.dll")]
         public static extern bool SetConsoleCtrlHandler(ConsoleHandlerRoutine routine, bool add);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool FreeConsole();
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool AttachConsole(int processId);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr GetConsoleWindow();
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern SafeFileHandle GetStdHandle(StandardHandle nStandardHandle);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]

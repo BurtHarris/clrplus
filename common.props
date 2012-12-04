@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <OutputPath>$(SolutionDir)output\$(Platform)\$(Configuration)\bin\</OutputPath>
-    <DocumentationFile>..\output\AnyCPU\Release\bin\$(AssemblyName).XML</DocumentationFile>
+    <DocumentationFile>$(OutputPath)$(AssemblyName).XML</DocumentationFile>
     <NoWarn>1591 1574 1570 0419</NoWarn>
     <RestorePackages>true</RestorePackages>
   </PropertyGroup>

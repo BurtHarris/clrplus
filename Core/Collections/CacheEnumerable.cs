@@ -11,6 +11,13 @@
 namespace ClrPlus.Core.Collections {
     using System.Collections;
     using System.Collections.Generic;
+    using System.Linq;
+
+    public static class CachingEnumerableExtensions {
+        public static CacheEnumerable<T> ToCacheEnumerable<T>(this IEnumerable<T> collection) {
+            return collection as CacheEnumerable<T> ?? new CacheEnumerable<T>(collection);
+        }
+    }
 
     /// <summary>
     ///     This IEnumerable Wrapper will cache the results incrementally on first use of the source collection
@@ -18,13 +25,17 @@ namespace ClrPlus.Core.Collections {
     ///     (and it doesn't need to iterate thru the whole collection first, like ToList() )
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class LazyEnumerable<T> : IEnumerable<T> {
+    public class CacheEnumerable<T> : IEnumerable<T> {
         private readonly IEnumerable<T> _source;
         private IEnumerator<T> _sourceIterator;
         private List<T> _list;
 
-        public LazyEnumerable(IEnumerable<T> source) {
+        public CacheEnumerable(IEnumerable<T> source) {
             _source = source;
+        }
+
+        public CacheEnumerable<T> Concat(IEnumerable<T> additionalItems) {
+            return Enumerable.Concat(this, additionalItems).ToCacheEnumerable();
         }
 
         #region IEnumerable<T> Members
@@ -68,10 +79,10 @@ namespace ClrPlus.Core.Collections {
         #region Nested type: LazyEnumerator
 
         private class LazyEnumerator<TT> : IEnumerator<TT> {
-            private LazyEnumerable<TT> _collection;
+            private CacheEnumerable<TT> _collection;
             private int _index = -1;
 
-            internal LazyEnumerator(LazyEnumerable<TT> collection) {
+            internal LazyEnumerator(CacheEnumerable<TT> collection) {
                 _collection = collection;
             }
 

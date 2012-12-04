@@ -15,21 +15,130 @@ namespace ClrPlus.Remoting {
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
     using System.Text.RegularExpressions;
     using Core.Collections;
     using Core.Extensions;
+
+    public delegate object TypeInstantiator(UrlEncodedMessage message, string key, Type t);
+
+    public class TypeCreator {
+        private static readonly IDictionary<Type, Func<object, object>> _opImplicitMethods = new XDictionary<Type, Func<object, object>>();
+        private readonly IDictionary<Type, TypeInstantiator> _instantiators = new XDictionary<Type, TypeInstantiator>();
+        private readonly IDictionary<Type, Type> _substitutions = new XDictionary<Type, Type>();
+
+        public void AddTypeInstantiator<T>(TypeInstantiator typeInstantiator) {
+            _instantiators.Add(typeof(T), typeInstantiator);
+        }
+
+        public void AddTypeSubstitution(Type sourceType, Type targetType) {
+            _substitutions.Add(sourceType, targetType);
+        }
+
+        public object CreateInstance( Type type) {
+            return Activator.CreateInstance(_substitutions[type] ?? type, true);
+        }
+
+        public Object CreateObject(UrlEncodedMessage message, string key, Type targetType) {
+            var instantiator = _instantiators[targetType];
+            return instantiator != null ? instantiator(message, key, targetType) : CreateInstance(targetType);
+        }
+
+        public PersistableInfo GetPersistableInfo(Type argType) {
+            return (_substitutions[argType] ?? argType).GetPersistableInfo();
+        }
+
+        private Func<object, object> GetOpImplicit(Type sourceType, Type destinationType) {
+            lock(_opImplicitMethods) {
+                if(!_opImplicitMethods.ContainsKey(sourceType)) {
+                    var opImplicit =
+                        (from method in sourceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                         where method.Name == "op_Implicit" && method.ReturnType == destinationType && method.GetParameters()[0].ParameterType == sourceType
+                         select method).Union(
+                                (from method in destinationType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                                 where method.Name == "op_Implicit" && method.ReturnType == destinationType && method.GetParameters()[0].ParameterType == sourceType
+                                 select method
+                                    )).FirstOrDefault();
+
+                    if(opImplicit != null) {
+                        _opImplicitMethods.Add(sourceType, obj => opImplicit.Invoke(null, new[] {
+                            obj
+                        }));
+                    }
+                    else {
+                        // let's 'try harder'
+                        var result =
+                            destinationType.GetCustomAttributes(typeof(ImplementedByAttribute), false).Select(i => i as ImplementedByAttribute).SelectMany(attribute => attribute.Types).Select(target => GetOpImplicit(sourceType, target)).FirstOrDefault();
+                        if(result == null) {
+                            // still not found one? is it an IEnumerable conversion?
+                            if(sourceType.IsIEnumerable() && destinationType.IsIEnumerable()) {
+                                var sourceElementType = sourceType.GetPersistableInfo().ElementType;
+                                var destElementType = destinationType.GetPersistableInfo().ElementType;
+                                var elemConversion = GetOpImplicit(sourceElementType, destElementType);
+                                if(elemConversion != null) {
+                                    // it looks like we can translate the elements of the collection.
+                                    if(destinationType.IsArray) {
+                                        // get an array of converted values.
+                                        result = obj => ((IEnumerable<object>)(obj)).Select(each => ImplicitlyConvert(each,destElementType)).ToArrayOfType(destElementType);
+                                    }
+                                    else if(destinationType.Name.StartsWith("IEnumerable")) {
+                                        // just get an IEnumerable of the converted elements
+                                        result = obj => ((IEnumerable<object>)(obj)).Select(each => ImplicitlyConvert(each, destElementType)).CastToIEnumerableOfType(destElementType);
+                                    }
+                                    else {
+                                        // create the target collection type, and stuff the values into that.
+                                        result = obj => {
+                                            var v = (IList)CreateInstance(destinationType);
+                                            foreach(object each in ((IEnumerable<object>)(obj))) {
+                                                v.Add(ImplicitlyConvert(each,destElementType));
+                                            }
+                                            return v;
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                        _opImplicitMethods.Add(sourceType, result);
+                    }
+                }
+                return _opImplicitMethods[sourceType];
+            }
+        }
+
+        public object ImplicitlyConvert(object obj, Type destinationType) {
+            if(obj == null) {
+                return null;
+            }
+            if(destinationType == typeof(string)) {
+                return obj.ToString();
+            }
+
+            var opImplicit = GetOpImplicit(obj.GetType(), destinationType);
+            if(opImplicit != null) {
+                // return opImplicit.Invoke(null, new[] {obj});
+                return opImplicit(obj);
+            }
+            return obj;
+        }
+
+        public bool ImplicitlyConvertsTo(Type type, Type destinationType) {
+            if(type == destinationType) {
+                return false;
+            }
+            if(typeof(string) == destinationType) {
+                return true;
+            }
+            return GetOpImplicit(type, destinationType) != null;
+        }
+    }
 
     /// <summary
     ///     UrlEncodedMessages
     /// </summary>
     public class UrlEncodedMessage : IEnumerable<string> {
-        private static readonly IDictionary<Type, TypeInstantiator> TypeSubstitution = new XDictionary<Type, TypeInstantiator>();
 
-        public delegate object TypeInstantiator(UrlEncodedMessage message, string key, Type t);
-
-        public static void AddTypeSubstitution<T>(TypeInstantiator typeInstantiator) {
-            TypeSubstitution.Add(typeof (T), typeInstantiator);
-        }
+        private static TypeCreator _defaultTypeCreator = new TypeCreator();
+        private TypeCreator _typeCreator;
 
         /// <summary>
         /// </summary>
@@ -69,11 +178,12 @@ namespace ClrPlus.Remoting {
         /// <param name="storeTypeInformation"> </param>
         /// <remarks>
         /// </remarks>
-        public UrlEncodedMessage(string rawMessage = null, string seperator = "&", bool storeTypeInformation = false) {
+        public UrlEncodedMessage(string rawMessage = null, string seperator = "&", bool storeTypeInformation = false, TypeCreator typeCreator = null) {
             _separatorString = seperator;
             _separator = seperator.ToCharArray();
             _storeTypeInformation = storeTypeInformation;
             rawMessage = rawMessage ?? string.Empty;
+            _typeCreator = typeCreator ?? _defaultTypeCreator;
 
             var parts = rawMessage.Split(Query, StringSplitOptions.RemoveEmptyEntries);
             switch (parts.Length) {
@@ -254,7 +364,8 @@ namespace ClrPlus.Remoting {
             }
 
             // we need to get the collection and then insert the elements into the target type.
-            var result = (IList)collectionType.CreateInstance();
+            var result = (IList)_typeCreator.CreateInstance(collectionType);
+
             foreach (var o in (IEnumerable)collection) {
                 result.Add(o);
             }
@@ -326,19 +437,22 @@ namespace ClrPlus.Remoting {
             return _data.ContainsKey(key) ? nullableType.ParseString(_data[key]) : null;
         }
 
-        private object GetValueAsOther(string key, Type otherType, object o = null) {
-            if (o == null) {
-                var instantiator = TypeSubstitution[otherType];
-                o = instantiator != null ? instantiator(this, key, otherType) : otherType.CreateInstance();
-                if (o == null) {
-                    return null;
-                }
+        private object GetValueAsOther(string key, Type targetType, object o = null) {
 
-                otherType = o.GetType();
+            o = o ?? _typeCreator.CreateObject(this, key, targetType);
+            
+            // we can't find a type to instantiate that object as. return null.
+            if (o == null) {
+                return null;
             }
+
+            // the actual type we're now working with.
+            targetType = o.GetType();
+
+
             lock (o) {
                 // $5 to the guy who knows *why* I did this! (GS!)
-                foreach (var p in otherType.GetPersistableElements()) {
+                foreach (var p in targetType.GetPersistableElements()) {
                     if (p.SetValue != null) {
                         var v = GetValue(FormatKey(key, p.Name), p.DeserializeAsType);
                         if (v == null) {
@@ -346,8 +460,8 @@ namespace ClrPlus.Remoting {
                             continue;
                         }
 
-                        if ((!p.ActualType.IsInstanceOfType(v)) && p.DeserializeAsType.ImplicitlyConvertsTo(p.ActualType)) {
-                            v = v.ImplicitlyConvert(p.ActualType);
+                        if((!p.ActualType.IsInstanceOfType(v)) && _typeCreator.ImplicitlyConvertsTo(p.DeserializeAsType,p.ActualType)) {
+                            v = _typeCreator.ImplicitlyConvert(v,p.ActualType);
                         }
 
                         p.SetValue(o, v, null);
@@ -454,8 +568,8 @@ namespace ClrPlus.Remoting {
                 return;
             }
 
-            if (arg.GetType().ImplicitlyConvertsTo(argType)) {
-                arg = arg.ImplicitlyConvert(argType);
+            if(_typeCreator.ImplicitlyConvertsTo(arg.GetType(),argType)) {
+                arg = _typeCreator.ImplicitlyConvert(arg, argType);
             }
 
             if (_storeTypeInformation) {
@@ -510,7 +624,7 @@ namespace ClrPlus.Remoting {
                 return custom.DeserializeObject(this, key);
             }
 
-            var pi = (TypeExtensions.TypeSubtitution[argType] ?? argType).GetPersistableInfo();
+            var pi = _typeCreator.GetPersistableInfo(argType);
 
             switch (pi.PersistableCategory) {
                 case PersistableCategory.String:

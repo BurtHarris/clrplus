@@ -78,7 +78,7 @@ namespace ClrPlus.Platform {
         internal static void ForceProcessToReloadEnvironment(params string[] processNames) {
             Task.Factory.StartNew(() => {
                 foreach (var processName in processNames) {
-                    var processes = Process.GetProcessesByName(processName);
+                    var processes = System.Diagnostics.Process.GetProcessesByName(processName);
 
                     // load the rehash dll into the target processes
                     if (processes.Any()) {
