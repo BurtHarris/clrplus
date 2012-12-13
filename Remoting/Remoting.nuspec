@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Remoting</id>
-    <version>1.8.0.40</version>
+    <version>1.8.0.42</version>
     <title>CLRPlus Remoting Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,13 +19,13 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Remoting NamedPipes</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.40" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.42" />
     </dependencies>
   </metadata>
   <files>
     <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Remoting.dll" target="lib\net40" /> 
     <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Remoting.xml" target="lib\net40" /> 
-    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Remoting.dll" target="lib\net45" /> 
-    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Remoting.xml" target="lib\net45" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Remoting.dll" target="lib\net45" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Remoting.xml" target="lib\net45" /> 
 </files>
 </package>

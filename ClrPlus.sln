@@ -13,8 +13,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Windows.Debugging", "Window
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Networking", "Networking\Networking.csproj", "{331511E1-3A2F-4494-AD8C-C5E86724324F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasks", "Tasks\Tasks.csproj", "{E0A006FB-3492-41F0-8793-85AFD656BFED}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Platform", "Platform\Platform.csproj", "{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Windows.PeBinary", "Windows.PeBinary\Windows.PeBinary.csproj", "{B1BD48CC-CAAE-4D32-A011-C77BB23DF156}"
@@ -72,10 +70,6 @@ Global
 		{331511E1-3A2F-4494-AD8C-C5E86724324F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{331511E1-3A2F-4494-AD8C-C5E86724324F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{331511E1-3A2F-4494-AD8C-C5E86724324F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E0A006FB-3492-41F0-8793-85AFD656BFED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E0A006FB-3492-41F0-8793-85AFD656BFED}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E0A006FB-3492-41F0-8793-85AFD656BFED}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E0A006FB-3492-41F0-8793-85AFD656BFED}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}.Release|Any CPU.ActiveCfg = Release|Any CPU

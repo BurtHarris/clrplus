@@ -119,7 +119,7 @@
     <Compile Include="Sgml\Ucs4Decoder.cs" />
     <Compile Include="Sgml\Ucs4DecoderBigEngian.cs" />
     <Compile Include="Sgml\Ucs4DecoderLittleEndian.cs" />
-    <Compile Include="Tasks\CoTask.cs" />
+    <Compile Include="Tasks\XTask.cs" />
     <Compile Include="Tasks\CurrentTask.cs" />
     <Compile Include="Tasks\Event.cs" />
     <Compile Include="Utility\AccessPrivateWrapper.cs" />

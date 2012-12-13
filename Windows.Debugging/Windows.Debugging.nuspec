@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Windows.Debugging</id>
-    <version>1.8.0.40</version>
+    <version>1.8.0.42</version>
     <title>CLRPlus Windows.Debugging Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,8 +19,8 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Debugging Debug</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.40" />
-        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.40" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.42" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.42" />
     </dependencies>
   </metadata>
   <files>

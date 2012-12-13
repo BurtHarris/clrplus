@@ -95,7 +95,7 @@ namespace ClrPlus.Core.Tasks {
         public static T Raise {
             get {
                 try {
-                    return (CoTask.CurrentTask.GetEventHandler(typeof (T)) as T) ?? EmptyDelegate;
+                    return (XTask.CurrentExecutingTask.GetEventHandler(typeof (T)) as T) ?? EmptyDelegate;
                 } catch (Exception e) {
                     throw new ClrPlusException("A TaskBasedEvent thru an exception of type '{0}' for Delegate Type '{1}'".format(e.GetType(), typeof (T)), e);
                 }
@@ -105,7 +105,7 @@ namespace ClrPlus.Core.Tasks {
         public static T RaiseFirst {
             get {
                 try {
-                    var dlg = CoTask.CurrentTask.GetEventHandler(typeof (T));
+                    var dlg = XTask.CurrentExecutingTask.GetEventHandler(typeof (T));
                     return dlg != null ? dlg.GetInvocationList().FirstOrDefault() as T : EmptyDelegate;
                 } catch (Exception e) {
                     throw new ClrPlusException("A TaskBasedEvent thru an exception of type '{0}' for Delegate Type '{1}'".format(e.GetType(), typeof (T)), e);

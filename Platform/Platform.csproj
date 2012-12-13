@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -10,7 +9,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ClrPlus.Platform</RootNamespace>
     <AssemblyName>ClrPlus.Platform</AssemblyName>
-     
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <Import Project="$(SolutionDir)\ClrPlus.sln.props" Condition="Exists('$(SolutionDir)\ClrPlus.sln.props')" />
@@ -18,20 +16,16 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-     
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-     
     <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -74,26 +68,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="SafeNativeMethods.cs" />
-    <Compile Include="Scheduling\Action.cs" />
-    <Compile Include="Scheduling\ActionCollection.cs" />
-    <Compile Include="Scheduling\CultureSwitcher.cs" />
-    <Compile Include="Scheduling\EnumGlobalizer.cs" />
-    <Compile Include="Scheduling\Impersonation.cs" />
-    <Compile Include="Scheduling\NamedValueCollection.cs" />
-    <Compile Include="Scheduling\NotV1SupportedException.cs" />
-    <Compile Include="Scheduling\Task.cs" />
-    <Compile Include="Scheduling\TaskCollection.cs" />
-    <Compile Include="Scheduling\TaskFolder.cs" />
-    <Compile Include="Scheduling\TaskFolderCollection.cs" />
-    <Compile Include="Scheduling\TaskHandlerInterfaces.cs" />
-    <Compile Include="Scheduling\TaskService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Scheduling\Trigger.cs" />
-    <Compile Include="Scheduling\TriggerCollection.cs" />
-    <Compile Include="Scheduling\V1\TaskSchedulerV1Interop.cs" />
-    <Compile Include="Scheduling\V2\TaskSchedulerV2Interop.cs" />
-    <Compile Include="Scheduling\Wildcard.cs" />
     <Compile Include="Shell\ColorTable.cs" />
     <Compile Include="Shell\ConsoleProperties.cs" />
     <Compile Include="Shell\Coordinate.cs" />

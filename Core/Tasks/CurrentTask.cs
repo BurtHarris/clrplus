@@ -27,12 +27,12 @@ namespace ClrPlus.Core.Tasks {
             /// <param name="eventHandlerDelegate"> </param>
             /// <returns> </returns>
             public static TaskBoundEvents operator +(TaskBoundEvents taskBoundEvents, Delegate eventHandlerDelegate) {
-                CoTask.CurrentTask.AddEventHandler(eventHandlerDelegate);
+                XTask.CurrentExecutingTask.AddEventHandler(eventHandlerDelegate);
                 return Instance;
             }
 
             public static TaskBoundEvents operator -(TaskBoundEvents taskBoundEvents, Delegate eventHandlerDelegate) {
-                CoTask.CurrentTask.RemoveEventHandler(eventHandlerDelegate);
+                XTask.CurrentExecutingTask.RemoveEventHandler(eventHandlerDelegate);
                 return Instance;
             }
         }

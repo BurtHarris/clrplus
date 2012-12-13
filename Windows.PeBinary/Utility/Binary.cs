@@ -27,12 +27,13 @@ namespace ClrPlus.Windows.PeBinary.Utility {
     using Core.Collections;
     using Core.Exceptions;
     using Core.Extensions;
+    using Core.Tasks;
     using Crypto;
     using Microsoft.Cci;
     using Microsoft.Cci.MutableCodeModel;
     using Platform;
     using ResourceLib;
-    using Tasks;
+    
     using Resource = ResourceLib.Resource;
 
     public class Binary {

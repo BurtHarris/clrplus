@@ -21,7 +21,7 @@ namespace ClrPlus.Core.Tasks {
     using Exceptions;
     using Extensions;
 
-    public static class CoTask {
+    public static class XTask {
         private static readonly FieldInfo _parentTaskField = typeof (Task).GetField("m_parent", BindingFlags.NonPublic | BindingFlags.DeclaredOnly | BindingFlags.Instance);
         private static readonly PropertyInfo _currentTaskProperty = typeof (Task).GetProperty("InternalCurrent", BindingFlags.NonPublic | BindingFlags.DeclaredOnly | BindingFlags.Static);
         private static readonly IDictionary<Task, List<Delegate>> _tasks = new XDictionary<Task, List<Delegate>>();
@@ -78,7 +78,7 @@ namespace ClrPlus.Core.Tasks {
             // we can insert a 'cheat'
             if (task.GetParentTask() == null) {
                 lock (_parentTasks) {
-                    var currentTask = CurrentTask;
+                    var currentTask = CurrentExecutingTask;
                     if (currentTask != null) {
                         // the given task isn't attached to the parent.
                         // we can fake out attachment, by using the current task
@@ -94,7 +94,7 @@ namespace ClrPlus.Core.Tasks {
             return task;
         }
 
-        internal static Task CurrentTask {
+        internal static Task CurrentExecutingTask {
             get {
                 return _currentTaskProperty.GetValue(null, null) as Task;
             }
@@ -110,7 +110,7 @@ namespace ClrPlus.Core.Tasks {
 
         internal static Task ParentTask {
             get {
-                return CurrentTask.GetParentTask();
+                return CurrentExecutingTask.GetParentTask();
             }
         }
 

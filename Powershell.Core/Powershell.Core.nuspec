@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Powershell.Core</id>
-    <version>1.8.0.40</version>
+    <version>1.8.0.42</version>
     <title>CLRPlus Powershell Core Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -21,9 +21,9 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Powershell</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.40" />
-        <dependency  id="ClrPlus.Scripting" version="1.8.0.40" />
-        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.40" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.42" />
+        <dependency  id="ClrPlus.Scripting" version="1.8.0.42" />
+        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.42" />
         <dependency  id="ServiceStack" version="3.9.28" />
     </dependencies>
     
@@ -31,7 +31,7 @@
   <files>
     <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Powershell.Core.dll" target="lib\net40" /> 
     <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Powershell.Core.xml" target="lib\net40" /> 
-    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Powershell.Core.dll" target="lib\net40" /> 
-    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Powershell.Core.xml" target="lib\net40" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Powershell.Core.dll" target="lib\net45" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Powershell.Core.xml" target="lib\net45" /> 
 </files>
 </package>

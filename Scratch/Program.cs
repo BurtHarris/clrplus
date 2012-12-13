@@ -9,9 +9,9 @@ using System.Text;
 namespace Scratch {
     using System.Threading;
     using System.Threading.Tasks;
+    using ClrPlus.Core.Tasks;
     using ClrPlus.Networking;
     using ClrPlus.Powershell.Core;
-    using ClrPlus.Tasks;
 
     class Program {
         public delegate int Foo(string text);
@@ -36,7 +36,7 @@ namespace Scratch {
         }
 
         static async Task Task1() {
-            CoTask.Run(() => {
+            XTask.Run(() => {
             
             CurrentTask.Events += new Foo((t) => {
                 Console.WriteLine("Task 1 test message was: {0}", t);
@@ -50,7 +50,7 @@ namespace Scratch {
 
         static async Task Task2() {
              
-            var xyz =CoTask.Run<int>(async () => {
+            var xyz =XTask.Run<int>(async () => {
                 CurrentTask.Events += new Foo((t) => {
                     Console.WriteLine("Task 2 test message was {0}", t);
                     return 0;
@@ -72,10 +72,10 @@ namespace Scratch {
         static async Task Test() {
             Event<Foo>.RaiseFirst("(1) Early.");
 
-            var x = await CoTask.Run(() => {
+            var x = await XTask.Run(() => {
                 Event<Foo>.RaiseFirst("(2) In First Task");
 
-                var y =  CoTask.Run(() => {
+                var y =  XTask.Run(() => {
                     Thread.Sleep(4000);
                     Event<Foo>.RaiseFirst("(3) After delay, In second Task");
 
