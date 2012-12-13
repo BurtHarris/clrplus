@@ -57,7 +57,33 @@ namespace ClrPlus.Platform {
             }
         }
 
-        public static void ElevateSelf(bool waitForParentAndChild = false) {
+        public static void RestartWithNewExe(string newExePath, string replacementCmdLineArguments = null, bool waitForParentAndChild = false) {
+             // if (System.Console.BufferWidth != 0) {
+                 // this is a console process.
+             // }
+
+             var process = new Process {
+                 StartInfo = {
+                     UseShellExecute = true,
+                     WorkingDirectory = Environment.CurrentDirectory,
+                     FileName = newExePath,
+                     Verb = "runas",
+                     Arguments = replacementCmdLineArguments ?? EnvironmentUtility.CommandLineArguments,
+                     ErrorDialog = true,
+                     ErrorDialogParentHandle = User32.GetForegroundWindow(),
+                     // WindowStyle = ProcessWindowStyle.Maximized, // TODO: uh, what was this here for?
+                 }
+             };
+
+             if(!process.Start()) {
+                 throw new ClrPlusException("Unable to start process for elevation.");
+             }
+
+             while((waitForParentAndChild) && ParentIsRunning && !process.WaitForExit(50)) {
+             }
+        }
+
+        public static void ElevateSelf(bool waitForParentAndChild = false, string replacementCmdLineArguments = null, bool rejoinConsole = false, string replacementExeName = null) {
             try {
                 var ntAuth = new SidIdentifierAuthority {
                     Value = new byte[] {
@@ -78,9 +104,9 @@ namespace ClrPlus.Platform {
                 StartInfo = {
                     UseShellExecute = true,
                     WorkingDirectory = Environment.CurrentDirectory,
-                    FileName = CorrectedExeName,
+                    FileName = replacementExeName ?? CorrectedExeName,
                     Verb = "runas",
-                    Arguments = EnvironmentUtility.CommandLineArguments,
+                    Arguments = replacementCmdLineArguments ?? EnvironmentUtility.CommandLineArguments,
                     ErrorDialog = true,
                     ErrorDialogParentHandle = User32.GetForegroundWindow(),
                     // WindowStyle = ProcessWindowStyle.Maximized, // TODO: uh, what was this here for?
@@ -91,7 +117,7 @@ namespace ClrPlus.Platform {
                 throw new ClrPlusException("Unable to start process for elevation.");
             }
 
-            while (waitForParentAndChild && ParentIsRunning && !process.WaitForExit(100)) {
+            while ((waitForParentAndChild || rejoinConsole) && ParentIsRunning && !process.WaitForExit(50)) {
             }
 
             // we should have elevated, or failed to. either way, we're done here..

@@ -17,22 +17,6 @@ namespace ClrPlus.Windows.PeBinary.Utility {
     using System.Threading;
     using System.Threading.Tasks;
 
-    /*
-   public class AsyncLazy<T> : Lazy<Task<T>> {
-       public AsyncLazy(Func<T> valueFactory) :
-           base(() => Task.Factory.StartNew(valueFactory)) { }
-
-       public AsyncLazy(Func<Task<T>> taskFactory) :
-           base(() => Task.Factory.StartNew(taskFactory).Unwrap()) { }
-
-       public T SyncValue {
-           get { return Value.Result; }
-       }
-
-       // public TaskAwaiter GetAwaiter() { return Value.GetAwaiter(); } // .net 4.5 
-   }
-   */
-
     public class TaskList : List<Task> {
         public Task Start(Action action) {
             var task = Task.Factory.StartNew(action);

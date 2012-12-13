@@ -10,7 +10,7 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Tasks {
+namespace ClrPlus.Core.Tasks {
     using System;
 
     public static class CurrentTask {

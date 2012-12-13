@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Windows.Debugging</id>
-    <version>1.8.0.39</version>
+    <version>1.8.0.40</version>
     <title>CLRPlus Windows.Debugging Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,12 +19,14 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Debugging Debug</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.39" />
-        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.39" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.40" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.40" />
     </dependencies>
   </metadata>
   <files>
-    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Windows.Debugging.dll" target="lib\net40" /> 
-    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Windows.Debugging.xml" target="lib\net40" /> 
+    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Windows.Debugging.dll" target="lib\net40" /> 
+    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Windows.Debugging.xml" target="lib\net40" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Windows.Debugging.dll" target="lib\net45" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Windows.Debugging.xml" target="lib\net45" /> 
 </files>
 </package>

@@ -92,62 +92,73 @@ namespace ClrPlus.Networking {
             return fi.Length;
         }
 
-        public void Start() {
+        /// <summary>
+        /// Starts handling requests
+        /// 
+        /// This only handles one request at a time (since no threads are involved here)
+        /// but handles it efficently.
+        /// </summary>
+        public async void Start() {
             _listener.Start();
 
-            Task.Factory.FromAsync<HttpListenerContext>(_listener.BeginGetContext, _listener.EndGetContext, _listener).ContinueWith(
-                (antecedent) => {
-                    Start(); // start a new listener.
+            while (true) {
+                try {
+                    var context = await _listener.GetContextAsync();
 
-                    try {
-                        var request = antecedent.Result.Request;
-                        var response = antecedent.Result.Response;
-                        var lp = GetLocalPath(request.Url);
+                    var request = context.Request;
+                    var response = context.Response;
+                    var lp = GetLocalPath(request.Url);
 
-                        switch (request.HttpMethod) {
-                            case "HEAD":
-                                if (Exists(lp)) {
-                                    response.AddHeader("Last-Modified", GetLocationLastModified(lp).ToString("r"));
-                                    response.ContentLength64 = GetContentLength(lp);
-                                } else {
-                                    response.StatusCode = (int)HttpStatusCode.NotFound;
-                                }
-                                response.Close();
-
-                                break;
-                            case "GET":
-                                if (!Exists(lp)) {
-                                    response.StatusCode = (int)HttpStatusCode.NotFound;
-                                    response.Close();
-                                    break;
-                                }
+                    switch (request.HttpMethod) {
+                        case "HEAD":
+                            if (Exists(lp)) {
                                 response.AddHeader("Last-Modified", GetLocationLastModified(lp).ToString("r"));
                                 response.ContentLength64 = GetContentLength(lp);
-                                if (Directory.Exists(lp)) {
-                                    response.ContentType = "text/html";
-                                    var buf = GetDirectoryListing(lp).ToByteArray();
-                                    response.OutputStream.Write(buf, 0, buf.Length);
-                                    response.OutputStream.Flush();
-                                    response.Close();
-                                    break;
-                                }
+                            } else {
+                                response.StatusCode = (int)HttpStatusCode.NotFound;
+                            }
+                            response.Close();
 
-                                var data = File.ReadAllBytes(lp);
-                                response.OutputStream.Write(data, 0, data.Length);
+                            break;
+                        case "GET":
+                            if (!Exists(lp)) {
+                                response.StatusCode = (int)HttpStatusCode.NotFound;
                                 response.Close();
                                 break;
-                            case "POST":
-
+                            }
+                            response.AddHeader("Last-Modified", GetLocationLastModified(lp).ToString("r"));
+                            response.ContentLength64 = GetContentLength(lp);
+                            if (Directory.Exists(lp)) {
+                                response.ContentType = "text/html";
+                                var buf = GetDirectoryListing(lp).ToByteArray();
+                                response.OutputStream.Write(buf, 0, buf.Length);
+                                response.OutputStream.Flush();
+                                response.Close();
                                 break;
+                            }
 
-                            default:
-                                Console.WriteLine("Unknown HTTP VERB : {0}", request.HttpMethod);
-                                break;
-                        }
-                    } catch (Exception e) {
-                        Console.WriteLine("HTTP Server Error: {0}", e.Message);
+                            var data = File.ReadAllBytes(lp);
+                            response.OutputStream.Write(data, 0, data.Length);
+                            response.Close();
+                            break;
+                        case "POST":
+
+                            break;
+
+                        default:
+                            Console.WriteLine("Unknown HTTP VERB : {0}", request.HttpMethod);
+                            break;
                     }
-                }, TaskContinuationOptions.AttachedToParent);
+                } catch (HttpListenerException) {
+                    return;
+                }
+                catch(InvalidOperationException) {
+                    return;
+                }
+                catch (Exception e) {
+                    Console.WriteLine("HTTP Server Error: {0}--{1}", e.GetType().Name,e.Message);
+                }
+            }
         }
 
         public void Stop() {

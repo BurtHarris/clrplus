@@ -63,6 +63,7 @@ namespace ClrPlus.Core.Utility {
         /// </value>
         public bool IsValueCreated {
             get {
+                
                 return _initializeTask.IsCompleted;
             }
         }

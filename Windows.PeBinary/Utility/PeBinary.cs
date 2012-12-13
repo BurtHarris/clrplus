@@ -30,6 +30,7 @@ namespace ClrPlus.Windows.PeBinary.Utility {
     using ResourceLib;
     using Resource = ResourceLib.Resource;
 
+#if DEPRECATED
     public class PeBinary : IDisposable {
         // const byte PUBLICKEYBLOB	= 	0x06;
         // const byte CUR_BLOB_VERSION	= 	0x02;
@@ -973,4 +974,5 @@ namespace ClrPlus.Windows.PeBinary.Utility {
             }
         }
     }
+#endif
 }

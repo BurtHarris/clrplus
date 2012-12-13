@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Azure</id>
-    <version>1.8.0.39</version>
+    <version>1.8.0.40</version>
     <title>CLRPlus Azure Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -20,11 +20,13 @@
     <tags>ClrPlus CoApp Azure Storage</tags>
     <dependencies>
         <dependency  id="WindowsAzure.Storage" version="2.0.1.0" />
-        <dependency  id="ClrPlus.Core" version="1.8.0.39" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.40" />
     </dependencies>
   </metadata>
   <files>
-    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Azure.dll" target="lib\net40" /> 
-    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Azure.xml" target="lib\net40" /> 
+    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Azure.dll" target="lib\net40" /> 
+    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Azure.xml" target="lib\net40" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Azure.dll" target="lib\net45" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Azure.xml" target="lib\net45" /> 
   </files>
 </package>

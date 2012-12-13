@@ -57,8 +57,18 @@ publish {
 build-release {
     compiler:vc11;
     build-command: @"
-        msbuild /t:Clean ClrPlus.sln /p:Configuration=Release 
-        msbuild /t:Rebuild ClrPlus.sln /p:Configuration=Release 
+        :: Scrub the output directories clean.
+        msbuild /t:Clean ClrPlus.sln /p:Configuration=Release /p:TargetFrameworkVersion=v4.0
+        msbuild /t:Clean ClrPlus.sln /p:Configuration=Release /p:TargetFrameworkVersion=v4.5
+
+        rmdir /s /q output\v40
+        rmdir /s /q output\v45
+        rmdir /s /q intermediate\v40
+        rmdir /s /q intermediate\v45
+        
+        :: Build .NET 4.0 and 4.5 versions
+        msbuild /t:Rebuild ClrPlus.sln /p:Configuration=Release /p:TargetFrameworkVersion=v4.0
+        msbuild /t:Rebuild ClrPlus.sln /p:Configuration=Release /p:TargetFrameworkVersion=v4.5
     ";
 }
 
@@ -75,7 +85,6 @@ publish-nuget-packages {
         nuget push  ClrPlus.Networking.${version}.nupkg
         nuget push  ClrPlus.Remoting.${version}.nupkg
         nuget push  ClrPlus.Scripting.${version}.nupkg
-        nuget push  ClrPlus.Tasks.${version}.nupkg
         nuget push  ClrPlus.Windows.Debugging.${version}.nupkg
         nuget push  ClrPlus.Windows.PeBinary.${version}.nupkg
         nuget push  ClrPlus.Powershell.Core.${version}.nupkg
@@ -97,7 +106,6 @@ make-nuget-packages {
         nuget pack  Networking\Networking.nuspec
         nuget pack  Remoting\Remoting.nuspec
         nuget pack  Scripting\Scripting.nuspec
-        nuget pack  Tasks\Tasks.nuspec
         nuget pack  Windows.Debugging\Windows.Debugging.nuspec
         nuget pack  Windows.PeBinary\Windows.PeBinary.nuspec        
         nuget pack  Powershell.Core\Powershell.Core.nuspec        
@@ -112,6 +120,7 @@ default {
     
     clean-command: @"
         rmdir /s /q output
+        rmdir /s /q intermediate
         for /d %%v in (*) do (for /d %%z in (%%v\obj*) do rmdir /s /q %%z )
     ";
 }

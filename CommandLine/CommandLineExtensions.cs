@@ -165,6 +165,15 @@ namespace ClrPlus.CommandLine {
             return ParsedCommandLine.Parse(args).Parameters;
         }
 
+        public static string ToCommandLine(this IEnumerable<string> args) {
+            return args.Aggregate((current, each) => current + string.Format(@"{0}{1}{2}{3}",
+                current.Length > 0 ? " ":"", 
+                each.IndexOf(' ') > -1 ? @"""" : "", 
+                each,
+                current.Length > 0 ? " ":""
+                ));
+        }
+
         /// <summary>
         /// </summary>
         public const string HelpConfigSyntax =

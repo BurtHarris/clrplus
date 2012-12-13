@@ -10,13 +10,13 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Tasks {
+namespace ClrPlus.Core.Tasks {
     using System;
     using System.Linq;
     using System.Reflection;
     using System.Reflection.Emit;
-    using Core.Exceptions;
-    using Core.Extensions;
+    using Exceptions;
+    using Extensions;
 
     public static class Event<T> where T : class {
         private static T _emptyDelegate;

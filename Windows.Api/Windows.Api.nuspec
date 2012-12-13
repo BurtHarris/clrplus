@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Windows.Api</id>
-    <version>1.8.0.39</version>
+    <version>1.8.0.40</version>
     <title>CLRPlus Windows.Api Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -35,12 +35,14 @@ It's not all perfect yet, and far from completely implemented, but a ton of stuf
     <tags>ClrPlus CoApp Win32 API Native</tags>
     <!-- 
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.39" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.40" />
     </dependencies>
     -->
   </metadata>
   <files>
-    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Windows.Api.dll" target="lib\net40" /> 
-    <file src="..\output\AnyCPU\Release\bin\ClrPlus.Windows.Api.xml" target="lib\net40" /> 
+    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Windows.Api.dll" target="lib\net40" /> 
+    <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Windows.Api.xml" target="lib\net40" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Windows.Api.dll" target="lib\net45" /> 
+    <file src="..\output\v45\AnyCPU\Release\bin\ClrPlus.Windows.Api.xml" target="lib\net45" /> 
 </files>
 </package>

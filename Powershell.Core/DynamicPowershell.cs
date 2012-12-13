@@ -59,6 +59,68 @@ namespace ClrPlus.Powershell.Core {
         }
     }
 
+    public static class PowershellExtensions {
+        private static Runspace _defaultRunspace;
+
+        public static dynamic GetDynamicPowershell(this Runspace runspace) {
+            // do we have to do something different 
+            return new DynamicPowershell2((runspace ?? _defaultRunspace ?? (_defaultRunspace = RunspaceFactory.CreateRunspace())).CreateNestedPipeline());
+        }
+    }
+
+
+    public class DynamicPowershell2 : DynamicObject, IDisposable {
+        private Pipeline _pipeline;
+        private EnumerableForMutatingCollection<PSObject, object> _lastResult;
+        private IDictionary<string, PSObject> _commands;
+
+        public DynamicPowershell2(Pipeline pipeline) {
+            _pipeline = pipeline;
+        }
+
+        public void Dispose() {
+            _pipeline.Dispose();
+            _pipeline = null;
+        }
+
+        private void AddCommandNames(IEnumerable<PSObject> cmdsOrAliases) {
+            foreach (var item in cmdsOrAliases) {
+                var cmdName = GetPropertyValue(item, "Name").ToLower();
+                var name = cmdName.Replace("-", "");
+                if (!string.IsNullOrEmpty(name)) {
+                    _commands.Add(name, item);
+                }
+            }
+        }
+
+        public PSObject ResolveCommand(string name) {
+            if (!_commands.ContainsKey(name)) {
+                RefreshCommandList();
+            }
+            return _commands.ContainsKey(name) ? _commands[name] : null;
+        }
+
+        private string GetPropertyValue(PSObject obj, string propName) {
+            var property = obj.Properties.FirstOrDefault(prop => prop.Name == propName);
+            return property != null ? property.Value.ToString() : null;
+        }
+
+        private void RefreshCommandList() {
+            lock (this) {
+                _pipeline.Commands.Clear();
+
+                _commands = new XDictionary<string, PSObject>();
+                _pipeline.Commands.Add("get-command");
+                AddCommandNames(_pipeline.Invoke());
+
+                _pipeline.Commands.Clear();
+                _pipeline.Commands.Add("get-alias");
+
+                AddCommandNames(_pipeline.Invoke());
+            }
+        }
+    }
+
     public class DynamicPowershell : DynamicObject, IDisposable {
         private static OnDisposable<RunspacePool> _sharedRunspacePool;
 
@@ -86,6 +148,8 @@ namespace ClrPlus.Powershell.Core {
             _runspacePool = pool;
             Reset();
             RefreshCommandList();
+
+            
         }
 
         private string GetPropertyValue(PSObject obj, string propName) {
@@ -108,6 +172,7 @@ namespace ClrPlus.Powershell.Core {
         }
 
         public void WaitForResult() {
+            
             _lastResult.Wait();
             _lastResult = null;
         }

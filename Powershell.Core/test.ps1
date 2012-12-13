@@ -1,3 +1,3 @@
-﻿import-module .\powerfullps.core.dll
-import-module .\powerfullps.Provider.dll
-import-module .\powerfullps.Azure.dll
+﻿import-module .\ClrPlus.Powershell.Core.dll
+import-module .\ClrPlus.Powershell.Provider.dll
+import-module .\ClrPlus.Powershell.Azure.dll
