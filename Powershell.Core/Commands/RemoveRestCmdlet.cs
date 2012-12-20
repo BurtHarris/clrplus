@@ -8,16 +8,13 @@
 //     The software is licensed under the Apache 2.0 License (the "License")
 //     You may not use the software except in compliance with the License. 
 // </license>
-//-----------------------------------------------------------------------
+//------------------------------------------------------------  -----------
 
 namespace ClrPlus.Powershell.Core.Commands {
     using System.Management.Automation;
-    using Service;
 
-    [Cmdlet("Stop", "RestServices")]
-    public class StopRestService : Cmdlet {
-        protected override void ProcessRecord() {
-            Rest.Services.Stop(this);
-        }
+    [Cmdlet(VerbsCommon.Remove, "RestCmdlet")]
+    public class RemoveRestCmdlet : Cmdlet {
+
     }
 }

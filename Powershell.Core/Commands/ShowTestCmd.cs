@@ -16,6 +16,11 @@ namespace ClrPlus.Powershell.Core.Commands {
     using System.Management.Automation.Runspaces;
     using ClrPlus.Core.Extensions;
 
+    public class Result {
+        public String Message {get; set;}
+        public int Age { get; set; }
+    }
+
     [Cmdlet(VerbsCommon.Show, "Test")]
     public class ShowTestCmd : RestableCmdlet<ShowTestCmd> {
         [Parameter(HelpMessage = "foo")]
@@ -28,17 +33,14 @@ namespace ClrPlus.Powershell.Core.Commands {
                 return;
             }
 
-            using (var powershell = Runspace.DefaultRunspace.GetDynamicPowershell()) {
-                foreach (var item in powershell.dir(@"c:\")) {
-                    Console.WriteLine("item: {0}", item);
-                }
-            }
-
-            WriteObject(new {
+            WriteObject(new Result {
                 Message = "Hello there {0}".format(Foo),
                 Age = 41,
             });
-
+            WriteObject(new Result {
+                Message = "ByeBye {0}".format(Foo),
+                Age = 50,
+            });
         }
     }
 }

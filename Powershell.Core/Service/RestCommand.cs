@@ -10,14 +10,13 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Powershell.Core.Commands {
-    using System.Management.Automation;
-    using Service;
+namespace ClrPlus.Powershell.Core.Service {
+    using System.Collections.Generic;
 
-    [Cmdlet("Stop", "RestServices")]
-    public class StopRestService : Cmdlet {
-        protected override void ProcessRecord() {
-            Rest.Services.Stop(this);
-        }
+    internal class RestCommand {
+        public string Name;
+        public string PublishAs;
+        public Dictionary<string, IEnumerable<string>> DefaultParameters;
+        public Dictionary<string, IEnumerable<string>> ForcedParameters;
     }
 }

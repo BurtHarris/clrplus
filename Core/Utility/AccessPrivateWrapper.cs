@@ -63,15 +63,15 @@ namespace ClrPlus.Core.Utility {
         ///     Try invoking a method
         /// </summary>
         public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result) {
-            var types = from a in args
-                select a.GetType();
+            var types = args.Select(a => a != null ? a.GetType() : typeof(object));
 
             var method = _wrapped.GetType().GetMethod
-                (binder.Name, flags, null, types.ToArray(), null);
+                (binder.Name, flags, null, types.ToArray(), null) ?? _wrapped.GetType().GetMethod(binder.Name,flags );
 
             if (method == null) {
                 return base.TryInvokeMember(binder, args, out result);
             }
+
             result = method.Invoke(_wrapped, args);
             return true;
         }

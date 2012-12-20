@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Azure</id>
-    <version>1.8.0.42</version>
+    <version>1.8.0.44</version>
     <title>CLRPlus Azure Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -20,7 +20,7 @@
     <tags>ClrPlus CoApp Azure Storage</tags>
     <dependencies>
         <dependency  id="WindowsAzure.Storage" version="2.0.1.0" />
-        <dependency  id="ClrPlus.Core" version="1.8.0.42" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.44" />
     </dependencies>
   </metadata>
   <files>

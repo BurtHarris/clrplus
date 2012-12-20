@@ -17,10 +17,24 @@ namespace Scratch {
         public delegate int Foo(string text);
 
         static void Main(string[] args) {
-            Main2();
+            using( var powershell = Runspace.DefaultRunspace.Dynamic() ) {
+
+                var dirResults = powershell.dir(@"c:\root", recurse: false);
+                Console.WriteLine("wait till that's done...");
+                dirResults.Wait();
+                Console.WriteLine("done...");
+
+                var items = powershell.dir(@"c:\root\bin", recurse:false);
+                foreach (var i in items) {
+                    Console.WriteLine(i);
+                }
+            }
+
+            Console.WriteLine("Press enter to exit");
+            Console.ReadLine();
         }
 
-
+        /*
         static async void Main2() {
             HttpServer server = new HttpServer();
             server.AddVirtualDir("foo",@"c:\root");
@@ -106,5 +120,6 @@ namespace Scratch {
             Console.WriteLine("there {0}", x.Result);
             return x;
         }
+         * */
     }
 }

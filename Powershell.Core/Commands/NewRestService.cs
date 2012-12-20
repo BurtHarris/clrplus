@@ -15,6 +15,7 @@ namespace ClrPlus.Powershell.Core.Commands {
     using System.Linq;
     using System.Management.Automation;
     using System.Management.Automation.Runspaces;
+    using ClrPlus.Core.Collections;
     using ClrPlus.Core.Extensions;
     using Scripting.Languages.PropertySheet;
     using Service;
@@ -33,71 +34,46 @@ namespace ClrPlus.Powershell.Core.Commands {
         [Parameter]
         public string[] ListenOn {get; set;}
 
-        [Parameter]
-        public string[] Command {get; set;}
-
-        [Parameter]
-        public IDictionary<string, object> DefaultParameters {get; set;}
-
-        private IEnumerable<string> ActivePowershellModules {
-            get {
-                return Runspace.DefaultRunspace.CreateNestedPipeline("get-module", false).Invoke().Select(each => each.ImmediateBaseObject as PSModuleInfo).Where(each => each != null).Select(each => each.Path);
-            }
-        }
-
         protected override void ProcessRecord() {
             if (Auto) {
                 Config = "restservice.properties";
             }
-
+            
             if (!string.IsNullOrEmpty(Config)) {
                 var propertySheet = PropertySheet.Parse(@"@import @""{0}"";".format(Config), "default");
-                foreach (var srv in propertySheet.Rules.Where(rule => rule.Name == "rest-service")) {
-                    var cmds = srv["command"].Values.Union(srv["commands"].Values);
-                    var listenOn = srv["listen-on"].Values;
-                    // var parameters = srv[]
-                    ConfigRestService(srv.Parameter.ToLower(), cmds, listenOn);
+                
+                foreach (var serviceRule in propertySheet.Rules.Where(rule => rule.Name == "rest-service")) {
+                    var  serviceName = serviceRule.Parameter;
+                    Rest.Services[serviceName].AddListeners(serviceRule["listen-on"].Values.Union(ListenOn));
+
+                    foreach(var commandRule in propertySheet.Rules.Where(rule => rule.Name == "rest-command" && serviceName == rule["service"].Value)) {
+                        AddCommandsFromConfig(commandRule, Rest.Services[serviceName]);    
+                    }
+                }
+
+                // find any commands for the default listener...
+                foreach(var commandRule in propertySheet.Rules.Where(rule => rule.Name == "rest-command" && rule["service"] == null)) {
+                    AddCommandsFromConfig(commandRule, Rest.Services.Default);
                 }
             } else {
-                ConfigRestService(Name.ToLower(), Command, ListenOn);
+                Rest.Services[Name].AddListeners(ListenOn);
             }
         }
 
-        private RestAppHost GetServiceByName(string name) {
-            if (string.IsNullOrEmpty(name)) {
-                name = "default";
+        private static void AddCommandsFromConfig(Rule commandRule, RestService service) {
+            var cmdletName = commandRule["cmdlet"] ?? commandRule["command"];
+            var publishAs = commandRule["publish-as"] ?? commandRule["publishas"] ?? cmdletName;
+            var parameters = commandRule["parameters"] ?? commandRule["default-parameters"] ?? commandRule["default"];
+            var forcedParameters = commandRule["forced-parameters"] ?? commandRule["forced"];
+
+            if (cmdletName != null) {
+                service.AddCommand( new RestCommand {
+                    Name = cmdletName.Value,
+                    PublishAs =  publishAs.Value ,
+                    DefaultParameters =   (parameters == null) ? new Dictionary<string, IEnumerable<string>>() : parameters.Labels.ToDictionary(label => label, label => (IEnumerable<string>)parameters[label]),
+                    ForcedParameters = (forcedParameters == null) ? new Dictionary<string, IEnumerable<string>>() : forcedParameters.Labels.ToDictionary(label => label, label => (IEnumerable<string>)forcedParameters[label])
+                });
             }
-
-            var instance = RestAppHost.Instances.ContainsKey(name) ? RestAppHost.Instances[name] : (RestAppHost.Instances[name] = new RestAppHost(ActivePowershellModules));
-
-            // if the instance is already started, we really need to make a new one.
-            if (instance.Started) {
-                instance.Stop();
-                using (var oldInstance = instance) {
-                    instance = RestAppHost.Instances[name] = new RestAppHost(oldInstance, ActivePowershellModules);
-                }
-            }
-            return instance;
-        }
-
-        private void ConfigRestService(string name, IEnumerable<string> cmds, IEnumerable<string> listenOn) {
-            var instance = GetServiceByName(name);
-
-            // add commands
-            if (cmds != null) {
-                foreach (var cmd in cmds) {
-                    instance.AddCommand(cmd);
-                }
-            }
-
-            // add listen urls
-            if (listenOn != null) {
-                foreach (var url in listenOn) {
-                    instance.AddListener(url);
-                }
-            }
-
-            WriteObject("Created REST Service '{0}'".format(name));
         }
     }
 }

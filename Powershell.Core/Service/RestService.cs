@@ -12,56 +12,43 @@
 
 namespace ClrPlus.Powershell.Core.Service {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Management.Automation;
-    using System.Management.Automation.Runspaces;
     using System.Net;
     using System.Reflection;
     using ClrPlus.Core.Collections;
+    using ClrPlus.Core.Exceptions;
+    using ClrPlus.Core.Extensions;
     using Funq;
     using ServiceStack.Common.Web;
     using ServiceStack.Logging;
     using ServiceStack.Logging.Support.Logging;
     using ServiceStack.WebHost.Endpoints;
 
-    public class RestAppHost : AppHostHttpListenerBase {
-        private OnDisposable<RunspacePool> _sharedRunspacePool;
-
-        public OnDisposable<RunspacePool> SharedRunspacePool {
-            get {
-                return _sharedRunspacePool ?? (_sharedRunspacePool = new OnDisposable<RunspacePool>(RunspaceFactory.CreateRunspacePool(InitialSessionState.CreateDefault())));
-            }
-            private set {
-                _sharedRunspacePool = value;
-            }
-        }
+    public class RestService : AppHostHttpListenerBase {
+        private readonly string _serviceName;
+        private readonly List<string> _urls = new List<string>();
+        private readonly List<RestCommand> _commands = new List<RestCommand>();
+        private bool _configured;
+        private bool _isStopping;
 
         protected override void Dispose(bool disposing) {
             Stop();
-            SharedRunspacePool = null; // deletes when it's the last user.
-            base.Dispose();
+            base.Dispose(disposing);
         }
 
-        ~RestAppHost() {
+        ~RestService() {
             Dispose();
         }
 
-        public RestAppHost(IEnumerable<string> modules)
-            : base("RestService", GetActiveAssemblies().ToArray()) {
-            SharedRunspacePool.Value.InitialSessionState.ImportPSModule(modules.ToArray());
-            SharedRunspacePool.Value.Open();
+        public RestService(string serviceName)
+            : base(serviceName, GetActiveAssemblies().ToArray()) {
+            _serviceName = serviceName;
         }
-
-        public RestAppHost(RestAppHost oldInstance, IEnumerable<string> modules)
-            : base("RestService", GetActiveAssemblies().ToArray()) {
-            SharedRunspacePool.Value.InitialSessionState.ImportPSModule(modules.ToArray());
-            SharedRunspacePool.Value.Open();
-            _urls.AddRange(oldInstance._urls);
-            // _commands.AddRange(oldInstance._commands);
-        }
-
-        private static string[] hideKnownAssemblies = new[] {
+      
+        private static readonly string[] _hideKnownAssemblies = new[] {
             "ServiceStack", // exclude the service stack assembly
             "b03f5f7f11d50a3a", // Microsoft
             "b77a5c561934e089", // Microsoft
@@ -69,10 +56,8 @@ namespace ClrPlus.Powershell.Core.Service {
         };
 
         private static IEnumerable<Assembly> GetActiveAssemblies() {
-            return AppDomain.CurrentDomain.GetAssemblies().Where(each => !hideKnownAssemblies.Any(x => each.FullName.IndexOf(x) > -1));
+            return AppDomain.CurrentDomain.GetAssemblies().Where(each => !_hideKnownAssemblies.Any(x => each.FullName.IndexOf(x) > -1));
         }
-
-        private bool _configured;
 
         public override void Configure(Container container) {
             _configured = true;
@@ -87,54 +72,25 @@ namespace ClrPlus.Powershell.Core.Service {
             });
             LogManager.LogFactory = new DebugLogFactory();
 
-            using (dynamic ps = new DynamicPowershell(SharedRunspacePool)) {
-                foreach (var commandName in _commands) {
-                    PSObject command = ps.ResolveCommand(commandName);
+            using(var ps = Rest.Services.RunspacePool.Dynamic()) {
+                foreach (var restCommand in _commands) {
+
+                    PSObject command = ps.LookupCommand(restCommand.Name);
+
+                    
 
                     if (command != null) {
                         var cmdletInfo = (command.ImmediateBaseObject as CmdletInfo);
                         if (cmdletInfo != null) {
-                            Routes.Add(cmdletInfo.ImplementingType, "/" + commandName + "/", "GET");
+                            Rest.Services.ReverseLookup.AddOrSet(cmdletInfo.ImplementingType, restCommand.Name);
+                            Routes.Add(cmdletInfo.ImplementingType, "/" + restCommand.PublishAs + "/", "GET");
+                        } else {
+                            throw new ClrPlusException("command isn't cmdletinfo: {0}".format(command.GetType()));
                         }
                     }
                 }
             }
         }
-
-        private List<string> _urls = new List<string>();
-
-        public void AddListener(string url) {
-            if (!string.IsNullOrEmpty(url) && !_urls.Contains(url)) {
-                _urls.Add(url);
-            }
-        }
-
-        private XDictionary<string, IDictionary<string, object>> _commands = new XDictionary<string, IDictionary<string, object>>();
-
-        public void AddCommand(string command, IDictionary<string, object> defaultParameters = null) {
-            if (string.IsNullOrEmpty(command)) {
-                return;
-            }
-
-            if (!_commands.ContainsKey(command)) {
-                _commands.Add(command, defaultParameters);
-                return;
-            }
-
-            if (defaultParameters != null) {
-                foreach (var k in defaultParameters.Keys) {
-                    _commands[command][k] = defaultParameters[k];
-                }
-            }
-        }
-
-        public bool Started {
-            get {
-                return IsStarted;
-            }
-        }
-
-        public static XDictionary<string, RestAppHost> Instances = new XDictionary<string, RestAppHost>();
 
         public void Start() {
             if (IsStarted) {
@@ -148,9 +104,15 @@ namespace ClrPlus.Powershell.Core.Service {
             if (Listener == null) {
                 Listener = new HttpListener();
             }
+            if (!_urls.Any() && _serviceName == "default") {
+                // if the default hasn't got anything set, listen everywhere.
+                _urls.Add("http://*/");
+            }
+
             foreach (var urlBase in _urls) {
                 Listener.Prefixes.Add(urlBase);
             }
+
             Config.DebugOnlyReturnRequestInfo = false;
             Config.LogFactory = new ConsoleLogFactory();
             Config.LogFactory.GetLogger(GetType()).Debug("Hi");
@@ -158,8 +120,33 @@ namespace ClrPlus.Powershell.Core.Service {
             Start(_urls.FirstOrDefault());
         }
 
-        public new void Stop() {
-            base.Stop();
+        public override void Stop() {
+            if(!_isStopping) {
+                _isStopping = true;
+                base.Stop();
+            }
+        }
+
+        internal void AddCommand(RestCommand restCommand) {
+            for (int i = _commands.Count-1; i>= 0; i--) {
+                if (_commands[i].PublishAs == restCommand.PublishAs) {
+                    _commands.RemoveAt(i);
+                }
+            }
+
+            _commands.Add(restCommand);
+        }
+
+        public void AddListener(string url) {
+            if(!string.IsNullOrEmpty(url) && !_urls.Contains(url)) {
+                _urls.Add(url);
+            }
+        }
+
+        public void AddListeners(IEnumerable<string> listenOn) {
+            foreach (var listener in listenOn) {
+                AddListener(listener);
+            }
         }
     }
 }

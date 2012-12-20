@@ -20,6 +20,10 @@ namespace ClrPlus.Powershell.Core.Commands {
     using ServiceStack.ServiceHost;
     using ServiceStack.Text;
 
+    public class Response {
+        public Result[] Results {get; set;}
+    }
+
     public class RestableCmdlet<T> : PSCmdlet, IService<T> where T : RestableCmdlet<T> {
         [Parameter(HelpMessage = "Remote Service URL")]
         public string Remote {get; set;}
@@ -29,25 +33,38 @@ namespace ClrPlus.Powershell.Core.Commands {
 
         static RestableCmdlet() {
             JsConfig<T>.ExcludePropertyNames = new[] {
-                "CommandRuntime", "CurrentPSTransaction", "Stopping", "Remote", "Credential", "CommandOrigin"
+                "CommandRuntime", "CurrentPSTransaction", "Stopping", "Remote", "Credential", "CommandOrigin", "Events", "Host", "InvokeCommand", "InvokeProvider" , "JobManager", "MyInvocation", "PagingParameters", "ParameterSetName", "SessionState"
             };
         }
 
         protected virtual void ProcessRecordViaRest() {
             var client = new JsonServiceClient(Remote);
             var response = client.Send<object[]>((this as T));
-            foreach (var ob in response) {
+            foreach(var ob in response) {
                 WriteObject(ob);
             }
         }
 
         public virtual object Execute(T cmdlet) {
-            // get the name from the request's attribute?
-            var name = cmdlet.GetType().Name;
-            using (var dps = new DynamicPowershell(RestAppHost.Instances.Values.First().SharedRunspacePool)) {
-                // var result = dps.Invoke(name, new object[0], PropertiesAsDictionary(cmdlet)).ToArray();
-                var result = dps.Invoke(name, _persistableElements, cmdlet).ToArray();
-                return result;
+            var name = Rest.Services.ReverseLookup[cmdlet.GetType()];
+            
+
+            using(var dps = new DynamicPowershell(Rest.Services.RunspacePool)) {
+                return dps.Invoke(name, _persistableElements, cmdlet);
+#if false
+                var result = dps.Invoke(name, _persistableElements, cmdlet);
+                
+                var r = result.ToArray();
+
+                // var rs = r.Select(each => each as Result).ToList();
+                // var rsp = new Response {
+                    // Results = (Result[])r.ToArrayOfType(typeof (Result))
+                // };
+
+                return r;
+                // JsConfig.IncludeTypeInfo = true;
+                // return rs;
+#endif
             }
         }
 

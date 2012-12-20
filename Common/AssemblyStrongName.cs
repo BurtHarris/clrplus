@@ -20,8 +20,8 @@ using System.Reflection;
 // we publish it, so now we will have just one set of  Version  lines, and no strong 
 // naming until publishing.
 
-[assembly: AssemblyVersion("1.8.0.42")]
-[assembly: AssemblyFileVersion("1.8.0.42")]
+[assembly: AssemblyVersion("1.8.0.44")]
+[assembly: AssemblyFileVersion("1.8.0.44")]
 [assembly: AssemblyProduct("ClrPlus Extension Libraries.")]
 [assembly: AssemblyTrademark("ClrPlus is a non-registered trademark of Garrett Serack")]
 
