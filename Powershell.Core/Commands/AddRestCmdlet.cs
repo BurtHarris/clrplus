@@ -24,10 +24,10 @@ namespace ClrPlus.Powershell.Core.Commands {
         public string Command { get; set; }
 
         [Parameter]
-        public string ServiceName { get; set; }
+        public string PublishAs{ get; set; }
 
         [Parameter]
-        public string PublishAs{ get; set; }
+        public string[] RoleRequired { get; set; }
 
         [Parameter]
         public string[] DefaultParameter { get; set; }
@@ -35,24 +35,26 @@ namespace ClrPlus.Powershell.Core.Commands {
         [Parameter]
         public string[] ForcedParameter { get; set; }
 
-        private static Dictionary<string, IEnumerable<string>> ProcessParameters(IEnumerable<string> parameters) {
+        private static Dictionary<string, object> ProcessParameters(IEnumerable<string> parameters) {
             if (parameters == null) {
-                return new Dictionary<string, IEnumerable<string>>();
+                return new Dictionary<string, object>();
             }
             var set = parameters.Select(each => _keyValueRx.Match(each)).ToArray();
-            return set.Select(match => match.Groups["switch"].Value)
-                .Distinct()
-                .ToDictionary(p => p, p => set
-                    .Where(match => match.Groups["switch"].Value == p)
-                    .Select(each => each.Groups["value"].Value));
+            var keys = set.Select(match => match.Groups["switch"].Value).Distinct();
+
+            return keys.ToDictionary(k => k, key => {
+                var items = set.Where(match => match.Groups["switch"].Value == key).Select(each => each.Groups["value"].Value).ToArray();
+                return items.Count() == 1 ? (object)items[0] : items;
+            });
         }
 
         protected override void ProcessRecord() {
-            Rest.Services[ServiceName].AddCommand(new RestCommand {
+            RestService.AddCommand(new RestCommand {
                 Name = Command,
                 PublishAs = PublishAs ?? Command,
                 DefaultParameters = ProcessParameters(DefaultParameter),
-                ForcedParameters = ProcessParameters(ForcedParameter)
+                ForcedParameters = ProcessParameters(ForcedParameter),
+                Roles = RoleRequired
             });
         }
     }

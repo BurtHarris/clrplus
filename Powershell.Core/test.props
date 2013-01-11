@@ -1,0 +1,37 @@
+﻿@import "users.properties";
+
+user[gserack] { 
+    password : "password";
+    roles : {
+        admins,users,signers
+    };
+}
+
+rest-service  {
+    listen-on: { "http://*/" };
+};
+
+
+/* rest-command {
+    roles :  users;
+    
+    cmdlet : "show-test" ;
+    
+    
+    default-parameters : {
+        p2 = gws,
+        p3 = { "one", "two" }
+    };
+    
+    forced-parameters : {
+        p1 = "mr."
+    };
+    
+}
+*/
+
+
+rest-command[SetServicePassword] {
+	roles : users;
+	cmdlet : "Set-ServicePassword";
+}

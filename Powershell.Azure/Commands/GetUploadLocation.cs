@@ -13,7 +13,7 @@
 namespace ClrPlus.Powershell.Azure.Commands {
     using System.Management.Automation;
     using ClrPlus.Core.Extensions;
-    using Core.Commands;
+    using Rest.Commands;
 
     [Cmdlet(VerbsCommon.Get, "UploadLocation")]
     public class GetUploadLocation : RestableCmdlet<GetUploadLocation> {
@@ -22,7 +22,7 @@ namespace ClrPlus.Powershell.Azure.Commands {
 
         protected override void ProcessRecord() {
             // must use this to support processing record remotely.
-            if (!string.IsNullOrEmpty(Remote)) {
+            if (!string.IsNullOrEmpty(ServiceUrl)) {
                 ProcessRecordViaRest();
                 return;
             }

@@ -26,21 +26,34 @@ namespace ClrPlus.Powershell.Core.Commands {
         [Parameter(HelpMessage = "foo")]
         public string Foo {get; set;}
 
+        [Parameter(HelpMessage = "p1")]
+        public string P1 { get; set; }
+
+        [Parameter(HelpMessage = "p2")]
+        public string P2 { get; set; }
+
+        [Parameter(HelpMessage = "p3")]
+        public string[] P3 { get; set; }
+
         protected override void ProcessRecord() {
             // must use this to support processing record remotely.
             if (!string.IsNullOrEmpty(Remote)) {
                 ProcessRecordViaRest();
                 return;
             }
-
-            WriteObject(new Result {
-                Message = "Hello there {0}".format(Foo),
-                Age = 41,
-            });
-            WriteObject(new Result {
-                Message = "ByeBye {0}".format(Foo),
-                Age = 50,
-            });
+            if (P3 == null) {
+                WriteObject(new Result {
+                    Message = "Nothing!",
+                    Age = -1,
+                });
+            } else {
+                foreach (var kid in P3) {
+                    WriteObject(new Result {
+                        Message = "Person: {0} {1} has a child {2}".format(P1, P2, kid),
+                        Age = 41,
+                    });
+                }
+            }
         }
     }
 }

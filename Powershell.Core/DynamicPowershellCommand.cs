@@ -13,6 +13,7 @@
 namespace ClrPlus.Powershell.Core {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Management.Automation.Runspaces;
     using System.Threading;
     using System.Threading.Tasks;
@@ -97,9 +98,43 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        internal void SetParameters(IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters) {
+        internal void SetParameters(IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string, object> defaults, IDictionary<string, object> forced) {
+            forced = forced ?? new Dictionary<string, object>();
+            defaults = defaults ?? new Dictionary<string, object>();
+
             foreach(var arg in elements) {
-                Command.Parameters.Add(arg.Name, arg.GetValue(objectContainingParameters, null));
+                if (forced.ContainsKey(arg.Name)) {
+                    Command.Parameters.Add(arg.Name, forced[arg.Name]);
+                } else {
+                    var val = arg.GetValue(objectContainingParameters, null);
+
+                    if ( !defaults.ContainsKey(arg.Name) ) {
+                        if (val != null) {
+                            Command.Parameters.Add(arg.Name, val);
+                        }
+                    } else {
+                        if (val == null) {
+                            Command.Parameters.Add(arg.Name, defaults[arg.Name]);
+                        } else {
+                            if (arg.ActualType.IsIEnumerable() && !(arg.ActualType.IsPrimitive || arg.ActualType == typeof (string))) {
+                                var col = ((IEnumerable<object>)(val));
+                                var sz = col.Count();
+
+
+                                var def = defaults[arg.Name];
+                                if (def.GetType().IsIEnumerable()) {
+                                    // both halves are collections.
+                                    Command.Parameters.Add(arg.Name, col.Concat((IEnumerable<object>)def).ToArray());
+                                } else {
+                                    // default is a single item.
+                                    Command.Parameters.Add(arg.Name, col.Concat(def.SingleItemAsEnumerable()).ToArray());
+                                }
+                            } else {
+                                Command.Parameters.Add(arg.Name, val); 
+                            }
+                        }
+                    }
+                }
             }
         }
 

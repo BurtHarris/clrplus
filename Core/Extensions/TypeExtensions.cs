@@ -233,26 +233,6 @@ namespace ClrPlus.Core.Extensions {
                             Name = (persistableAttribute != null ? persistableAttribute.Name : null) ?? each.Name
                         })).ToArray()
                 );
-
-            /*
-                    Fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Where(each => 
-                        !each.IsInitOnly && !each.GetCustomAttributes(typeof (NotPersistableAttribute), true).Any() && (
-                            each.IsPublic || 
-                            each.GetCustomAttributes(typeof (PersistableAttribute), true).Any())
-                        ).ToArray(),
-                    */
-            /*
-                    Properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Where(each => {
-
-                        var sm = each.GetSetMethod(true);
-                        var gm = each.GetGetMethod(true);
-
-                        return 
-                            ((sm != null && gm != null) && 
-                                !each.GetCustomAttributes(typeof (NotPersistableAttribute), true).Any() && 
-                                (each.GetSetMethod(true).IsPublic && each.GetGetMethod(true).IsPublic)) ||
-                            each.GetCustomAttributes(typeof (PersistableAttribute), true).Any();
-                    }).ToArray()*/
         }
 
         

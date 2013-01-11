@@ -72,7 +72,7 @@ namespace ClrPlus.Powershell.Core {
             return Runspace.CreatePipeline();
         }
 
-        internal DynamicPowershell() {
+        public DynamicPowershell() {
             _runspace = RunspaceFactory.CreateRunspace();
             if(_runspace.RunspaceStateInfo.State == RunspaceState.BeforeOpen) {
                 _runspace.OpenAsync();
@@ -80,7 +80,7 @@ namespace ClrPlus.Powershell.Core {
             _runspaceIsOwned = true;
         }
 
-        internal DynamicPowershell(Runspace runspace) {
+        public DynamicPowershell(Runspace runspace) {
             _runspace = runspace;
 
             if(_runspace.RunspaceAvailability == RunspaceAvailability.AvailableForNestedCommand ||
@@ -91,7 +91,7 @@ namespace ClrPlus.Powershell.Core {
             _runspaceIsOwned = false;
         }
 
-        internal DynamicPowershell(RunspacePool runspacePool) {
+        public DynamicPowershell(RunspacePool runspacePool) {
             _runspacePool = new AccessPrivateWrapper(runspacePool);
             if(_runspacePool.RunspacePoolStateInfo.State == RunspacePoolState.BeforeOpen) {
                 _runspacePool.Open();
@@ -153,7 +153,7 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        public AsynchronouslyEnumerableList<object> Invoke(string functionName, IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters) {
+        public AsynchronouslyEnumerableList<object> Invoke(string functionName, IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string,object> defaults, IDictionary<string,object> forced  ) {
             Wait();
 
             // command
@@ -162,7 +162,7 @@ namespace ClrPlus.Powershell.Core {
             };
 
             // parameters
-            _currentCommand.SetParameters(elements, objectContainingParameters);
+            _currentCommand.SetParameters(elements, objectContainingParameters,defaults,forced);
 
             // invoke
             return _currentCommand.InvokeAsyncIfPossible();
@@ -177,7 +177,7 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        internal PSObject LookupCommand(string commandName) {
+        public PSObject LookupCommand(string commandName) {
             var name = commandName.DashedToCamelCase().ToLower();
             if(_commands == null || !_commands.ContainsKey(name)) {
 

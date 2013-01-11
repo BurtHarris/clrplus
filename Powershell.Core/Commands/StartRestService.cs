@@ -17,8 +17,8 @@ namespace ClrPlus.Powershell.Core.Commands {
     using System.Management.Automation.Runspaces;
     using Service;
 
-    [Cmdlet("Start", "RestServices")]
-    public class StartRestServices : Cmdlet {
+    [Cmdlet("Start", "RestService")]
+    public class StartRestService : Cmdlet {
         protected override void ProcessRecord() {
             IEnumerable<string> activeModules;
             using(var ps = Runspace.DefaultRunspace.Dynamic()) {
@@ -26,7 +26,7 @@ namespace ClrPlus.Powershell.Core.Commands {
                 activeModules = modules.Select(each => each as PSModuleInfo).Where(each => each != null).Select(each => each.Path).ToArray();
             }
 
-            Rest.Services.Start(this, activeModules);
+            RestService.StartService(activeModules);
         }
     }
 }

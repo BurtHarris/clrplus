@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Scripting</id>
-    <version>1.8.0.44</version>
+    <version>1.8.0.50</version>
     <title>CLRPlus Scripting Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,8 +19,8 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Scripting</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.44" />
-        <dependency  id="ClrPlus.Platform" version="1.8.0.44" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.50" />
+        <dependency  id="ClrPlus.Platform" version="1.8.0.50" />
     </dependencies>
     
   </metadata>

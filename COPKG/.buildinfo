@@ -25,6 +25,9 @@ set-version {
         call replace.cmd ""\[assembly: AssemblyFileVersion.*"" ""[assembly: AssemblyFileVersion(""""${new-version}"""")]"" common\assemblystrongname.cs
         for /d %%v in (*) do (for %%z in (%%v\*.nuspec) do call replace.cmd ""<version>.*</version>"" ""<version>${new-version}</version>"" %%z)
         for /d %%v in (*) do (for %%z in (%%v\*.nuspec) do call replace.cmd ""(id=.ClrPlus.*version=.)(\d*\.\d*\.\d*\.\d*)(.*)"" ""$1${new-version}$3""  %%z)
+        
+        for %%z in (*.nuspec) do call replace.cmd ""<version>.*</version>"" ""<version>${new-version}</version>"" %%z
+        for %%z in (*.nuspec) do call replace.cmd ""(id=.ClrPlus.*version=.)(\d*\.\d*\.\d*\.\d*)(.*)"" ""$1${new-version}$3""  %%z
     ";
 }
 
@@ -69,6 +72,29 @@ build-release {
         :: Build .NET 4.0 and 4.5 versions
         msbuild /t:Rebuild ClrPlus.sln /p:Configuration=Release /p:TargetFrameworkVersion=v4.0
         msbuild /t:Rebuild ClrPlus.sln /p:Configuration=Release /p:TargetFrameworkVersion=v4.5
+        
+        :: Do merges for monolithic packages
+        echo Merging Monolithic builds for .NET 4.0
+        pushd output\v40\AnyCPU\Release\bin
+        REM ""C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe"" /closed /log:merge.log /t:dll /xmldocs /targetplatform:v4,""C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0"" /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.Powershell.dll  ClrPlus.Powershell.Rest.dll ServiceStack.Interfaces.dll ServiceStack.ServiceInterface.dll ServiceStack.dll ServiceStack.Common.dll ServiceStack.Text.dll ServiceStack.OrmLite.dll ClrPlus.Core.dll ClrPlus.Scripting.dll ClrPlus.Platform.dll ClrPlus.Windows.Api.dll ClrPlus.Powershell.Core.dll || goto failed
+        ..\..\..\..\..\tools\il-repack.exe /log:merge.log /t:library /xmldocs /targetplatform:v4 /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.Powershell.dll  ClrPlus.Powershell.Rest.dll ServiceStack.Interfaces.dll ServiceStack.ServiceInterface.dll ServiceStack.dll ServiceStack.Common.dll ServiceStack.Text.dll ServiceStack.OrmLite.dll ClrPlus.Core.dll ClrPlus.Scripting.dll ClrPlus.Platform.dll ClrPlus.Windows.Api.dll ClrPlus.Powershell.Core.dll || goto failed
+        
+        :: rem skip ClrPlus.Powershell.Azure.dll for now.
+        REM ""C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe"" /closed /log:merge.log /t:dll /xmldocs /targetplatform:v4,""C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0"" /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.dll ClrPlus.CommandLine.dll ClrPlus.Console.dll ClrPlus.Core.dll ClrPlus.Crypto.dll ClrPlus.Networking.dll ClrPlus.Platform.dll ClrPlus.Powershell.Azure.dll ClrPlus.Powershell.Core.dll ClrPlus.Powershell.Provider.dll ClrPlus.Powershell.Rest.dll ClrPlus.Remoting.dll ClrPlus.Scripting.dll ClrPlus.Windows.Api.dll ClrPlus.Windows.Debugging.dll ClrPlus.Windows.PeBinary.dll Microsoft.Cci.MetadataHelper.dll Microsoft.Cci.MetadataModel.dll Microsoft.Cci.MutableMetadataModel.dll Microsoft.Cci.PeReader.dll Microsoft.Cci.PeWriter.dll Microsoft.Cci.SourceModel.dll Microsoft.CompilerServices.AsyncTargetingPack.Net4.dll Microsoft.Data.Edm.dll Microsoft.Data.OData.dll Microsoft.WindowsAzure.Storage.dll ServiceStack.Common.dll ServiceStack.dll ServiceStack.Interfaces.dll ServiceStack.OrmLite.dll ServiceStack.ServiceInterface.dll ServiceStack.Text.dll System.Spatial.dll || goto failed
+        ..\..\..\..\..\tools\il-repack.exe /log:merge.log /t:library /xmldocs /targetplatform:v4 /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.dll ClrPlus.CommandLine.dll ClrPlus.Console.dll ClrPlus.Core.dll ClrPlus.Azure.dll ClrPlus.Crypto.dll ClrPlus.Networking.dll ClrPlus.Platform.dll ClrPlus.Powershell.Core.dll ClrPlus.Powershell.Provider.dll ClrPlus.Powershell.Rest.dll ClrPlus.Remoting.dll ClrPlus.Scripting.dll ClrPlus.Windows.Api.dll ClrPlus.Windows.Debugging.dll ClrPlus.Windows.PeBinary.dll Microsoft.Cci.MetadataHelper.dll Microsoft.Cci.MetadataModel.dll Microsoft.Cci.MutableMetadataModel.dll Microsoft.Cci.PeReader.dll Microsoft.Cci.PeWriter.dll Microsoft.Cci.SourceModel.dll Microsoft.CompilerServices.AsyncTargetingPack.Net4.dll Microsoft.Data.Edm.dll Microsoft.Data.OData.dll Microsoft.WindowsAzure.Storage.dll ServiceStack.Common.dll ServiceStack.dll ServiceStack.Interfaces.dll ServiceStack.OrmLite.dll ServiceStack.ServiceInterface.dll ServiceStack.Text.dll System.Spatial.dll || goto failed
+        popd 
+        
+        ..\..\..\..\..\tools\il-repack.exe
+        
+        echo Merging Monolithic builds for .NET 4.5
+        pushd output\v45\AnyCPU\Release\bin
+        REM ""C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe"" /closed /log:merge.log /t:dll /xmldocs /targetplatform:v4,""C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0"" /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.Powershell.dll  ClrPlus.Powershell.Rest.dll ServiceStack.Interfaces.dll ServiceStack.ServiceInterface.dll ServiceStack.dll ServiceStack.Common.dll ServiceStack.Text.dll ServiceStack.OrmLite.dll ClrPlus.Core.dll ClrPlus.Scripting.dll ClrPlus.Platform.dll ClrPlus.Windows.Api.dll ClrPlus.Powershell.Core.dll || goto failed
+        ..\..\..\..\..\tools\il-repack.exe /log:merge.log /t:library /xmldocs /targetplatform:v4 /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.Powershell.dll  ClrPlus.Powershell.Rest.dll ServiceStack.Interfaces.dll ServiceStack.ServiceInterface.dll ServiceStack.dll ServiceStack.Common.dll ServiceStack.Text.dll ServiceStack.OrmLite.dll ClrPlus.Core.dll ClrPlus.Scripting.dll ClrPlus.Platform.dll ClrPlus.Windows.Api.dll ClrPlus.Powershell.Core.dll || goto failed
+        
+        :: rem skip ClrPlus.Powershell.Azure.dll for now.
+        REM ""C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe"" /closed /log:merge.log /t:dll /xmldocs /targetplatform:v4,""C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0"" /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.dll ClrPlus.CommandLine.dll ClrPlus.Console.dll ClrPlus.Core.dll ClrPlus.Crypto.dll ClrPlus.Networking.dll ClrPlus.Platform.dll ClrPlus.Powershell.Azure.dll ClrPlus.Powershell.Core.dll ClrPlus.Powershell.Provider.dll ClrPlus.Powershell.Rest.dll ClrPlus.Remoting.dll ClrPlus.Scripting.dll ClrPlus.Windows.Api.dll ClrPlus.Windows.Debugging.dll ClrPlus.Windows.PeBinary.dll Microsoft.Cci.MetadataHelper.dll Microsoft.Cci.MetadataModel.dll Microsoft.Cci.MutableMetadataModel.dll Microsoft.Cci.PeReader.dll Microsoft.Cci.PeWriter.dll Microsoft.Cci.SourceModel.dll Microsoft.CompilerServices.AsyncTargetingPack.Net4.dll Microsoft.Data.Edm.dll Microsoft.Data.OData.dll Microsoft.WindowsAzure.Storage.dll ServiceStack.Common.dll ServiceStack.dll ServiceStack.Interfaces.dll ServiceStack.OrmLite.dll ServiceStack.ServiceInterface.dll ServiceStack.Text.dll System.Spatial.dll || goto failed
+        ..\..\..\..\..\tools\il-repack.exe /log:merge.log /t:library /xmldocs /targetplatform:v4 /lib:""C:\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0"" /out:ClrPlus.dll ClrPlus.CommandLine.dll ClrPlus.Console.dll ClrPlus.Core.dll ClrPlus.Azure.dll ClrPlus.Crypto.dll ClrPlus.Networking.dll ClrPlus.Platform.dll ClrPlus.Powershell.Core.dll ClrPlus.Powershell.Provider.dll ClrPlus.Powershell.Rest.dll ClrPlus.Remoting.dll ClrPlus.Scripting.dll ClrPlus.Windows.Api.dll ClrPlus.Windows.Debugging.dll ClrPlus.Windows.PeBinary.dll Microsoft.Cci.MetadataHelper.dll Microsoft.Cci.MetadataModel.dll Microsoft.Cci.MutableMetadataModel.dll Microsoft.Cci.PeReader.dll Microsoft.Cci.PeWriter.dll Microsoft.Cci.SourceModel.dll Microsoft.CompilerServices.AsyncTargetingPack.Net4.dll Microsoft.Data.Edm.dll Microsoft.Data.OData.dll Microsoft.WindowsAzure.Storage.dll ServiceStack.Common.dll ServiceStack.dll ServiceStack.Interfaces.dll ServiceStack.OrmLite.dll ServiceStack.ServiceInterface.dll ServiceStack.Text.dll System.Spatial.dll || goto failed
+        popd
     ";
 }
 
@@ -88,8 +114,11 @@ publish-nuget-packages {
         nuget push  ClrPlus.Windows.Debugging.${version}.nupkg
         nuget push  ClrPlus.Windows.PeBinary.${version}.nupkg
         nuget push  ClrPlus.Powershell.Core.${version}.nupkg
+        nuget push  ClrPlus.Powershell.Rest.${version}.nupkg
         nuget push  ClrPlus.Powershell.Provider.${version}.nupkg
         nuget push  ClrPlus.Powershell.Azure.${version}.nupkg
+        nuget push  ClrPlus.Powershell.${version}.nupkg
+        nuget push  ClrPlus.${version}.nupkg
     ";
 }
 
@@ -109,8 +138,11 @@ make-nuget-packages {
         nuget pack  Windows.Debugging\Windows.Debugging.nuspec
         nuget pack  Windows.PeBinary\Windows.PeBinary.nuspec        
         nuget pack  Powershell.Core\Powershell.Core.nuspec        
+        nuget pack  Powershell.Rest\Powershell.Rest.nuspec        
         nuget pack  Powershell.Provider\Powershell.Provider.nuspec        
         nuget pack  Powershell.Azure\Powershell.Azure.nuspec        
+        nuget pack  ClrPlus.Powershell.nuspec   
+        nuget pack  ClrPlus.nuspec  
     ";
 }
 

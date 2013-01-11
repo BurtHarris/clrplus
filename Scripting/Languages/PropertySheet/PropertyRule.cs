@@ -33,7 +33,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
 
         public abstract IEnumerable<PropertyValue> PropertyValues {get;}
 
-        public abstract string Value {get;}
+        public abstract string Value {
+            get; set;}
         public abstract IEnumerable<string> Values {get;}
         public abstract IEnumerable<string> Labels {get;}
         public abstract bool HasValues {get;}
@@ -81,6 +82,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
             get {
                 var v = this[string.Empty];
                 return v == null ? null : this[string.Empty].Value;
+            } set {
+                var v = this[string.Empty] as PropertyValue;
+                if (v != null) {
+                    v.Value = value;
+                }
             }
         }
 

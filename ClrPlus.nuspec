@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus</id>
+    <version>1.8.0.50</version>
+    <title>CLRPlus Monolithic Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A monolithic library containing classes from the whole ClrPlus project.</summary>
+    <description>A library containing EVERYTHING from ClrPlus:
+This is a Monolithic build (everything merged in, no dependencies)
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus (monolithic) package.</releaseNotes>
+    <copyright>Copyright 2012-2013</copyright>
+    <tags>ClrPlus CoApp Monolithic</tags>
+  </metadata>
+  <files>
+    <file src="output\v40\AnyCPU\Release\bin\ClrPlus.dll" target="lib\net40" /> 
+    <file src="output\v40\AnyCPU\Release\bin\ClrPlus.xml" target="lib\net40" /> 
+    <file src="output\v45\AnyCPU\Release\bin\ClrPlus.dll" target="lib\net45" /> 
+    <file src="output\v45\AnyCPU\Release\bin\ClrPlus.xml" target="lib\net45" /> 
+</files>
+</package>

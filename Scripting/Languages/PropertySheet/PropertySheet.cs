@@ -192,7 +192,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         }
 
         public override string ToString() {
-            var imports = (from sheet in _importedSheets where sheet.ImportedAsFilename != null select ImportedAsFilename).Distinct().Aggregate("", (current, each) => current + "@import {0};\r\n".format(QuoteIfNeeded(each)));
+            var imports = (from sheet in _importedSheets where sheet.ImportedAsFilename != null select ImportedAsFilename).Distinct().Aggregate("", (current, each) => string.IsNullOrEmpty(current) ? "" : current + "@import {0};\r\n".format(QuoteIfNeeded(each)));
             return (_rules as IEnumerable<Rule>).Reverse().Aggregate(imports, (current, each) => current + each.SourceString);
         }
 

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>ClrPlus.Powershell</id>
+    <version>1.8.0.50</version>
+    <title>CLRPlus Powershell Monolithic Library</title>
+    <authors>Garrett Serack</authors>
+    <owners>Garrett Serack</owners>
+    <licenseUrl>http://opensource.org/licenses/Apache-2.0</licenseUrl>
+    <projectUrl>http://perpetual-motion.com/ClrPlus</projectUrl>
+    <iconUrl>http://coapp.org/images/logo-small.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>A library containing classes for working with powershell.</summary>
+    <description>A library containing classes for working with powershell:
+This is a Monolithic build (everything merged in, no dependencies)
+
+- Trivial dynamic powershell invocation from C#
+- RESTable cmdlets (so you can host cmdlets via a REST service and call them either remotely or locally)
+
+[Note: This library is not quite ready for public consumption--I'm in the middle of some code reorganization]
+    </description>
+    <releaseNotes>Initial Build of the new ClrPlus Powershell package.</releaseNotes>
+    <copyright>Copyright 2012</copyright>
+    <tags>ClrPlus CoApp Powershell</tags>
+    
+  </metadata>
+  <files>
+    <file src="output\v40\AnyCPU\Release\bin\ClrPlus.Powershell.dll" target="lib\net40" /> 
+    <file src="output\v40\AnyCPU\Release\bin\ClrPlus.Powershell.xml" target="lib\net40" /> 
+    <file src="output\v45\AnyCPU\Release\bin\ClrPlus.Powershell.dll" target="lib\net45" /> 
+    <file src="output\v45\AnyCPU\Release\bin\ClrPlus.Powershell.xml" target="lib\net45" /> 
+</files>
+</package>

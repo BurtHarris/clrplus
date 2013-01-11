@@ -377,9 +377,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
                                 continue;
 
                             case TokenType.CloseBrace:
-                                // state = ParseState.HavePropertyCompleted;
+                                state = ParseState.HavePropertyCompleted;
                                 // this makes the semicolon optional.
-                                state = ParseState.InRule;
+                                //state = ParseState.InRule;
                                 continue;
 
                             case TokenType.OpenParenthesis:
@@ -643,9 +643,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
                                 pv.Add(presentlyUnknownValue);
                                 pv.SourceLocation = sourceLocation;
                                 propertyLabelText = null;
-                                // state = ParseState.HavePropertyCompleted;
+                                state = ParseState.HavePropertyCompleted;
                                 // this makes the semicolon optional.
-                                state = ParseState.InRule;
+                                // state = ParseState.InRule;
                             }
                                 continue;
 

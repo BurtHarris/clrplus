@@ -20,7 +20,7 @@
     <Optimize>false</Optimize>
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel> 
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -45,6 +45,10 @@
     <Reference Include="ServiceStack">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\ServiceStack.3.9.32\lib\net35\ServiceStack.dll</HintPath>
+    </Reference>
+    <Reference Include="ServiceStack.ServiceInterface">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\ServiceStack.3.9.32\lib\net35\ServiceStack.ServiceInterface.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.Interfaces">
       <SpecificVersion>False</SpecificVersion>
@@ -72,6 +76,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -80,31 +85,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
-    <Compile Include="Commands\AddRestCmdlet.cs" />
-    <Compile Include="Commands\NewRestService.cs" />
-    <Compile Include="Commands\RemoveRestCmdlet.cs" />
-    <Compile Include="Commands\RestableCmdLet.cs" />
-    <Compile Include="Commands\StartRestService.cs" />
-    <Compile Include="Commands\StopRestService.cs" />
-    <Compile Include="Commands\ShowTestCmd.cs" />
     <Compile Include="DynamicPowershell.cs" />
     <Compile Include="DynamicPowershellCommand.cs" />
     <Compile Include="PowershellExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Service\Rest.cs" />
-    <Compile Include="Service\RestCommand.cs" />
-    <Compile Include="Service\RestService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="test.ps1">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{C8506264-EE4F-442C-B2C3-4C0BD4975A2A}</Project>
       <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Platform\Platform.csproj">
+      <Project>{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}</Project>
+      <Name>Platform</Name>
     </ProjectReference>
     <ProjectReference Include="..\Scripting\Scripting.csproj">
       <Project>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</Project>

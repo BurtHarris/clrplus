@@ -24,7 +24,9 @@ namespace ClrPlus.Core.Extensions {
     using System.Globalization;
     using System.Linq;
     using System.Net;
+    using System.Runtime.InteropServices;
     using System.Runtime.Remoting.Metadata.W3cXsd2001;
+    using System.Security;
     using System.Security.Cryptography;
     using System.Text;
     using System.Text.RegularExpressions;
@@ -887,5 +889,33 @@ namespace ClrPlus.Core.Extensions {
             }
             return str1 == str2;
         }
+
+        public static string ToUnsecureString(this SecureString securePassword) {
+            if (securePassword == null)
+                throw new ArgumentNullException("securePassword");
+
+            IntPtr unmanagedString = IntPtr.Zero;
+            try {
+                unmanagedString = Marshal.SecureStringToGlobalAllocUnicode(securePassword);
+                return Marshal.PtrToStringUni(unmanagedString);
+            }
+            finally {
+                Marshal.ZeroFreeGlobalAllocUnicode(unmanagedString);
+            }
+        }
+
+        public static SecureString ToSecureString(this string password) {
+            if (password == null)
+                throw new ArgumentNullException("password");
+
+            var ss = new SecureString();
+            foreach (var ch in password.ToCharArray()) {
+                ss.AppendChar(ch);
+            }
+
+            return ss;
+        }
+
+
     }
 }

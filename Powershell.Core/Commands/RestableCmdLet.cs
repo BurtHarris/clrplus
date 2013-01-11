@@ -11,6 +11,7 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Core.Commands {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Management.Automation;
@@ -18,57 +19,63 @@ namespace ClrPlus.Powershell.Core.Commands {
     using Service;
     using ServiceStack.ServiceClient.Web;
     using ServiceStack.ServiceHost;
+    using ServiceStack.ServiceInterface.Auth;
     using ServiceStack.Text;
 
-    public class Response {
-        public Result[] Results {get; set;}
+    internal interface IHasSession {
+        IAuthSession Session {get;set;}
     }
 
-    public class RestableCmdlet<T> : PSCmdlet, IService<T> where T : RestableCmdlet<T> {
+    public class RestableCmdlet<T> : PSCmdlet, IHasSession , IService<T> where T : RestableCmdlet<T> {
         [Parameter(HelpMessage = "Remote Service URL")]
         public string Remote {get; set;}
 
         [Parameter(HelpMessage = "Credentials to conenct to service")]
         public PSCredential Credential {get; set;}
 
+        [Parameter(HelpMessage = "Restricted: Remote Session Instance (do not specify)")]
+        public IAuthSession Session {get;set;}
+
         static RestableCmdlet() {
             JsConfig<T>.ExcludePropertyNames = new[] {
-                "CommandRuntime", "CurrentPSTransaction", "Stopping", "Remote", "Credential", "CommandOrigin", "Events", "Host", "InvokeCommand", "InvokeProvider" , "JobManager", "MyInvocation", "PagingParameters", "ParameterSetName", "SessionState"
+                "CommandRuntime", "CurrentPSTransaction", "Stopping", "Remote", "Credential", "CommandOrigin", "Events", "Host", "InvokeCommand", "InvokeProvider" , "JobManager", "MyInvocation", "PagingParameters", "ParameterSetName", "SessionState", "Session"
             };
         }
 
         protected virtual void ProcessRecordViaRest() {
             var client = new JsonServiceClient(Remote);
-            var response = client.Send<object[]>((this as T));
-            foreach(var ob in response) {
-                WriteObject(ob);
+            
+            if (Credential != null) {
+                client.SetCredentials(Credential.UserName, Credential.Password.ToUnsecureString());            
+            }
+            object[] response = null;
+
+            try {
+                // try connecting where the URL is the base URL
+                response = client.Send<object[]>((this as T));
+                
+                if (!response.IsNullOrEmpty()) {
+                    foreach (var ob in response) {
+                        WriteObject(ob);
+                    }
+                }
+
+            } catch (WebServiceException wse) {
+                throw new Exception("Invalid Remote Service");
             }
         }
 
         public virtual object Execute(T cmdlet) {
-            var name = Rest.Services.ReverseLookup[cmdlet.GetType()];
+            // credential gets set by the filter. 
+
+            var restCommand = RestService.ReverseLookup[cmdlet.GetType()];
             
-
-            using(var dps = new DynamicPowershell(Rest.Services.RunspacePool)) {
-                return dps.Invoke(name, _persistableElements, cmdlet);
-#if false
-                var result = dps.Invoke(name, _persistableElements, cmdlet);
-                
-                var r = result.ToArray();
-
-                // var rs = r.Select(each => each as Result).ToList();
-                // var rsp = new Response {
-                    // Results = (Result[])r.ToArrayOfType(typeof (Result))
-                // };
-
-                return r;
-                // JsConfig.IncludeTypeInfo = true;
-                // return rs;
-#endif
+            using(var dps = new DynamicPowershell(RestService.RunspacePool)) {
+                return dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters);
             }
         }
 
-        private PersistablePropertyInformation[] _persistableElements = typeof (T).GetPersistableElements().Where(p => !JsConfig<T>.ExcludePropertyNames.Contains(p.Name)).ToArray();
+        private PersistablePropertyInformation[] _persistableElements = typeof(T).GetPersistableElements().Where(p => p.Name == "Session" || !JsConfig<T>.ExcludePropertyNames.Contains(p.Name)).ToArray();
 
         private IEnumerable<KeyValuePair<string, object>> PropertiesAsDictionary(object obj) {
             return _persistableElements.Select(p => new KeyValuePair<string, object>(p.Name, p.GetValue(obj, null)));

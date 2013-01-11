@@ -17,7 +17,7 @@ namespace ClrPlus.Powershell.Core.Commands {
     [Cmdlet("Stop", "RestServices")]
     public class StopRestService : Cmdlet {
         protected override void ProcessRecord() {
-            Rest.Services.Stop(this);
+            RestService.StopService();
         }
     }
 }
