@@ -167,6 +167,15 @@ namespace ClrPlus.Windows.PeBinary.Utility {
             ComputePublicKeyToken();
         }
 
+
+        public CertificateReference(X509Certificate2 certificate) {
+            if (certificate == null)
+                throw new ArgumentException("certificate");
+            _certificate = certificate;
+
+            ComputePublicKeyToken();
+        }
+
         private void ComputePublicKeyToken() {
             var pubKey = (_certificate.PublicKey.Key as RSACryptoServiceProvider).ExportCspBlob(false);
             var strongNameKey = new byte[pubKey.Length + 12];
