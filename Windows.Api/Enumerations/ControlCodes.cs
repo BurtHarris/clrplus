@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2011 Garrett Serack . All rights reserved.
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 // </copyright>
 // <license>
 //     The software is licensed under the Apache 2.0 License (the "License")

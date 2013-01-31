@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -11,9 +11,12 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.Utility {
+    using System.Diagnostics;
+
     /// <summary>
     ///     Represents a Token along with the textual representation of the token
     /// </summary>
+    [DebuggerDisplay("Token = {Type}:{Data}")]
     public struct Token {
         /// <summary>
         ///     The TokenType of the token
@@ -100,6 +103,24 @@ namespace ClrPlus.Scripting.Utility {
         public override int GetHashCode() {
             unchecked {
                 return (Type.GetHashCode()*397) ^ (Data != null ? Data.GetHashCode() : 0);
+            }
+        }
+
+        public bool IsWhitespaceOrComment {
+            get {
+                return (IsWhitespace || IsComment);
+            }
+        }
+
+        public bool IsComment {
+            get {
+                return Type == TokenType.LineComment || Type == TokenType.MultilineComment;
+            }
+        }
+
+        public bool IsWhitespace {
+            get {
+                return Type == TokenType.WhiteSpace;
             }
         }
     }

@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -23,7 +23,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
     using Microsoft.PowerShell.Commands;
     using Utility;
 
-    [Cmdlet("Copy", "ItemEx", DefaultParameterSetName = "Path", SupportsShouldProcess = true, SupportsTransactions = true)]
+    [Cmdlet("Copy", "ItemEx", DefaultParameterSetName = "Selector", SupportsShouldProcess = true, SupportsTransactions = false)]
     public class CopyItemExCmdlet : CopyItemCommand {
         public static ILocationResolver GetLocationResolver(ProviderInfo providerInfo) {
             var result = providerInfo as ILocationResolver;
@@ -53,6 +53,9 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
         protected override void ProcessRecord() {
             ProviderInfo destinationProviderInfo;
+
+
+            // must figure out if the destination is on the same provider, even if the destination doesn't exist.
 
             var destinationPath = SessionState.Path.GetResolvedProviderPathFromPSPath(Destination, out destinationProviderInfo);
 

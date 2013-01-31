@@ -1,7 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿//-----------------------------------------------------------------------
+// <copyright company="CoApp Project">
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
+//     Contributors can be discovered using the 'git log' command.
+//     All rights reserved.
+// </copyright>
+// <license>
+//     The software is licensed under the Apache 2.0 License (the "License")
+//     You may not use the software except in compliance with the License. 
+// </license>
+//-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Rest.Commands {
     using System.Management.Automation;
@@ -14,16 +21,16 @@ namespace ClrPlus.Powershell.Rest.Commands {
         private static PSCredential _defaultCredential;
 
         [Parameter(HelpMessage = "Remote Service URL")]
-        public string ServiceUrl { get; set;}
+        public string ServiceUrl {get; set;}
 
         [Parameter(HelpMessage = "Credentials to user for remote service")]
-        public PSCredential Credential { get; set; }
+        public PSCredential Credential {get; set;}
 
         [Parameter(HelpMessage = "Encrypt and store defaults in the user registry")]
-        public SwitchParameter Remember { get; set; }
+        public SwitchParameter Remember {get; set;}
 
         [Parameter(HelpMessage = "Remove any defaults stored in the user registry")]
-        public SwitchParameter Forget { get; set; }
+        public SwitchParameter Forget {get; set;}
 
         public static string DefaultServiceUrl {
             get {
@@ -39,10 +46,10 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
         public static PSCredential DefaultCredential {
             get {
-                if(_defaultCredential == null) {
+                if (_defaultCredential == null) {
                     var user = RegistryView.User[@"Software\ClrPlus\RemoteCmdlet#DefaultUser"].EncryptedStringValue;
                     var pass = RegistryView.User[@"Software\ClrPlus\RemoteCmdlet#DefaultPassword"].EncryptedStringValue;
-                    return new PSCredential(user, pass.ToSecureString());
+                    return string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass) ? null : new PSCredential(user, pass.ToSecureString());
                 }
                 return _defaultCredential;
             }

@@ -63,6 +63,8 @@ namespace ClrPlus.Core.Extensions {
             @"\", "$", "^", "{", "[", "(", "|", ")", "+", "."
         };
 
+        private static readonly char[] CRLF = new[] { '\r', '\n' };
+
         //putting regexs here so they're only compiled once.
 #pragma warning disable 169
         /// <summary>
@@ -916,6 +918,11 @@ namespace ClrPlus.Core.Extensions {
             return ss;
         }
 
+        
+
+        public static bool IsMultiline(this string text) {
+            return !(string.IsNullOrEmpty(text) || (text.IndexOfAny(CRLF) == -1));
+        }
 
     }
 }

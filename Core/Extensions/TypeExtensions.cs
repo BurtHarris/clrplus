@@ -1,6 +1,6 @@
 //-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -191,7 +191,6 @@ namespace ClrPlus.Core.Extensions {
         private static readonly MethodInfo _toArrayMethod = typeof (Enumerable).GetMethod("ToArray");
         private static readonly IDictionary<Type, MethodInfo> _castMethods = new XDictionary<Type, MethodInfo>();
         private static readonly IDictionary<Type, MethodInfo> _toArrayMethods = new XDictionary<Type, MethodInfo>();
-        
         
 
         private static readonly XDictionary<Type, PersistableInfo> _piCache = new XDictionary<Type, PersistableInfo>();

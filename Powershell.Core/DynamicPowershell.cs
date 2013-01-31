@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -34,29 +34,30 @@ namespace ClrPlus.Powershell.Core {
 
         private Runspace Runspace {
             get {
-                if(_runspace == null) {
-                    // get one from the pool
-                    AsyncCallback callback = ar => {
-                        _runspace = _runspacePool.EndGetRunspace(ar);
-                        _runspaceBorrowedFromPool = true;
-                    };
+                lock (this) {
+                    if (_runspace == null) {
+                        // get one from the pool
+                        AsyncCallback callback = ar => {
+                            _runspace = _runspacePool.EndGetRunspace(ar);
+                            _runspaceBorrowedFromPool = true;
+                        };
 
-                    _runspacePool.BeginGetRunspace(callback, this);
+                        _runspacePool.BeginGetRunspace(callback, this);
 
-                    if(_runspace == null) {
-                        throw new ClrPlusException("Runspace pool is null");
+                        if (_runspace == null) {
+                            throw new ClrPlusException("Runspace pool is null");
+                        }
+                    }
+
+                    if (_runspace.RunspaceStateInfo.State == RunspaceState.BeforeOpen) {
+                        _runspace.OpenAsync();
+                    }
+
+                    if (_runspace.RunspaceAvailability == RunspaceAvailability.AvailableForNestedCommand ||
+                        _runspace.RunspaceAvailability == RunspaceAvailability.Busy) {
+                        _runspaceWasLikeThatWhenIGotHere = true;
                     }
                 }
-
-                if(_runspace.RunspaceStateInfo.State == RunspaceState.BeforeOpen) {
-                    _runspace.OpenAsync();
-                }
-
-                if (_runspace.RunspaceAvailability == RunspaceAvailability.AvailableForNestedCommand ||
-                    _runspace.RunspaceAvailability == RunspaceAvailability.Busy) {
-                    _runspaceWasLikeThatWhenIGotHere = true;
-                }
-
                 return _runspace;
             }
         }

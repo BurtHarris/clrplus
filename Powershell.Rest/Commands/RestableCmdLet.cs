@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -14,6 +14,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
     using System;
     using System.Linq;
     using System.Management.Automation;
+    using System.Reflection;
     using ClrPlus.Core.Extensions;
     using ClrPlus.Powershell.Core.Service;
     using Core;
@@ -67,9 +68,16 @@ namespace ClrPlus.Powershell.Rest.Commands {
         public IAuthSession Session {get;set;}
 
         static RestableCmdlet() {
+            var excludes = (from each in typeof (T).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                let setMethodInfo = each.GetSetMethod(true)
+                let getMethodInfo = each.GetGetMethod(true)
+                where
+                    (setMethodInfo == null || getMethodInfo == null || each.GetCustomAttributes(typeof (NotPersistableAttribute), true).Any() || !each.GetSetMethod(true).IsPublic || !each.GetGetMethod(true).IsPublic)
+                select each.Name);
+
             JsConfig<T>.ExcludePropertyNames = new[] {
                 "CommandRuntime", "CurrentPSTransaction", "Stopping","Remote", "ServiceUrl", "Credential", "CommandOrigin", "Events", "Host", "InvokeCommand", "InvokeProvider" , "JobManager", "MyInvocation", "PagingParameters", "ParameterSetName", "SessionState", "Session"
-            };
+            }.Union(excludes).ToArray();
         }
 
         protected virtual void ProcessRecordViaRest() {

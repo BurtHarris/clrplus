@@ -63,10 +63,20 @@
       <Project>{df38aa27-e211-4a3c-a3ab-add32347a25a}</Project>
       <Name>Powershell.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Scripting\Scripting.csproj">
+      <Project>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</Project>
+      <Name>Scripting</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+    <None Include="test2.props">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="snippets.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

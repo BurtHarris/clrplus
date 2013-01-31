@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -10,7 +9,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ClrPlus.Scripting</RootNamespace>
     <AssemblyName>ClrPlus.Scripting</AssemblyName>
-     
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <Import Project="$(SolutionDir)\ClrPlus.sln.props" Condition="Exists('$(SolutionDir)\ClrPlus.sln.props')" />
@@ -18,20 +16,16 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-     
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-     
     <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -66,6 +60,21 @@
     <Compile Include="Languages\CSV\ValueTrimmingOptions.cs" />
     <Compile Include="Languages\GSharp\GSharpProcessor.cs" />
     <Compile Include="Languages\GSharp\GSharpTokenizer.cs" />
+    <Compile Include="Languages\PropertySheetV3\Alias.cs" />
+    <Compile Include="Languages\PropertySheetV3\ErrorCode.cs" />
+    <Compile Include="Languages\PropertySheetV3\InternalParserException.cs" />
+    <Compile Include="Languages\PropertySheetV3\IPropertyModel.cs" />
+    <Compile Include="Languages\PropertySheetV3\ParseException.cs" />
+    <Compile Include="Languages\PropertySheetV3\PropertyModelExtensions.cs" />
+    <Compile Include="Languages\PropertySheetV3\PropertySheetParser.cs" />
+    <Compile Include="Languages\PropertySheetV3\PropertyModel.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue.cs" />
+    <Compile Include="Languages\PropertySheetV3\RVCollection.cs" />
+    <Compile Include="Languages\PropertySheetV3\RVInstruction.cs" />
+    <Compile Include="Languages\PropertySheetV3\RVIterator.cs" />
+    <Compile Include="Languages\PropertySheetV3\RVSingle.cs" />
+    <Compile Include="Languages\PropertySheetV3\Selector.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValueOperation.cs" />
     <Compile Include="Languages\PropertySheet\ActualPropertyValue.cs" />
     <Compile Include="Languages\PropertySheet\Indexer.cs" />
     <Compile Include="Languages\PropertySheet\IPropertyValue.cs" />

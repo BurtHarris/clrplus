@@ -12,114 +12,145 @@ namespace Scratch {
     using ClrPlus.Core.Tasks;
     using ClrPlus.Networking;
     using ClrPlus.Powershell.Core;
+    using ClrPlus.Scripting.Languages.PropertySheetV3;
 
-    class Program {
-        public delegate int Foo(string text);
+#if FALSE
 
-        static void Main(string[] args) {
-            using( var powershell = Runspace.DefaultRunspace.Dynamic() ) {
+    class MSBuildFile {
+        
+    }
 
-                var dirResults = powershell.dir(@"c:\root", recurse: false);
-                Console.WriteLine("wait till that's done...");
-                dirResults.Wait();
-                Console.WriteLine("done...");
+    class Pivot {
+        string Key;
+        Dictionary<string, string[]> Choices;
 
-                var items = powershell.dir(@"c:\root\bin", recurse:false);
-                foreach (var i in items) {
-                    Console.WriteLine(i);
+    }
+
+    class Package {
+        Dictionary<string, Pivot> Pivots;
+        MSBuildFile Operations;
+    }
+
+    internal class MSBuildPropertyModel : PropertyModel {
+        public MSBuildPropertyModel(MSBuildFile buildFile) {
+            
+        }
+
+        public override bool CanAddProperty(string p) {
+            throw new NotImplementedException();
+        }
+
+        public override bool HasProperty(string p) {
+            throw new NotImplementedException();
+        }
+
+        public override PropertyModel GetPropertyReference(Selector selector) {
+            var result = base.GetPropertyReference(selector);
+            if (result == null) {
+                
+            }
+            return result;
+        }
+
+        public override object Value {get; set;}
+
+        public virtual bool SetProperty(string p, object o) {
+            throw new NotImplementedException();
+        }
+
+        public virtual bool ClearProperty(string p) {
+            throw new NotImplementedException();
+        }
+
+        public override bool IsList {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        public override bool IsArray { get {
+            return false;
+        } }
+
+        public override bool Add(object value) {
+            throw new NotImplementedException();
+        }
+
+        public override bool IsDictionary {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        public override bool Set(object key, object value) {
+            throw new NotImplementedException();
+        }
+    };
+
+
+    internal class Program {
+        private static void Main(string[] args) {
+            var p = new Package();
+
+            PropertySheet.Load("test.props", new DynamicPropertyModel(p) {
+                Strict = false,
+                Handlers = new Dictionary<Type, ModelFactory> {
+                    {typeof (MSBuildFile), obj => new MSBuildPropertyModel(obj as MSBuildFile) }
+                }
+            });
+        }
+    }
+#endif
+
+    class ProjectModel : PropertyModel {
+       
+    }
+
+    internal class Program {
+        private static void Main(string[] args) {
+            try {
+                var tests = new[] {
+                    @"tests\pass\Alias_decl.txt", @"tests\pass\Coll_ops.txt", @"tests\pass\Dict_ops.txt", @"tests\pass\test.txt"
+                };
+
+                foreach (var t in tests) {
+                    var model = new PropertyModel();
+                    model[new Selector { Name = "Project" }] = new ProjectModel();
+
+                    Console.WriteLine("\r\n\r\n == TEST: {0} ==", t);
+                    model.ParseFile(t);
+
+                    // var ProjectNode = model["Project"];
+
+                    // first pass, flatten 'whens'
+                    //foreach (var item in ProjectNode ) {
+                        
+                    //}
+                    
+                    
+                }
+            } catch (Exception e) {
+                Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
+            }
+            return;
+        }
+
+    }
+
+    [Cmdlet(AllVerbs.Add, "Nothing")]
+    public class AddNothingCmdlet : PSCmdlet {
+
+        protected override void ProcessRecord() {
+           
+            using (var ps = Runspace.DefaultRunspace.Dynamic()) {
+                var results = ps.GetItemss("c:\\");
+                foreach (var item in results) {
+                    Console.WriteLine(item);
                 }
             }
 
-            Console.WriteLine("Press enter to exit");
-            Console.ReadLine();
         }
-
-        /*
-        static async void Main2() {
-            HttpServer server = new HttpServer();
-            server.AddVirtualDir("foo",@"c:\root");
-            server.Start();
-            
-            
-            Console.WriteLine("Press enter to stop.");
-            Console.ReadLine();
-            server.Stop();
-
-            Console.WriteLine("Press enter to exit");
-            Console.ReadLine();
-        }
-
-        static async Task Task1() {
-            XTask.Run(() => {
-            
-            CurrentTask.Events += new Foo((t) => {
-                Console.WriteLine("Task 1 test message was: {0}", t);
-                return 0;
-            });
-
-            Test();
-            });
-        }
-
-
-        static async Task Task2() {
-             
-            var xyz =XTask.Run<int>(async () => {
-                CurrentTask.Events += new Foo((t) => {
-                    Console.WriteLine("Task 2 test message was {0}", t);
-                    return 0;
-                });
-                await Test();
-                return 0;
-            });
-
-
-            Console.WriteLine("before await");
-
-            var zzz = await xyz;
-
-            Console.WriteLine("after await");
-
-            Thread.Sleep(5000);
-        }
-
-        static async Task Test() {
-            Event<Foo>.RaiseFirst("(1) Early.");
-
-            var x = await XTask.Run(() => {
-                Event<Foo>.RaiseFirst("(2) In First Task");
-
-                var y =  XTask.Run(() => {
-                    Thread.Sleep(4000);
-                    Event<Foo>.RaiseFirst("(3) After delay, In second Task");
-
-                    return 5;
-                });
-
-                Event<Foo>.RaiseFirst("(4) In first task, after we made the second task");
-                return 5;
-            });
-
-            Console.WriteLine("there {0}", x);
-        }
-
-        static Task Test2() {
-            var x = Task.Factory.StartNew(() => {
-
-                var y = Task.Factory.StartNew(() => {
-                    Thread.Sleep(2000);
-                    Event<Foo>.RaiseFirst("gws");
-                    return 5;
-                });
-
-                Event<Foo>.RaiseFirst("garrett");
-                
-                return 5;
-            });
-
-            Console.WriteLine("there {0}", x.Result);
-            return x;
-        }
-         * */
+        
     }
 }
+

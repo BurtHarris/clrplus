@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -387,6 +387,7 @@ namespace ClrPlus.Scripting.Utility {
         protected void AdvanceAndRecognize() {
             Index++;
             RecognizeNextCharacter();
+            // return CharsLeft > 0;
         }
 
         protected void AddToken(Token token) {

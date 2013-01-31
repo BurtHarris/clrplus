@@ -1,6 +1,8 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2011 Garrett Serack. All rights reserved.
+//     Copyright (c) 2011-2013 Garrett Serack and CoApp Contributors. 
+//     Contributors can be discovered using the 'git log' command.
+//     All rights reserved.
 // </copyright>
 // <license>
 //     The software is licensed under the Apache 2.0 License (the "License")
@@ -16,6 +18,10 @@ namespace ClrPlus.Core.Collections {
     public static class CachingEnumerableExtensions {
         public static CacheEnumerable<T> ToCacheEnumerable<T>(this IEnumerable<T> collection) {
             return collection as CacheEnumerable<T> ?? new CacheEnumerable<T>(collection);
+        }
+
+        public static IEnumerator<T>[] Clone<T>(this IEnumerator<T> enumerator, int copies = 2) {
+            return new CacheEnumerable<T>(enumerator).GetEnumerators(copies).ToArray();
         }
     }
 
@@ -34,11 +40,24 @@ namespace ClrPlus.Core.Collections {
             _source = source;
         }
 
+        public CacheEnumerable(IEnumerator<T> sourceIterator) {
+            _source = null;
+            _sourceIterator = sourceIterator;
+        }
+
         public CacheEnumerable<T> Concat(IEnumerable<T> additionalItems) {
             return Enumerable.Concat(this, additionalItems).ToCacheEnumerable();
         }
 
+        public IEnumerable<IEnumerator<T>> GetEnumerators(int copies) {
+            for (var i = 0; i < copies; i++) {
+                yield return GetEnumerator();
+            }
+        }
+
         #region IEnumerable<T> Members
+
+        
 
         public IEnumerator<T> GetEnumerator() {
             lock (this) {
@@ -78,7 +97,7 @@ namespace ClrPlus.Core.Collections {
 
         #region Nested type: LazyEnumerator
 
-        private class LazyEnumerator<TT> : IEnumerator<TT> {
+        internal class LazyEnumerator<TT> : IEnumerator<TT> {
             private CacheEnumerable<TT> _collection;
             private int _index = -1;
 
@@ -111,6 +130,12 @@ namespace ClrPlus.Core.Collections {
 
             public void Reset() {
                 _index = -1;
+            }
+
+            public IEnumerator<TT> Clone() {
+                return new LazyEnumerator<TT>(_collection) {
+                    _index = _index
+                };
             }
 
             #endregion

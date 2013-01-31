@@ -2,7 +2,9 @@
 // <copyright company="CoApp Project">
 //     Copyright (c) 2002 Microsoft Corporation. All rights reserved. (Chris Lovett)
 //     Copyright (c) 2007-2008 MindTouch. All rights reserved.
-//     Copyright (c) 2010 Garrett Serack . All rights reserved.
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
+//     Contributors can be discovered using the 'git log' command.
+//     All rights reserved.
 // </copyright>
 // <license>
 //     The software is licensed under the Apache 2.0 License (the "License")
