@@ -24,6 +24,8 @@ namespace ClrPlus.Powershell.Azure.Provider {
     using Scripting.Languages.PropertySheet;
 
     public class AzureDriveInfo : PSDriveInfo {
+
+        public const string SharedAccessTokenUsername = "3BCA5A66-053D-41CF-8F26-3BE606B568C4";
         internal const string ProviderScheme = "azure";
         internal const string ProviderDescription = "azure blob storage";
 
@@ -54,6 +56,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
         internal CloudBlobClient CloudFileSystem {
             get {
                 if (_blobStore == null) {
+
                     _account = new CloudStorageAccount(new StorageCredentials(Account, Secret), true);
                     _blobStore = _account.CreateCloudBlobClient();
                 }
@@ -82,7 +85,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 SubPath = aliasRule.HasProperty("root") ? aliasRule["root"].Value.Replace('/', '\\').Replace("\\\\", "\\").Trim('\\') : "",
             };
             Path.Validate();
-            Secret = aliasRule.HasProperty("secret") ? aliasRule["secret"].Value : psCredential != null ? psCredential.Password.ToString() : null;
+            Secret = aliasRule.HasProperty("secret") ? aliasRule["secret"].Value : psCredential != null ? psCredential.Password.ToUnsecureString() : null;
         }
 
         private static PSDriveInfo GetDriveInfo(Rule aliasRule, ProviderInfo providerInfo, PSCredential psCredential) {
@@ -143,6 +146,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     }
                     throw new ClrPlusException("Missing credential information for {0} mount '{1}'".format(ProviderScheme, root));
                 }
+                
                 Secret = credential.Password.ToString();
                 return;
             }
