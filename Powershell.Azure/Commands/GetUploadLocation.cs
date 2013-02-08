@@ -12,6 +12,7 @@
 
 namespace ClrPlus.Powershell.Azure.Commands {
     using System.Management.Automation;
+    using System.Management.Automation.Runspaces;
     using ClrPlus.Core.Extensions;
     using Rest.Commands;
 
@@ -26,15 +27,15 @@ namespace ClrPlus.Powershell.Azure.Commands {
                 ProcessRecordViaRest();
                 return;
             }
-            /*
+            
             var v = SessionState.Drive;
             var x = v.Current;
             var c = x.CurrentLocation;
             var pipe = Runspace.DefaultRunspace.CreateNestedPipeline();
-            Runspace.DefaultRunspace.Create
+            
 
             // Runspace.DefaultRunspace.CreateNestedPipeline("get-psdriveinfo", false);
-            */
+           
 
             // continue as normal.
             // WriteObject("Hello there {0}".format(Name));
