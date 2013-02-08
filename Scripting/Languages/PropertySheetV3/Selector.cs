@@ -14,30 +14,47 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.Diagnostics;
     using Core.Extensions;
 
-    [DebuggerDisplay("Selector = {Name}[{Parameter}]#{Id}<{Instruction}>")]
+    [DebuggerDisplay("Selector = {Name}[{Parameter}]")]
     public class Selector  {
         public string Name { get; set; }
         public string Parameter { get; set; }
-        public string Instruction { get; set; }
+        // public string Instruction { get; set; }
      
         public static Selector Empty = new Selector {
             Name = string.Empty
         };
 
-        
         public override int GetHashCode() {
-            return this.CreateHashCode(Name, Parameter, Instruction);
+            return this.CreateHashCode(Name, Parameter);
         }
 
         public override bool Equals(object obj) {
             var s = obj as Selector;
-            return s != null && (s.Name == Name && s.Parameter == Parameter && s.Instruction == Instruction);
+            return s != null && (s.Name == Name && s.Parameter == Parameter);
         }
 
         public override string ToString() {
-            return string.Format("{0}{1}{2}", Name,
-                string.IsNullOrEmpty(Parameter) ? "" : "[{0}]".format(Parameter),
-                string.IsNullOrEmpty(Instruction) ? "" : " <{0}>".format(Instruction));
+            return string.Format("{0}{1}", Name,string.IsNullOrEmpty(Parameter) ? "" : "[{0}]".format(Parameter));
+        }
+
+        public bool IsCompound {
+            get {
+                return Name.IndexOf('.') > 0;
+            }
+        }
+
+        public Selector Prefix {
+            get {
+                var p = Name.IndexOf('.');
+                return p > 0 ? new Selector { Name = Name.Substring(0,p)} : this;
+            }
+        }
+
+        public Selector Suffix {
+            get {
+                var p = Name.IndexOf('.');
+                return p <= 0 ? this : new Selector { Name = Name.Substring(p+1), Parameter = Parameter };
+            }
         }
     }
 }

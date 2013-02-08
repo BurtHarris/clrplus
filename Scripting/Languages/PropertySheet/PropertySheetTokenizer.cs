@@ -145,7 +145,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
                 var instruction = PoachParseMatchWithAnchor('<', '>');
                 if (instruction != null) {
                     AddToken(new Token {
-                        Type = TokenType.SelectorInstruction,
+                        Type = TokenType.EmbeddedInstruction,
                         Data = instruction
                     });
                     return true;

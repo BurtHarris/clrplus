@@ -63,11 +63,11 @@
     <Compile Include="Languages\PropertySheetV3\Alias.cs" />
     <Compile Include="Languages\PropertySheetV3\ErrorCode.cs" />
     <Compile Include="Languages\PropertySheetV3\InternalParserException.cs" />
-    <Compile Include="Languages\PropertySheetV3\IPropertyModel.cs" />
+    <Compile Include="Languages\PropertySheetV3\IModel.cs" />
     <Compile Include="Languages\PropertySheetV3\ParseException.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertyModelExtensions.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertySheetParser.cs" />
-    <Compile Include="Languages\PropertySheetV3\PropertyModel.cs" />
+    <Compile Include="Languages\PropertySheetV3\DataModel.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue.cs" />
     <Compile Include="Languages\PropertySheetV3\RVCollection.cs" />
     <Compile Include="Languages\PropertySheetV3\RVInstruction.cs" />

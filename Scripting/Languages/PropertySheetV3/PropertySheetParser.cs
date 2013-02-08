@@ -33,7 +33,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         protected readonly Tailcall Done;
         protected readonly Tailcall Invalid;
         
-        private readonly IPropertyModel _rootModel;
+        private readonly IModel _rootModel;
         private readonly IEnumerator<Token> _enumerator;
 
         private Token _token;
@@ -105,7 +105,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         protected readonly string Filename;
 
-        internal PropertySheetParser(IEnumerable<Token> tokens, IPropertyModel rootModel, string filename) {
+        internal PropertySheetParser(IEnumerable<Token> tokens, IModel rootModel, string filename) {
             Filename = filename;
             _enumerator = tokens.GetEnumerator();
             
@@ -204,13 +204,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                         throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration after < >  or [ ] --found '{0}'");
                     }
                     return ParseSelector(terminators, (selectorName ?? "") + Token.Data);
-
-                case TokenType.SelectorInstruction:
+#if false
+                case TokenType.EmbeddedInstruction:
                     if (instruction != null) {
                         throw Fail(ErrorCode.TokenNotExpected, "Duplicate < > instruction not permitted.");
                     }
                     return ParseSelector(terminators, selectorName, Token.Data, parameter);
-
+#endif 
                 case TokenType.SelectorParameter:
                     if(parameter!= null) {
                         throw Fail(ErrorCode.TokenNotExpected, "Duplicate [ ] parameter not permitted.");
@@ -225,60 +225,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                         return new Selector {
                             Name = selectorName,
                             Parameter = parameter,
-                            Instruction = instruction,
+                            //Instruction = instruction,
                         };
                     }
                     break; // fall thru to end fail.
             }
             throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration--found '{0}'");
         }
-
-#if false
-
-        /// <exception cref="ParseException">Reached end-of-file in the middle of a Reference declaration</exception>
-        Selector __ParseSelector(TokenTypes terminators, Selector selector = null,  Selector parent = null ) {
-            switch (NextAfter(WhiteSpaceOrComments)) {
-                case TokenType.Identifier:
-                case TokenType.Dot:
-                     // selector = selector ?? new Selector(parent);
-                    // selector.Name = selector.Name.AppendHappily(Data);
-                    //selector =;
-                    return __ParseSelector(terminators, new Selector(parent) {
-                        Name = selector == null ? Data : selector.Name + Data
-                    }, parent);
-
-                case TokenType.SelectorParameter:
-                    if(selector.IsNullOrEmpty()) {
-                        throw Fail(ErrorCode.InvalidSelectorDeclaration, "May not have selector parameter ('[...]') without a selector ");
-                    }
-                    if (selector.Parameter != null) {
-                        throw Fail(ErrorCode.DuplicateParameter, "Selector already has a parameter");
-                    }
-                    selector.Parameter = Data;
-                    return __ParseSelector(terminators, selector, parent);
-
-                case TokenType.SelectorInstruction:
-                    if(selector.IsNullOrEmpty()) {
-                        throw Fail(ErrorCode.InvalidSelectorDeclaration, "May not have selector instruction ('<...>') without a selector ");
-                    }
-                    if(selector.Instruction != null) {
-                        throw Fail(ErrorCode.DuplicateInstruction, "Selector already has an instruction ('<...>')");
-                    }
-                    selector.Instruction = Data;
-                    return __ParseSelector(terminators, selector, parent);
-
-                default:
-                    if(terminators.Contains(Type)) {
-                        if(selector.IsNullOrEmpty()) {
-                            throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
-                        }
-                        return selector;
-                    }
-                    break; // fall thru to end fail.
-            }
-            throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration--found '{0}'");
-        }
-#endif
 
         /// <exception cref="ParseException">@import filename must not be empty.</exception>
         Tailcall ParseImport(Tokens path = null) {
@@ -310,25 +263,32 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return ParseImport(path.ConcatHappily(Token));
         }
 
-        Tailcall ParseMetadataItem(IPropertyModel modelProperty) {
+        Tailcall ParseMetadataItem(INode modelProperty, IHasMetadata metadataContainer = null) {
+            metadataContainer = metadataContainer ?? modelProperty as IHasMetadata;
+
             switch(NextAfter(WhiteSpaceOrComments)) {
                 case TokenType.Identifier:
                     var identifier = Data;
                     switch(NextAfter(WhiteSpaceOrComments)) {
                         case TokenType.Equal:
-                            modelProperty.AddMetadata(identifier, ParseRValue(modelProperty, Semicolon));
+                            metadataContainer.Metadata.AddOrSet(identifier, ParseRValue(modelProperty, Semicolon,null));
+                            //modelProperty.AddMetadata(identifier, ParseRValue(modelProperty, Semicolon));
                             return Continue;
 
                         case TokenType.Colon:
                             // should we really support this?
-                            modelProperty.AddMetadata(identifier, ParseRValue(modelProperty, Semicolon));
+                            metadataContainer.Metadata.AddOrSet(identifier, ParseRValue(modelProperty, Semicolon,null));
+                            //modelProperty.AddMetadata(identifier, ParseRValue(modelProperty, Semicolon));
                             return Continue;
 
                         case TokenType.OpenBrace:
                             var metadata = ParseMetadataObject();
 
                             if (metadata != null && metadata.Count > 0) {
-                                modelProperty.AddMetadata(identifier, metadata);
+                                foreach(var key in metadata.Keys) {
+                                    metadataContainer.Metadata.AddOrSet(identifier, metadata[key]);
+                                }
+                                //modelProperty.AddMetadata(identifier, metadata);
                             }
                             return Continue;
                     }
@@ -339,7 +299,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         /// <exception cref="ParseException">Missing alias declaration in @import statement</exception>
-        Tailcall ParseAlias(IPropertyModel modelProperty) {
+        Tailcall ParseAlias(INode modelProperty) {
             switch (NextAfter(WhiteSpaceOrComments)) {
                 case TokenType.Identifier:
                     var identifier = Data;
@@ -376,12 +336,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             switch(Type) {
                 case TokenType.Equal:
                     result = result ?? new XDictionary<string, RValue>();
-                    result.Add(selector.Name , ParseRValue(null, SemicolonCommaOrCloseBrace));
+                    result.Add(selector.Name , ParseRValue(null, SemicolonCommaOrCloseBrace,null));
                     return ParseMetadataObject(result);
 
                 case TokenType.Colon:
                     result = result ?? new XDictionary<string, RValue>();
-                    result.Add(selector.Name, ParseRValue(null, SemicolonCommaOrCloseBrace));
+                    result.Add(selector.Name, ParseRValue(null, SemicolonCommaOrCloseBrace,null));
                     return ParseMetadataObject(result);
                 
             }
@@ -389,7 +349,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         /// <exception cref="ParseException">Token '{0}' not expected in object declaration</exception>
-        Tailcall ParseItemsInDictionary(IPropertyModel modelProperty, Continuation onComplete = null) {
+        Tailcall ParseItemsInDictionary(INode modelProperty, Continuation onComplete = null) {
             switch (NextAfter(WhiteSpaceCommentsOrSemicolons, onComplete != null )) {
                 case TokenType.Identifier:
                     if (Data == "@alias") {
@@ -419,26 +379,25 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
             switch (Type) {
                 case TokenType.OpenBrace:
-                    return ParseItemsInDictionary(modelProperty[selector] ,  () => ParseItemsInDictionary(modelProperty, onComplete) );
+                    return ParseItemsInDictionary(modelProperty[selector],  () => ParseItemsInDictionary(modelProperty, onComplete) );
                     
                 case TokenType.Colon :
-                    modelProperty.SetCollection(selector,ParseRValue(modelProperty, SemicolonCommaOrCloseBrace));
+                    modelProperty.Properties[selector].SetCollection(ParseRValue(modelProperty, SemicolonCommaOrCloseBrace, modelProperty.Properties[selector] as IHasMetadata));
                     return ParseItemsInDictionary(modelProperty, onComplete);
 
                 case TokenType.PlusEquals:
-                    modelProperty.AddToCollection(selector, ParseRValue(modelProperty, Semicolon));
+                    modelProperty.Properties[selector].AddToCollection(ParseRValue(modelProperty, Semicolon, modelProperty.Properties[selector] as IHasMetadata));
                     return ParseItemsInDictionary(modelProperty, onComplete);
 
                 case TokenType.Equal:
-                    modelProperty.SetValue(selector, ParseRValue(modelProperty, SemicolonCommaOrCloseBrace));
+                    modelProperty.Properties[selector].SetValue(ParseRValue(modelProperty, SemicolonCommaOrCloseBrace, modelProperty.Properties[selector] as IHasMetadata));
                     return ParseItemsInDictionary(modelProperty, onComplete);
-
             }
             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected in object declaration");
         }
 
         /// <exception cref="ParseException">Reached end-of-file inside a collection assignment declaration</exception>
-        RValue ParseRValue(IPropertyModel modelProperty, TokenTypes terminators) {
+        RValue ParseRValue(INode modelProperty, TokenTypes terminators, IHasMetadata metadataContainer) {
             switch (NextAfter(WhiteSpaceOrComments)) {
                 case TokenType.Colon:
                     // this had better be a global scope operator ::
@@ -456,9 +415,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     return ParseMatrixForEach(modelProperty, terminators);
 
                 case TokenType.OpenBrace:
-                    return ParseCollection(modelProperty, terminators);
+                    return ParseCollection(modelProperty, terminators, metadataContainer);
 
-                case TokenType.SelectorInstruction:
+                case TokenType.EmbeddedInstruction:
                     var result = new RVInstruction(Data);
 
                     if (NextAfter(WhiteSpaceOrComments) == TokenType.Lambda) {
@@ -492,7 +451,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
         
         /// <exception cref="ParseException"></exception>
-        RValue ParseCollection(IPropertyModel modelProperty, TokenTypes outerTerminators, RVCollection collection = null) {
+        RValue ParseCollection(INode modelProperty, TokenTypes outerTerminators, IHasMetadata metadataContainer, RVCollection collection = null) {
             if (Type == TokenType.CloseBrace) {
                 // the close brace indicates we're close to the end, but this could turn out to be an inline foreach 
                 if (NextAfter(WhiteSpaceOrComments) == TokenType.Lambda) {
@@ -509,23 +468,25 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
             // check for empty collection first.
             if (NextAfter(WhiteSpaceOrComments) == TokenType.CloseBrace) {
-                return new RVCollection();
+                return collection ?? new RVCollection();
             }
 
-            if (Type == TokenType.Pound) {
-                // metadata entry
-                ParseMetadataItem(modelProperty);
-                return ParseCollection(modelProperty, outerTerminators, collection );
+            if(metadataContainer != null) {
+                if (Type == TokenType.Pound) {
+                    // metadata entry
+                    ParseMetadataItem(modelProperty, metadataContainer);
+                    return ParseCollection(modelProperty, outerTerminators, metadataContainer, collection);
+                }
             }
 
             Rewind();
-            return ParseCollection(modelProperty, outerTerminators, (collection ?? new RVCollection()).Add(ParseRValue(modelProperty, CommaOrCloseBrace)));
+            return ParseCollection(modelProperty, outerTerminators,metadataContainer, (collection ?? new RVCollection()).Add(ParseRValue(modelProperty, CommaOrCloseBrace,metadataContainer)));
         }
 
         /// <exception cref="ParseException">Unrecognized token '{0}' in matrix foreach</exception>
-        RValue ParseMatrixForEach(IPropertyModel modelProperty, TokenTypes terminators, RVIterator rvalue = null) {
+        RValue ParseMatrixForEach(INode modelProperty, TokenTypes terminators, RVIterator rvalue = null) {
             rvalue = rvalue ?? new RVIterator();
-            rvalue.Sources.Add(new RVIterator.RVIteratorValueParameter(ParseRValue(modelProperty, CommaOrCloseParenthesis)));
+            rvalue.Sources.Add(new RVIterator.RVIteratorValueParameter(ParseRValue(modelProperty, CommaOrCloseParenthesis,null)));
             
             switch (Type) {
                 case TokenType.CloseParenthesis:

@@ -43,9 +43,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="Collections\AbstractDictionary.cs" />
+    <Compile Include="Collections\DelegateDictionary.cs" />
     <Compile Include="Collections\EnumerableForMutatingCollection.cs" />
     <Compile Include="Collections\InternalDictionary.cs" />
     <Compile Include="Collections\CacheEnumerable.cs" />
+    <Compile Include="Collections\IOrderedDictionary.cs" />
+    <Compile Include="Collections\OrderedDictionary.cs" />
     <Compile Include="Collections\VirtualEnumerator.cs" />
     <Compile Include="Collections\XDictionary.cs" />
     <Compile Include="Collections\XList.cs" />

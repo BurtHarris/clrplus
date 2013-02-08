@@ -54,6 +54,8 @@ namespace ClrPlus.Powershell.Azure.Provider {
         internal CloudBlobClient CloudFileSystem {
             get {
                 if (_blobStore == null) {
+                    // is the secret really a SAS token?
+                    // Eric : this is the spot to use the token!
                     _account = new CloudStorageAccount(new StorageCredentials(Account, Secret), true);
                     _blobStore = _account.CreateCloudBlobClient();
                 }
@@ -143,12 +145,11 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     }
                     throw new ClrPlusException("Missing credential information for {0} mount '{1}'".format(ProviderScheme, root));
                 }
-                Secret = credential.Password.ToString();
+                Secret = credential.Password.ToUnsecureString();
                 return;
             }
 
             // otherwise, it's an sub-folder off of another mount.
-
             foreach (var d in pi.Drives.Select(each => each as AzureDriveInfo).Where(d => d.Name == parsedPath.Scheme)) {
                 Path = new Path {
                     Account = d.Account,
