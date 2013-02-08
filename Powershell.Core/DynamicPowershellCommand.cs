@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -101,27 +101,28 @@ namespace ClrPlus.Powershell.Core {
         internal void SetParameters(IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string, object> defaults, IDictionary<string, object> forced) {
             forced = forced ?? new Dictionary<string, object>();
             defaults = defaults ?? new Dictionary<string, object>();
+            string key = null;
 
             foreach(var arg in elements) {
-                if (forced.ContainsKey(arg.Name)) {
-                    Command.Parameters.Add(arg.Name, forced[arg.Name]);
+                if( (key = (from each in forced.Keys where each.Equals(arg.Name, StringComparison.CurrentCultureIgnoreCase) select each).FirstOrDefault()) != null ) {
+                    Command.Parameters.Add(arg.Name, forced[key]);
                 } else {
                     var val = arg.GetValue(objectContainingParameters, null);
 
-                    if ( !defaults.ContainsKey(arg.Name) ) {
+                    if((key = (from each in defaults.Keys where each.Equals(arg.Name, StringComparison.CurrentCultureIgnoreCase) select each).FirstOrDefault()) == null) {
                         if (val != null) {
                             Command.Parameters.Add(arg.Name, val);
                         }
                     } else {
                         if (val == null) {
-                            Command.Parameters.Add(arg.Name, defaults[arg.Name]);
+                            Command.Parameters.Add(arg.Name, defaults[key]);
                         } else {
                             if (arg.ActualType.IsIEnumerable() && !(arg.ActualType.IsPrimitive || arg.ActualType == typeof (string))) {
                                 var col = ((IEnumerable<object>)(val));
                                 var sz = col.Count();
 
 
-                                var def = defaults[arg.Name];
+                                var def = defaults[key];
                                 if (def.GetType().IsIEnumerable()) {
                                     // both halves are collections.
                                     Command.Parameters.Add(arg.Name, col.Concat((IEnumerable<object>)def).ToArray());

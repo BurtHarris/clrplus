@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -12,7 +12,13 @@
 
 namespace ClrPlus.Scripting.Languages.PropertySheet {
     using System.Collections.Generic;
+    using System.Globalization;
     using Utility;
+
+    public enum TokenizerVersion {
+        V2, 
+        V3,
+    }
 
     public class PropertySheetTokenizer : Tokenizer {
         /// <summary>
@@ -20,12 +26,16 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         /// </summary>
         private static readonly HashSet<string> CpsKeywords = new HashSet<string>();
 
+        private TokenizerVersion _version = TokenizerVersion.V2;
+
         /// <summary>
         ///     Protected Constructor for tokenizing CPS code. Public access via the static Tokenize methods.
         /// </summary>
         /// <param name="text">the array of characters to tokenize.</param>
-        protected PropertySheetTokenizer(char[] text)
+        /// <param name="version">Which version of the parser to conform to.</param>
+        protected PropertySheetTokenizer(char[] text, TokenizerVersion version)
             : base(text) {
+            _version = version;
             Keywords = CpsKeywords;
         }
 
@@ -45,16 +55,26 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         /// <param name="text">The CPS source code to tokenize (as a string)</param>
         /// <returns>A List of tokens</returns>
         public new static List<Token> Tokenize(string text) {
-            return Tokenize(string.IsNullOrEmpty(text) ? new char[0] : text.ToCharArray());
+            return Tokenize(string.IsNullOrEmpty(text) ? new char[0] : text.ToCharArray(), TokenizerVersion.V2);
+        }
+
+        public new static List<Token> Tokenize(string text, TokenizerVersion version) {
+            return Tokenize(string.IsNullOrEmpty(text) ? new char[0] : text.ToCharArray(), version);
+        }
+
+        public new static List<Token> Tokenize(char[] text) {
+            return Tokenize(text, TokenizerVersion.V2);
         }
 
         /// <summary>
         ///     Tokenizes the source code and returns a list of tokens
         /// </summary>
         /// <param name="text">The CPS source code to tokenize (as an array of characters)</param>
+        /// <param name="version">Version of the tokenizer to use.</param>
         /// <returns>A List of tokens</returns>
-        public new static List<Token> Tokenize(char[] text) {
-            var tokenizer = new PropertySheetTokenizer(text);
+        public new static List<Token> Tokenize(char[] text, TokenizerVersion version) {
+
+            var tokenizer = new PropertySheetTokenizer(text, version);
             tokenizer.Tokenize();
             return tokenizer.Tokens;
         }
@@ -63,9 +83,75 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
             AddToken(Pound);
         }
 
-        protected override bool PoachParse() {
-            if (CurrentCharacter == '-') {
+        protected override void ParseDollar() {
+            if (_version < TokenizerVersion.V3) {
+                base.ParseDollar();
+                return;
             }
+
+
+            switch (NextCharacter) {
+                case '{' :
+                    // looks like the start of a new macro expression
+                    // we're going to consume the whole macro 
+                    var matchStack = 0;
+                    var start = Index;
+                    
+
+                    while (CharsLeft > 0) {
+                        AdvanceAndRecognize();
+
+                        if(CurrentCharacter == '$' && NextCharacter == '{' ) {
+                            matchStack++;
+                        }
+
+                        if(CurrentCharacter == '}' && matchStack == 0) {
+                            break;
+                        }
+
+                        if(CurrentCharacter == '}' ) {
+                            matchStack--;
+                        }
+                    }
+
+                    // we've got a macro/expression token
+                    AddToken(new Token{
+                        Type = TokenType.MacroExpression,
+                        Data = new string(Text, start, (Index - start)+1)
+                    });
+                    
+                    return;
+            }
+
+            base.ParseDollar();
+        }
+
+       
+        protected override bool PoachParse() {
+            if (CurrentCharacter == '-') { // wtf?
+            }
+
+            var selectorParameter = PoachParseMatch('[', ']');
+            if (selectorParameter != null) {
+                AddToken( new Token {
+                    Type = TokenType.SelectorParameter,
+                    Data = selectorParameter
+                });
+                return true;
+            }
+
+        
+            if (_version >= TokenizerVersion.V3) {
+                var instruction = PoachParseMatchWithAnchor('<', '>');
+                if (instruction != null) {
+                    AddToken(new Token {
+                        Type = TokenType.EmbeddedInstruction,
+                        Data = instruction
+                    });
+                    return true;
+                }
+            }
+#if FALSE
             var squareStack = 0;
 
             if (CurrentCharacter == '[') {
@@ -94,7 +180,136 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
 
                 return true;
             }
+#endif
             return false;
+        }
+
+        private static bool IsCharacterOkForAnchor(char ch) {
+            switch (CharUnicodeInfo.GetUnicodeCategory(ch)) {
+                case UnicodeCategory.UppercaseLetter:
+                case UnicodeCategory.LowercaseLetter:
+                case UnicodeCategory.TitlecaseLetter:
+                case UnicodeCategory.ModifierLetter:
+                case UnicodeCategory.OtherLetter:
+                case UnicodeCategory.LetterNumber:
+                case UnicodeCategory.DecimalDigitNumber:
+                case UnicodeCategory.ConnectorPunctuation:
+                case UnicodeCategory.Format:
+                case UnicodeCategory.NonSpacingMark:
+                case UnicodeCategory.SpacingCombiningMark:
+                case UnicodeCategory.SpaceSeparator:
+                case UnicodeCategory.LineSeparator:
+                case UnicodeCategory.ParagraphSeparator:
+                case UnicodeCategory.Control:
+                case UnicodeCategory.PrivateUse:
+                case UnicodeCategory.OpenPunctuation:
+                case UnicodeCategory.ClosePunctuation:
+                case UnicodeCategory.InitialQuotePunctuation:
+                case UnicodeCategory.FinalQuotePunctuation:
+                case UnicodeCategory.OtherNotAssigned:
+                    return false;
+
+                case UnicodeCategory.OtherSymbol:
+                case UnicodeCategory.ModifierSymbol:
+                case UnicodeCategory.MathSymbol:
+                case UnicodeCategory.CurrencySymbol:
+                case UnicodeCategory.EnclosingMark:
+                case UnicodeCategory.OtherNumber:
+                case UnicodeCategory.Surrogate:
+                case UnicodeCategory.DashPunctuation:
+                    return true;
+
+                case UnicodeCategory.OtherPunctuation:
+                    // manually blacklist some
+                    switch (ch) {
+                        case '!':
+                        case '"':
+                        case '\'':
+                            return false;
+
+                        default:
+                            return true;
+                    }
+            }
+            return false;
+        }
+
+        protected virtual string PoachParseMatch(char open, char close) {
+            var matchStack = 0;
+
+            if(CurrentCharacter == open) {
+                int start = Index + 1;
+                while(CharsLeft > 0) {
+                    AdvanceAndRecognize();
+
+
+
+                    if(CurrentCharacter == open) {
+                        matchStack++;
+                    }
+
+                    if(CurrentCharacter == close && matchStack == 0) {
+                        break;
+                    }
+
+                    if(CurrentCharacter == close) {
+                        matchStack--;
+                    }
+                }
+                return new string(Text, start, (Index - start)).Trim();
+            }
+            return null;
+        }
+
+        protected virtual string PoachParseMatchWithAnchor(char open, char close) {
+            var matchStack = 0;
+            List<char> anchor = null;
+            if(CurrentCharacter == open) {
+                int start = Index;
+
+                // first, grab all the potential anchor characters
+                while (CharsLeft > 0 & IsCharacterOkForAnchor(NextCharacter)) {
+                    AdvanceAndRecognize();
+                    anchor = anchor ?? new List<char>();
+                    anchor.Add(CurrentCharacter);
+                }
+
+                if (null != anchor) {
+                    // in anchor mode, we don't bother counting open and close characters
+                    // we just look for the anchor sequence followed by the close character
+                    anchor.Add(close);
+
+                    var index = 0;
+
+                    while(CharsLeft > 0 && index < anchor.Count) {
+                        AdvanceAndRecognize();
+                        index = CurrentCharacter == anchor[index] ? index + 1 : 0;
+                    }
+                    return new string(Text, (start + anchor.Count), ((Index - start) - (2*anchor.Count))).Trim();
+                }
+
+                start++;
+                // no anchor, just stack match
+                while(CharsLeft > 0) {
+                    AdvanceAndRecognize();
+
+                    if(CurrentCharacter == open) {
+                        matchStack++;
+                    }
+
+                    if(CurrentCharacter == close && matchStack == 0) {
+                        break;
+                    }
+
+                    if(CurrentCharacter == close) {
+                        matchStack--;
+                    }
+                } 
+                
+                return new string(Text, start, (Index - start)).Trim();
+               
+            }
+            return null;
         }
 
         /// <summary>

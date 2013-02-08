@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Powershell.Azure</id>
-    <version>1.8.0.50</version>
+    <version>1.8.0.57</version>
     <title>CLRPlus Powershell Azure Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -20,10 +20,10 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Powershell Azure Storage</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.50" />
-        <dependency  id="ClrPlus.Scripting" version="1.8.0.50" />
-        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.50" />
-        <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.50" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.57" />
+        <dependency  id="ClrPlus.Scripting" version="1.8.0.57" />
+        <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.57" />
+        <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.57" />
         <dependency  id="ServiceStack" version="3.9.32" />
         <dependency  id="WindowsAzure.Storage" version="2.0.1.0" />
     </dependencies>

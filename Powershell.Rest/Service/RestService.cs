@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -58,6 +58,7 @@ namespace ClrPlus.Powershell.Core.Service {
         private readonly List<RestCommand> _activeCommands;
         private readonly List<string> _listenOnUrls = new List<string>();
         private readonly XDictionary<Type, ITypeFactory> _typeFactoryCache = new XDictionary<Type, ITypeFactory>();
+        private static PropertySheet _propertySheet;
 
         private ITypeFactory GetTypeFactory(Type type) {
             return _typeFactoryCache.GetOrAdd(type, () => new TypeFactoryWrapper(type));
@@ -107,7 +108,6 @@ namespace ClrPlus.Powershell.Core.Service {
                     _commands.RemoveAt(i);
                 }
             }
-
             _commands.Add(restCommand);
         }
 
@@ -169,8 +169,6 @@ namespace ClrPlus.Powershell.Core.Service {
                 });
             }
         }
-
-        private static PropertySheet _propertySheet;
 
         internal static PropertySheet PropertySheet {
             get {

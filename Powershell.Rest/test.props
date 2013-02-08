@@ -8,17 +8,17 @@
 
 
 rest-command {
-	roles : users;
+	// roles : users;
 
     cmdlet : "show-test" ;
     
-    default-parameters : {
+    default-parameters {
         p2 = gws,
         p3 = { "one", "two" }
     };
     
     forced-parameters : {
-        p1 = "mr."
+        P1 = "mr."
     };
     
 }
@@ -27,4 +27,4 @@ rest-command {
 rest-command[SetServicePassword] {
 	roles : users;
 	cmdlet : "Set-ServicePassword";
-}
+} ;

@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -8,7 +8,9 @@
 //     The software is licensed under the Apache 2.0 License (the "License")
 //     You may not use the software except in compliance with the License. 
 // </license>
-//------------------------------------------------------------  -----------
+//-----------------------------------------------------------------------
+
+#if DEBUG
 
 namespace ClrPlus.Powershell.Rest.Commands {
     using System;
@@ -28,7 +30,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
         [Parameter(HelpMessage = "p1")]
         public string P1 { get; set; }
 
-        [Parameter(HelpMessage = "p2")]
+        [Parameter(HelpMessage = "p2"), NotPersistable]
         public string P2 { get; set; }
 
         [Parameter(HelpMessage = "p3")]
@@ -61,3 +63,4 @@ namespace ClrPlus.Powershell.Rest.Commands {
         }
     }
 }
+#endif 

@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project" >
 //     Original Copyright (c) 2009 Microsoft Corporation. All rights reserved.
-//     Changes Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Changes Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -178,6 +178,10 @@ namespace ClrPlus.Core.Extensions {
 
         public static bool IsNullOrEmpty<T, TValue>(this IDictionary<T, TValue> dictionary) {
             return dictionary == null || !dictionary.Keys.Any();
+        }
+
+        public static IEnumerable<T> OrEmpty<T>(this IEnumerable<T> collection) {
+            return collection.IsNullOrEmpty() ? Enumerable.Empty<T>() : collection;
         }
 
         public static TValue AddOrSet<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value) where TValue : class {

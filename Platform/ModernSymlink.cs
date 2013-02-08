@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -22,9 +22,11 @@ namespace ClrPlus.Platform {
             linkPath = linkPath.GetFullPath();
             actualFilePath = GetActualPath(actualFilePath.GetFullPath());
 
+#if FALSE
             if (!File.Exists(actualFilePath)) {
                 throw new FileNotFoundException("Cannot link to non-existent file", actualFilePath);
             }
+#endif 
 
             if (File.Exists(linkPath) && IsSymlink(linkPath)) {
                 ReparsePoint.ChangeReparsePointTarget(linkPath, actualFilePath);
@@ -42,10 +44,11 @@ namespace ClrPlus.Platform {
             linkPath = linkPath.GetFullPath();
             actualFolderPath = GetActualPath(actualFolderPath.GetFullPath());
 
+#if FALSE
             if (!Directory.Exists(actualFolderPath)) {
                 throw new FileNotFoundException("Cannot link to non-existent directory", actualFolderPath);
             }
-
+#endif 
             if (Directory.Exists(linkPath) && IsSymlink(linkPath)) {
                 ReparsePoint.ChangeReparsePointTarget(linkPath, actualFolderPath);
                 return;

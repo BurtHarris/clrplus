@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -20,8 +20,16 @@ namespace ClrPlus.Windows.Api {
     using Microsoft.Win32.SafeHandles;
     using Structures;
 
+
+
+   
+
+
     public static class Kernel32 {
         public delegate bool ConsoleHandlerRoutine(ConsoleEvents eventId);
+
+        public delegate CopyProgressResult CopyProgressRoutine(long TotalFileSize,long TotalBytesTransferred,long StreamSize,long StreamBytesTransferred,uint dwStreamNumber,CopyProgressCallbackReason dwCallbackReason,IntPtr hSourceFile,IntPtr hDestinationFile,IntPtr lpData);
+
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern uint SearchPath(
@@ -100,6 +108,16 @@ namespace ClrPlus.Windows.Api {
 
         [DllImport("kernel32.dll", EntryPoint = "MoveFileEx")]
         public static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, MoveFileFlags dwFlags);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern bool CopyFile(string src, string dst, bool failIfExists);
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool CopyFileEx(string lpExistingFileName, string lpNewFileName,CopyProgressRoutine lpProgressRoutine, IntPtr lpData, ref Int32 pbCancel, CopyFileFlags dwCopyFlags);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern bool ReplaceFile(string replacedFileName, string replacementFileName, string backupFileName, int dwReplaceFlags, IntPtr lpExclude, IntPtr lpReserved);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool GetFileInformationByHandle(IntPtr hFile, out ByHandleFileInformation lpFileInformation);

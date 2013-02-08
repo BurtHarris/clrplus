@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -10,7 +9,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ClrPlus.Windows.Api</RootNamespace>
     <AssemblyName>ClrPlus.Windows.Api</AssemblyName>
-     
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <Import Project="$(SolutionDir)\ClrPlus.sln.props" Condition="Exists('$(SolutionDir)\ClrPlus.sln.props')" />
@@ -18,21 +16,17 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-     
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    
     <NoWarn>1591</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-     
     <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -51,6 +45,8 @@
     <Compile Include="Enumerations\BitmapCompression.cs" />
     <Compile Include="Enumerations\ButtonControlStyles.cs" />
     <Compile Include="Enumerations\ConsoleEventTypes.cs" />
+    <Compile Include="Enumerations\CopyProgressCallbackReason.cs" />
+    <Compile Include="Enumerations\CopyProgressResult.cs" />
     <Compile Include="Enumerations\DialogStyles.cs" />
     <Compile Include="Enumerations\DIBColors.cs" />
     <Compile Include="Enumerations\EditControlStyles.cs" />
@@ -80,6 +76,7 @@
     <Compile Include="Enumerations\Winver.cs" />
     <Compile Include="Flags\AcceleratorVirtualKey.cs" />
     <Compile Include="Flags\AllocationType.cs" />
+    <Compile Include="Flags\CopyFileFlags.cs" />
     <Compile Include="Flags\CreateRemoteThreadFlags.cs" />
     <Compile Include="Flags\FileStreamAttributes.cs" />
     <Compile Include="Flags\KeyModifiers.cs" />

@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="CoApp Project">
-//     Copyright (c) 2010-2012 Garrett Serack and CoApp Contributors. 
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
 //     Contributors can be discovered using the 'git log' command.
 //     All rights reserved.
 // </copyright>
@@ -133,6 +133,34 @@ namespace ClrPlus.Core.Extensions {
                 newItem
             });
         }
+
+        public static IEnumerable<T> ConcatSingleItem<T>(this IEnumerable<T> collection, T newItem) {
+            return collection.Concat(new[] {
+                newItem
+            });
+        }
+
+        public static IEnumerable<T> ConcatHappily<T>(this IEnumerable<T> collection, T newItem) {
+            return collection == null ? new[] {
+                newItem
+            } : collection.Concat(new [] {
+                newItem
+            });
+        }
+
+        public static IEnumerable<T> ConcatHappily<T>(this IEnumerable<T> collection, IEnumerable<T> newItems) {
+            return collection == null ? newItems: collection.Concat(newItems);
+        }
+
+        public static T[] UnionA<T>(this IEnumerable<T> collection, T newItem) {
+            return collection.UnionSingleItem(newItem).ToArray();
+        }
+
+        public static T[] UnionA<T>(this IEnumerable<T> collection, IEnumerable<T> newItems) {
+            return collection.Union(newItems).ToArray();
+        }
+
+
 
         public static IEnumerable<TSource> SortBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector) {
             return source.OrderBy(keySelector);

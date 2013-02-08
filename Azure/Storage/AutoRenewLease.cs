@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright company="steve marx">
-//     Copyright (c) 2010-2012 steve marx
+//     Copyright (c) 2010-2013 steve marx
 //     Additional Contributors can be discovered using the 'git log' command.
 // </copyright>
 // <license>
