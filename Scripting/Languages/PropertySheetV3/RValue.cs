@@ -16,8 +16,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         public abstract RVSingle Single();
-
         public abstract RVCollection Collection();
-
     }
 }

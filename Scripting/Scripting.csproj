@@ -75,6 +75,7 @@
     <Compile Include="Languages\PropertySheetV3\RVSingle.cs" />
     <Compile Include="Languages\PropertySheetV3\Selector.cs" />
     <Compile Include="Languages\PropertySheetV3\RValueOperation.cs" />
+    <Compile Include="Languages\PropertySheetV3\View.cs" />
     <Compile Include="Languages\PropertySheet\ActualPropertyValue.cs" />
     <Compile Include="Languages\PropertySheet\Indexer.cs" />
     <Compile Include="Languages\PropertySheet\IPropertyValue.cs" />

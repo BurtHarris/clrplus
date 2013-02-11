@@ -171,7 +171,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     }
 
                     Rewind();
-                    return Global(ParseItemsInDictionary(_rootModel[ParseSelector(OpenBrace)]));
+                    return Global(ParseItemsInDictionary(_rootModel[ParseSelector(OpenBrace)] as INode));
 
                 case TokenType.Colon:
                     // not permitted at global level
@@ -204,13 +204,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                         throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration after < >  or [ ] --found '{0}'");
                     }
                     return ParseSelector(terminators, (selectorName ?? "") + Token.Data);
-#if false
-                case TokenType.EmbeddedInstruction:
-                    if (instruction != null) {
-                        throw Fail(ErrorCode.TokenNotExpected, "Duplicate < > instruction not permitted.");
-                    }
-                    return ParseSelector(terminators, selectorName, Token.Data, parameter);
-#endif 
+
                 case TokenType.SelectorParameter:
                     if(parameter!= null) {
                         throw Fail(ErrorCode.TokenNotExpected, "Duplicate [ ] parameter not permitted.");
@@ -263,8 +257,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return ParseImport(path.ConcatHappily(Token));
         }
 
-        Tailcall ParseMetadataItem(INode modelProperty, IHasMetadata metadataContainer = null) {
-            metadataContainer = metadataContainer ?? modelProperty as IHasMetadata;
+        Tailcall ParseMetadataItem(INode modelProperty, IItem metadataContainer = null) {
+            metadataContainer = metadataContainer ?? modelProperty;
 
             switch(NextAfter(WhiteSpaceOrComments)) {
                 case TokenType.Identifier:
@@ -378,26 +372,52 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             // should be at the terminator still!
 
             switch (Type) {
-                case TokenType.OpenBrace:
-                    return ParseItemsInDictionary(modelProperty[selector],  () => ParseItemsInDictionary(modelProperty, onComplete) );
-                    
-                case TokenType.Colon :
-                    modelProperty.Properties[selector].SetCollection(ParseRValue(modelProperty, SemicolonCommaOrCloseBrace, modelProperty.Properties[selector] as IHasMetadata));
-                    return ParseItemsInDictionary(modelProperty, onComplete);
+                case TokenType.OpenBrace: {
+                    var node = modelProperty[selector] as INode;
+                    if (node == null) {
+                        throw Fail(ErrorCode.ChildExists, "Can't create object, child {0} is already declared as a property".format(selector));
+                    }
+                    return ParseItemsInDictionary(node, () => ParseItemsInDictionary(modelProperty, onComplete));
+                }
 
-                case TokenType.PlusEquals:
-                    modelProperty.Properties[selector].AddToCollection(ParseRValue(modelProperty, Semicolon, modelProperty.Properties[selector] as IHasMetadata));
+                case TokenType.Colon: {
+                    var p = GetProperty(modelProperty, selector);
+                    p.SetCollection(ParseRValue(modelProperty, SemicolonCommaOrCloseBrace, p));
                     return ParseItemsInDictionary(modelProperty, onComplete);
+                }
 
-                case TokenType.Equal:
-                    modelProperty.Properties[selector].SetValue(ParseRValue(modelProperty, SemicolonCommaOrCloseBrace, modelProperty.Properties[selector] as IHasMetadata));
+                case TokenType.PlusEquals: {
+                    var p = GetProperty(modelProperty, selector);
+                    p.AddToCollection(ParseRValue(modelProperty, Semicolon, p));
                     return ParseItemsInDictionary(modelProperty, onComplete);
+                }
+
+                case TokenType.Equal: {
+                    var p = GetProperty(modelProperty, selector);
+                    p.SetValue(ParseRValue(modelProperty, SemicolonCommaOrCloseBrace, p));
+                    return ParseItemsInDictionary(modelProperty, onComplete);
+                }
             }
             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected in object declaration");
         }
 
+        private IProperty GetProperty(INode modelProperty, Selector selector) {
+            IProperty item;
+
+            if(modelProperty.ContainsKey(selector)) {
+                item = modelProperty[selector] as IProperty;
+                if(item == null) {
+                    throw Fail(ErrorCode.ChildExists, "Can't create collection, child {0} is already declared as an object".format(selector));
+                }
+            }
+            else {
+                modelProperty[selector] = (item = modelProperty.NewProperty());
+            }
+            return item;
+        }
+
         /// <exception cref="ParseException">Reached end-of-file inside a collection assignment declaration</exception>
-        RValue ParseRValue(INode modelProperty, TokenTypes terminators, IHasMetadata metadataContainer) {
+        RValue ParseRValue(INode modelProperty, TokenTypes terminators, IItem metadataContainer) {
             switch (NextAfter(WhiteSpaceOrComments)) {
                 case TokenType.Colon:
                     // this had better be a global scope operator ::
@@ -451,7 +471,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
         
         /// <exception cref="ParseException"></exception>
-        RValue ParseCollection(INode modelProperty, TokenTypes outerTerminators, IHasMetadata metadataContainer, RVCollection collection = null) {
+        RValue ParseCollection(INode modelProperty, TokenTypes outerTerminators, IItem metadataContainer, RVCollection collection = null) {
             if (Type == TokenType.CloseBrace) {
                 // the close brace indicates we're close to the end, but this could turn out to be an inline foreach 
                 if (NextAfter(WhiteSpaceOrComments) == TokenType.Lambda) {

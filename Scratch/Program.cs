@@ -150,10 +150,15 @@ namespace Scratch {
                                 return resultObject;
                             }, new {
                               // routes for the children of this object. 
-                                @defines = (Route)((caseObj,propSelector) => new ViewProperty<object>(() => {
+                                @defines = (Route)((caseObj,propSelector) =>{ 
+                                    // see if there is a node already for this.
+                                    // var childView = caseObj.GetChildView(propSelector);
+
+                                    return new ViewProperty<object>(() => {
                                     // getter
                                     var define = propSelector.Parameter;
                                     var ctx = caseObj;
+
                                     dynamic resultObject = SomeLookup("a function that returns the the thing that is a ");
                                     return resultObject.GetDefine();
                                 }, (value) => {
@@ -162,7 +167,7 @@ namespace Scratch {
                                     var ctx = caseObj;
                                     dynamic resultObject = SomeLookup("a function that returns the the thing that is a ");
                                     resultObject.SetDefine(value);
-                                }))
+                                })})
                             }))
                         })),
 
