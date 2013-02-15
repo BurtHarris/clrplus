@@ -16,7 +16,10 @@ namespace ClrPlus.Powershell.Azure.Commands
     [Cmdlet(VerbsCommon.Get, "AzureCredentials")]
     public class GetAzureCredentials: RestableCmdlet<GetAzureCredentials>
     {
-        
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public string ContainerName { get; set;}
+
         protected override void ProcessRecord() {
             if (Remote)
             {
@@ -37,7 +40,9 @@ namespace ClrPlus.Powershell.Azure.Commands
             //we need to return
             //"username: account rootUri password:sas"
 
-            var root = account.CreateCloudBlobClient().GetContainerReference("container");
+            var root = account.CreateCloudBlobClient().GetContainerReference(ContainerName);
+
+
             
             BlobContainerPermissions blobPermissions = new BlobContainerPermissions();
             blobPermissions.SharedAccessPolicies.Add("mypolicy", blobPolicy);
