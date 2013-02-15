@@ -25,7 +25,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
         static AzureProvider() {
             var file = Assembly.GetExecutingAssembly().ExtractFileResourceToPath("Azure.format.ps1xml", Path.Combine(FilesystemExtensions.TempPath, "Azure.format.ps1xml"));
             // var file = Assembly.GetExecutingAssembly().ExtractFileResourceToTemp("Azure.format.ps1xml");
-            new SessionState().InvokeCommand.InvokeScript("Update-FormatData -PrependPath {0}".format(file));
+            new SessionState().InvokeCommand.InvokeScript("Update-FormatData -PrependPath '{0}'".format(file));
         }
 
         /// <summary>

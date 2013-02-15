@@ -33,7 +33,19 @@ namespace ClrPlus.Powershell.Provider.Utility {
             '\\', '/'
         };
 
-        public string Account;
+        private string _hostName;
+
+        public string HostAndPort
+        {
+            get
+            {
+                return string.IsNullOrEmpty(_hostName) ? string.Empty : (Port == null ? _hostName : _hostName + ":" + Port);
+            }
+            set
+            {
+                HostName = value;
+            }
+        }
         public string Container;
         public string[] Parts;
         public string SubPath;
@@ -41,7 +53,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
         public string Name;
         public bool StartsWithSlash;
         public bool EndsWithSlash;
-        public uint Port;
+        public uint? Port;
         public string Scheme;
         public string OriginalPath;
 
@@ -51,21 +63,26 @@ namespace ClrPlus.Powershell.Provider.Utility {
                     return "";
                 }
                 if (IsUnc) {
-                    return @"\\{0}\{1}\{2}".format(Host, Share, SubPath);
+                    return @"\\{0}\{1}\{2}".format(HostName, Share, SubPath);
                 }
                 return @"{0}\{1}".format(Drive, SubPath);
             }
         }
 
-        public string Host {
+        public string HostName {
             get {
-                return Account;
+                return _hostName;
             }
             set {
                 var parts = value.Split(Colon, StringSplitOptions.RemoveEmptyEntries);
-                Account = parts.Length > 0 ? parts[0] : string.Empty;
+                _hostName = parts.Length > 0 ? parts[0] : string.Empty;
+
                 if (parts.Length > 1) {
-                    uint.TryParse(parts[1], out Port);
+                    uint p;
+                    uint.TryParse(parts[1], out p);
+                    if (p > 0) {
+                        Port = p;
+                    }
                 }
             }
         }
@@ -81,20 +98,13 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
         public bool HasDrive {
             get {
-                return Account.Length == 2 && Account[1] == ':';
+                return HostAndPort.Length == 2 && HostAndPort[1] == ':';
             }
         }
 
         public bool IsUnc {get; set;}
 
-        public string Drive {
-            get {
-                return Account;
-            }
-            set {
-                Account = value;
-            }
-        }
+        public string Drive {get; set;}
 
         private static XDictionary<string, Path> _parsedLocationCache = new XDictionary<string, Path>();
 
@@ -116,7 +126,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
             var segments = pathToParse.Split(Slashes, StringSplitOptions.RemoveEmptyEntries);
             return _parsedLocationCache.AddOrSet(path, new Path {
-                Account = segments.Length > 0 ? segments[0] : string.Empty,
+                HostAndPort = segments.Length > 0 ? segments[0] : string.Empty,
                 Container = segments.Length > 1 ? segments[1] : string.Empty,
                 Parts = segments.Length > 2 ? segments.Skip(2).ToArray() : new string[0],
                 SubPath = segments.Length > 2 ? segments.Skip(2).Aggregate((current, each) => current + Slash + each) : string.Empty,
@@ -147,7 +157,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
             var segments = pathToParse.Split(Slashes, StringSplitOptions.RemoveEmptyEntries);
             return _parsedLocationCache.AddOrSet(path, new Path {
-                Host = segments.Length > 0 ? segments[0] : string.Empty,
+                HostName = segments.Length > 0 ? segments[0] : string.Empty,
                 Container = string.Empty,
                 Parts = segments.Length > 1 ? segments.Skip(1).ToArray() : new string[0],
                 SubPath = segments.Length > 1 ? segments.Skip(1).Aggregate((current, each) => current + Slash + each) : string.Empty,
@@ -177,7 +187,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
             return uri.IsUnc
                 ? _parsedLocationCache.AddOrSet(path, new Path {
-                    Host = segments.Length > 0 ? segments[0] : string.Empty,
+                    HostName = segments.Length > 0 ? segments[0] : string.Empty,
                     Share = segments.Length > 1 ? segments[1] : string.Empty,
                     Parts = segments.Length > 2 ? segments.Skip(2).ToArray() : new string[0],
                     SubPath = segments.Length > 2 ? segments.Skip(2).Aggregate((current, each) => current + Slash + each) : string.Empty,

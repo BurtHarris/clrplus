@@ -99,17 +99,18 @@ namespace ClrPlus.Powershell.Azure.Provider {
             var parsedPath = Path.ParseWithContainer(path);
 
             // strip off the azure:
+            /*
             if (parsedPath.Scheme != string.Empty && parsedPath.Scheme != "azure") {
                 return AzureLocation.InvalidLocation;
-            }
+            }*/
 
             // is this just a empty location?
-            if (string.IsNullOrEmpty(parsedPath.Account)) {
+            if (string.IsNullOrEmpty(parsedPath.HostAndPort)) {
                 NamespaceProvider = NamespaceProvider ?? this;
                 return AzureNamespace;
             }
 
-            var byAccount = Drives.Select(each => each as AzureDriveInfo).Where(each => each.Account == parsedPath.Account);
+            var byAccount = Drives.Select(each => each as AzureDriveInfo).Where(each => each.HostAndPort == parsedPath.HostAndPort);
 
             if (!byAccount.Any()) {
                 return AzureLocation.UnknownLocation;

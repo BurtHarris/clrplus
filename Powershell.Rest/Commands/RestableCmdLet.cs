@@ -78,6 +78,14 @@ namespace ClrPlus.Powershell.Rest.Commands {
             JsConfig<T>.ExcludePropertyNames = new[] {
                 "CommandRuntime", "CurrentPSTransaction", "Stopping","Remote", "ServiceUrl", "Credential", "CommandOrigin", "Events", "Host", "InvokeCommand", "InvokeProvider" , "JobManager", "MyInvocation", "PagingParameters", "ParameterSetName", "SessionState", "Session"
             }.Union(excludes).ToArray();
+
+
+            JsConfig<PSCredential>.SerializeFn = credential => string.Format("{0}&{1}", ClrPlus.Core.Extensions.StringExtensions.UrlEncode(credential.UserName), ClrPlus.Core.Extensions.StringExtensions.UrlEncode(credential.Password.ToUnsecureString()));
+
+            JsConfig<PSCredential>.DeSerializeFn = s => {
+                var items = s.Split('&');
+                return new PSCredential(items[0], items[1].ToSecureString());
+            };
         }
 
         protected virtual void ProcessRecordViaRest() {
@@ -129,6 +137,8 @@ namespace ClrPlus.Powershell.Rest.Commands {
                 return dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters);
             }
         }
+
+       
 
     }
 }
