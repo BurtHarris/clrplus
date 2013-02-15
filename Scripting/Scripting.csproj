@@ -63,19 +63,21 @@
     <Compile Include="Languages\PropertySheetV3\Alias.cs" />
     <Compile Include="Languages\PropertySheetV3\ErrorCode.cs" />
     <Compile Include="Languages\PropertySheetV3\InternalParserException.cs" />
-    <Compile Include="Languages\PropertySheetV3\IModel.cs" />
+    <Compile Include="Languages\PropertySheetV3\INode.cs" />
     <Compile Include="Languages\PropertySheetV3\ParseException.cs" />
-    <Compile Include="Languages\PropertySheetV3\PropertyModelExtensions.cs" />
+    <Compile Include="Languages\PropertySheetV3\PropertyNode.cs" />
+    <Compile Include="Languages\PropertySheetV3\PropertySheet.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertySheetParser.cs" />
-    <Compile Include="Languages\PropertySheetV3\DataModel.cs" />
-    <Compile Include="Languages\PropertySheetV3\RValue.cs" />
-    <Compile Include="Languages\PropertySheetV3\RVCollection.cs" />
-    <Compile Include="Languages\PropertySheetV3\RVInstruction.cs" />
-    <Compile Include="Languages\PropertySheetV3\RVIterator.cs" />
-    <Compile Include="Languages\PropertySheetV3\RVSingle.cs" />
+    <Compile Include="Languages\PropertySheetV3\ObjectNode.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue\IValue.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue\Collection.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue\Instruction.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue\Iterator.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue\Scalar.cs" />
     <Compile Include="Languages\PropertySheetV3\Selector.cs" />
-    <Compile Include="Languages\PropertySheetV3\RValueOperation.cs" />
     <Compile Include="Languages\PropertySheetV3\View.cs" />
+    <Compile Include="Languages\PropertySheetV3\Reference.cs" />
+    <Compile Include="Languages\PropertySheetV3\Property.cs" />
     <Compile Include="Languages\PropertySheet\ActualPropertyValue.cs" />
     <Compile Include="Languages\PropertySheet\Indexer.cs" />
     <Compile Include="Languages\PropertySheet\IPropertyValue.cs" />
@@ -113,7 +115,6 @@
       <DependentUpon>ExceptionMessage.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{C8506264-EE4F-442C-B2C3-4C0BD4975A2A}</Project>

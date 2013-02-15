@@ -10,12 +10,12 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
-    public abstract  class RValue {
-        protected RValue() {
-        }
+namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
+    using System.Collections.Generic;
 
-        public abstract RVSingle Single();
-        public abstract RVCollection Collection();
+    public interface IValue {
+        string Value {get;}
+        IEnumerable<string> Values { get; }
+        ObjectNode Context {get;}
     }
 }
