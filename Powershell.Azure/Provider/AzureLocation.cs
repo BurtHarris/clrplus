@@ -101,7 +101,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     return string.Empty;
                 }
                 var result = FileBlob.Properties.ContentMD5;
-                return string.IsNullOrEmpty(result) ? FileBlob.Metadata["MD5"] ?? string.Empty : result;
+                if (string.IsNullOrEmpty(result)) {
+                    if (FileBlob.Metadata.ContainsKey("MD5")) {
+                        return FileBlob.Metadata["MD5"];
+                    }
+                    return string.Empty;
+                }
+                return result;
             }
         }
 
@@ -117,7 +123,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
             Path.Validate();
 
             if (cloudItem != null) {
-                _cloudItem = new AsyncLazy<IListBlobItem>(() => cloudItem);
+
+                _cloudItem = new AsyncLazy<IListBlobItem>(() => {
+                    if (cloudItem is CloudBlockBlob) {
+                        (cloudItem as CloudBlockBlob).FetchAttributes();
+                    }
+                    return cloudItem;
+                });
             } else {
                 if (IsRootNamespace || IsAccount || IsContainer) {
                     // azure namespace mount.
@@ -132,11 +144,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     // not sure if it's a file or a directory.
                     if (path.EndsWithSlash) {
                         // can't be a file!
-                        return CloudContainer.GetDirectoryReference(Path.SubPath);
+                        CloudContainer.GetDirectoryReference(Path.SubPath);
                     }
                     // check to see if it's a file.
                     var blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
+                    
                     if (blobRef.BlobType == BlobType.BlockBlob) {
+                        blobRef.FetchAttributes();    
                         return blobRef;
                     }
 

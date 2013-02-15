@@ -11,6 +11,7 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Azure.Provider {
+    using System.Collections.ObjectModel;
     using System.Linq;
     using System.Management.Automation;
     using Powershell.Provider.Base;
@@ -85,9 +86,11 @@ namespace ClrPlus.Powershell.Azure.Provider {
             return this.foo();
         } */
 
+        internal Collection<PSDriveInfo> AddingDrives = new Collection<PSDriveInfo>();
+
         protected override string Prefix {
             get {
-                return "azure";
+                return AzureDriveInfo.ProviderScheme;
             }
         }
 
@@ -100,7 +103,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
             // strip off the azure:
             /*
-            if (parsedPath.Scheme != string.Empty && parsedPath.Scheme != "azure") {
+            if (parsedPath.Scheme != string.Empty && parsedPath.Scheme != AzureDriveInfo.ProviderScheme) {
                 return AzureLocation.InvalidLocation;
             }*/
 
@@ -110,7 +113,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 return AzureNamespace;
             }
 
-            var byAccount = Drives.Select(each => each as AzureDriveInfo).Where(each => each.HostAndPort == parsedPath.HostAndPort);
+            var byAccount = AddingDrives.Union(Drives).Select(each => each as AzureDriveInfo).Where(each => each.HostAndPort == parsedPath.HostAndPort);
 
             if (!byAccount.Any()) {
                 return AzureLocation.UnknownLocation;

@@ -28,16 +28,23 @@ namespace ClrPlus.Powershell.Azure.Commands
             CloudStorageAccount account = new CloudStorageAccount(new StorageCredentials(Credential.UserName, Credential.Password.ToUnsecureString()), true);
             var blobPolicy = new SharedAccessBlobPolicy {
                                                             Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List,
-                                                            SharedAccessStartTime = DateTimeOffset.Now,
+                                                           // SharedAccessStartTime = DateTimeOffset.Now,
                                                             SharedAccessExpiryTime = DateTimeOffset.Now.AddHours(1)
+                                                            
                                                         };
+            
             
             //we need to return
             //"username: account rootUri password:sas"
 
             var root = account.CreateCloudBlobClient().GetContainerReference("container");
-            var sharedAccessSignature = root
-                                            .GetSharedAccessSignature(blobPolicy);
+            
+            BlobContainerPermissions blobPermissions = new BlobContainerPermissions();
+            blobPermissions.SharedAccessPolicies.Add("mypolicy", blobPolicy);
+            blobPermissions.PublicAccess = BlobContainerPublicAccessType.Container;
+            root.SetPermissions(blobPermissions);
+
+            var sharedAccessSignature = root.GetSharedAccessSignature(new SharedAccessBlobPolicy(), "mypolicy");
 
             var psCredential = new PSCredential("{0}{1}".format(AzureDriveInfo.SAS_GUID, account.Credentials.AccountName), sharedAccessSignature.ToSecureString());
            
