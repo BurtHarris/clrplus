@@ -7,5 +7,6 @@ $storageCred = New-Object System.Management.Automation.PSCredential ("coapp", $s
 
 $cred = Get-AzureCredentials -Credential $storageCred
 new-psdrive -name temp -psprovider azure -root https://coapp.blob.core.windows.net/container -credential $cred
+dir temp:
 cd temp:
 

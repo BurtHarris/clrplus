@@ -113,15 +113,18 @@ namespace ClrPlus.Powershell.Azure.Provider {
         ///     interesting mount points for other drives.
         /// </remarks>
         protected override Collection<PSDriveInfo> InitializeDefaultDrives() {
-            var drives = new Collection<PSDriveInfo>();
-            drives.Add(new AzureDriveInfo("azure", ProviderInfo, string.Empty, "Azure namespace", null));
+            var rootDrive = new AzureDriveInfo(AzureDriveInfo.ProviderScheme, ProviderInfo, string.Empty, "Azure namespace", null);
+
+            UniversalProviderInfo.AddingDrives.Add(rootDrive);
+
             foreach (var alias in UniversalProviderInfo.Aliases) {
-                drives.Add(new AzureDriveInfo(alias, ProviderInfo));
+                UniversalProviderInfo.AddingDrives.Add(new AzureDriveInfo(alias, ProviderInfo));
             }
 
-            return drives;
+            return UniversalProviderInfo.AddingDrives;
         }
 
+        
         // InitializeDefaultDrives
     }
 }

@@ -34,7 +34,7 @@ namespace ClrPlus.Powershell.Provider.Base {
 
         public IEnumerable<Rule> Aliases {
             get {
-                return PropertySheet.Rules.Where(each => each.Name == Prefix).Where(alias => !alias.HasProperty("disabled") || !alias["disabled"].Value.IsTrue());
+                return PropertySheet.Rules.Where(each => each.Name == Prefix).Where(alias => !alias.HasProperty("disabled") || !alias["disabled"].Value.IsTrue()).Reverse();
             }
         }
 

@@ -136,17 +136,31 @@ namespace ClrPlus.Powershell.Azure.Provider {
             if (_containerCache.ContainsKey(containerName)) {
                 return _containerCache[containerName];
             }
+            var container = CloudFileSystem.GetContainerReference(containerName);
 
-            if (CloudFileSystem.GetContainerReference(containerName).Exists()) {
-                var container = _blobStore.GetContainerReference(containerName);
-                _containerCache.Add(containerName, container);
+            if (_isSas) {
+                try {
+                    container.ListBlobs("$$$JUSTCHECKINGIFTHISCONTAINEREVENEXISTS$$$");
+                    _containerCache.Add(containerName, container);
+                } catch {
+                    return null;
+                }
                 return container;
+            } else {
+                if (container.Exists()) {
+                    _containerCache.Add(containerName, container);
+                    return container;
+                }
             }
             return null;
         }
 
         public AzureDriveInfo(Rule aliasRule, ProviderInfo providerInfo, PSCredential psCredential = null)
-            : base(GetDriveInfo(aliasRule, providerInfo, psCredential)) {
+            : this(GetDriveInfo(aliasRule, providerInfo, psCredential)) {
+
+            // continues where the GetDriveInfo left off.
+
+            /*
             Path = new Path {
                 HostAndPort = aliasRule.HasProperty("key") ? aliasRule["key"].Value : aliasRule.Parameter,
                 Container = aliasRule.HasProperty("container") ? aliasRule["container"].Value : "",
@@ -154,12 +168,19 @@ namespace ClrPlus.Powershell.Azure.Provider {
             };
             Path.Validate();
             Secret = aliasRule.HasProperty("secret") ? aliasRule["secret"].Value : psCredential != null ? psCredential.Password.ToUnsecureString() : null;
+             * */
+            // Path.Validate();
+            // Secret = aliasRule.HasProperty("secret") ? aliasRule["secret"].Value : psCredential != null ? psCredential.Password.ToUnsecureString() : null;
         }
 
         private static PSDriveInfo GetDriveInfo(Rule aliasRule, ProviderInfo providerInfo, PSCredential psCredential) {
             var name = aliasRule.Parameter;
             var account = aliasRule.HasProperty("key") ? aliasRule["key"].Value : name;
             var container = aliasRule.HasProperty("container") ? aliasRule["container"].Value : "";
+
+            if(psCredential == null || (psCredential.UserName == null && psCredential.Password == null)) {
+                psCredential = new PSCredential(account, aliasRule.HasProperty("secret") ? aliasRule["secret"].Value.ToSecureString() : null);
+            } 
 
             if (string.IsNullOrEmpty(container)) {
                 return new PSDriveInfo(name, providerInfo, @"{0}:\{1}\".format(ProviderScheme, account), ProviderDescription, psCredential);
@@ -234,7 +255,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
             //check if Credential is Sas
 
                
-            if (credential != null) {
+            if (credential != null && credential.UserName != null && credential.Password != null) {
 
                 if (credential.UserName.Contains(SAS_GUID)) {
                     _accountName = credential.UserName.Split(new[] {
@@ -246,7 +267,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
 
 
-                if (parsedPath.Scheme == "azure") {
+                if(parsedPath.Scheme == ProviderScheme) {
                     // generate the baseuri like they do 
                     _baseUri = new Uri("https://{0}.blob.core.windows.net/".format(_accountName));
                 } else {
@@ -256,7 +277,11 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 Secret = credential.Password.ToUnsecureString();
 
             } else {
-                if (parsedPath.HostName.ToLower().EndsWith(".blob.core.windows.net")) {
+                if(parsedPath.Scheme == ProviderScheme) {
+                    _accountName = parsedPath.HostName;
+                    _baseUri = new Uri("https://{0}.blob.core.windows.net/".format(_accountName));
+                }
+                else if (parsedPath.HostName.ToLower().EndsWith(".blob.core.windows.net")) {
                     _accountName = parsedPath.HostName.Substring(0, parsedPath.HostName.IndexOf('.'));
                     _baseUri = new Uri("{0}://{1}/".format(parsedPath.Scheme, parsedPath.HostAndPort));
                 } else {
@@ -282,19 +307,20 @@ namespace ClrPlus.Powershell.Azure.Provider {
             }
 
 
-            /*
+            var alldrives = (pi.AddingDrives.Union(pi.Drives)).Select(each => each as AzureDriveInfo).ToArray();
+
             if (parsedPath.Scheme == ProviderScheme) {
                 // it's being passed a full url to a blob storage
                 Path = parsedPath;
 
                 if (credential == null || credential.Password == null) {
                     // look for another mount off the same account and container for the credential
-                    foreach (var d in pi.Drives.Select(each => each as AzureDriveInfo).Where(d => d.HostAndPort == HostAndPort && d.ContainerName == ContainerName)) {
+                    foreach (var d in alldrives.Where(d => d.HostAndPort == HostAndPort && d.ContainerName == ContainerName)) {
                         Secret = d.Secret;
                         return;
                     }
                     // now look for another mount off just the same account for the credential
-                    foreach (var d in pi.Drives.Select(each => each as AzureDriveInfo).Where(d => d.HostAndPort == HostAndPort)) {
+                    foreach(var d in alldrives.Where(d => d.HostAndPort == HostAndPort)) {
                         Secret = d.Secret;
                         return;
                     }
@@ -306,7 +332,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
             }
 
             // otherwise, it's an sub-folder off of another mount.
-            foreach (var d in pi.Drives.Select(each => each as AzureDriveInfo).Where(d => d.Name == parsedPath.Scheme)) {
+            foreach (var d in alldrives.Where(d => d.Name == parsedPath.Scheme)) {
                 Path = new Path {
                     HostAndPort = d.HostAndPort,
                     Container = string.IsNullOrEmpty(d.ContainerName) ? parsedPath.HostAndPort : d.ContainerName,
@@ -315,7 +341,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 Path.Validate();
                 Secret = d.Secret;
                 return;
-            }*/
+            }
             
         }
 
