@@ -140,7 +140,8 @@ namespace ClrPlus.Powershell.Core.Service {
                 var propertySheet = PropertySheet;
 
                 var serviceRule = propertySheet.Rules.FirstOrDefault(rule => rule.Name == "rest-service");
-                var l1 = serviceRule["listen-on"].Values.ToArray();
+                
+                var l1 = serviceRule["listen-on"] != null ? serviceRule["listen-on"].Values.ToArray() : new [] { "http://*/" };
 
                 if (!l1.IsNullOrEmpty()) {
                     AddListeners(l1);
