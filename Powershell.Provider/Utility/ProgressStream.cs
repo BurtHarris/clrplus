@@ -139,7 +139,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
         public override void Write(byte[] buffer, int offset, int count) {
             _innerStream.Write(buffer, offset, count);
-
+            
             OnBytesWritten(count);
             OnBytesMoved(count, false);
         }
