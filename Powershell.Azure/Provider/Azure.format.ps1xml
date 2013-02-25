@@ -2,9 +2,9 @@
 <Configuration>
   <ViewDefinitions>
     <View>
-      <Name>CoApp.Azure.Provider.AzureLocation</Name>
+      <Name>ClrPlus.Powershell.Azure.Provider.AzureLocation</Name>
       <ViewSelectedBy>
-        <TypeName>CoApp.Azure.Provider.AzureLocation</TypeName>
+        <TypeName>ClrPlus.Powershell.Azure.Provider.AzureLocation</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>

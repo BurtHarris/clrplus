@@ -31,25 +31,4 @@ namespace ClrPlus.Powershell.Core.Service {
             RestService.OnAuthenticated(authService, session, tokens, authInfo, SessionExpiry);
         }
     }
-
-    public class CustomCredentialsAuthProvider : CredentialsAuthProvider {
-        public override bool TryAuthenticate(IServiceBase authService, string userName, string password) {
-            //Add here your custom auth logic (database calls etc)
-            //Return true if credentials are valid, otherwise false
-            return true;
-        }
-
-        public override void OnAuthenticated(IServiceBase authService, IAuthSession session, IOAuthTokens tokens, Dictionary<string, string> authInfo) {
-            //Fill the IAuthSession with data which you want to retrieve in the app eg:
-            session.FirstName = "garrett";
-            session.Roles = new List<string>();
-            session.Roles.Add("users");
-            session.Roles.Add("admins");
-            
-            //...
-
-            //Important: You need to save the session!
-            authService.SaveSession(session, SessionExpiry);
-        }
-    }
 }

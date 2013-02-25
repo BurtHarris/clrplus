@@ -69,8 +69,26 @@ namespace ClrPlus.Powershell.Core {
 
             if (_runspaceWasLikeThatWhenIGotHere) {
                 return Runspace.CreateNestedPipeline();
+            } else {
+                try {
+                    TestIfInNestedPipeline();
+                    return Runspace.CreatePipeline();
+
+                } catch (Exception) {
+                    _runspaceWasLikeThatWhenIGotHere = true;
+                    return Runspace.CreateNestedPipeline();
+                    
+                }
             }
-            return Runspace.CreatePipeline();
+            
+        }
+
+        private void TestIfInNestedPipeline() {
+            
+                    var pipeline = Runspace.CreatePipeline();
+                    //we're running a short command to verify that we're not in a nested pipeline
+                    pipeline.Commands.Add("get-alias");
+                    pipeline.Invoke();
         }
 
         public DynamicPowershell() {

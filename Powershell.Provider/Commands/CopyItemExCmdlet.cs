@@ -39,12 +39,12 @@ namespace ClrPlus.Powershell.Provider.Commands {
         }
 
         protected override void BeginProcessing() {
-            Console.WriteLine("===BeginProcessing()===");
+           // Console.WriteLine("===BeginProcessing()===");
             base.BeginProcessing();
         }
 
         protected override void EndProcessing() {
-            Console.WriteLine("===EndProcessing()===");
+            //Console.WriteLine("===EndProcessing()===");
             base.EndProcessing();
         }
 
@@ -84,21 +84,29 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
             if (copyOperations.Length > 1 && destinationLocation.IsFile) {
                 // source can only be a single file.
-                throw new ClrPlusException("Destination file exists--multiple source files specified.");
+                WriteError(new ErrorRecord(new ClrPlusException("Destination file exists--multiple source files specified."), "ErrorId", ErrorCategory.InvalidArgument, null));
+                return;
             }
 
             foreach (var operation in copyOperations) {
-                Console.WriteLine("COPY '{0}' to '{1}'", operation.Source.AbsolutePath, operation.Destination.AbsolutePath);
+                //Console.WriteLine("COPY '{0}' to '{1}'", operation.Source.AbsolutePath, operation.Destination.AbsolutePath);
                 if (!force) {
                     if (operation.Destination.Exists) {
-                        throw new ClrPlusException("Destination file '{0}' exists. Must use -force to override".format(operation.Destination.AbsolutePath));
+                        WriteError(new ErrorRecord(new ClrPlusException("Destination file '{0}' exists. Must use -force to override".format(operation.Destination.AbsolutePath)), "ErrorId", ErrorCategory.ResourceExists, null));
+                        return;
                     }
                 }
 
                 using (var inputStream = new ProgressStream(operation.Source.Open(FileMode.Open))) {
-                    using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
+                  using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
+
+                      var inputLength = inputStream.Length;
+                      
                         inputStream.BytesRead += (sender, args) => {};
-                        outputStream.BytesWritten += (sender, args) => {};
+                        outputStream.BytesWritten += (sender, args) => WriteProgress(new ProgressRecord(0, "Copy", "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath))
+                        {
+                                                                                                                                PercentComplete = (int)(100L*args.StreamPosition/inputLength)
+                                                                                                                            });
 
                         inputStream.CopyTo(outputStream);
                     }
@@ -144,7 +152,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
         }
 
         protected override void StopProcessing() {
-            Console.WriteLine("===StopProcessing()===");
+           // Console.WriteLine("===StopProcessing()===");
             base.StopProcessing();
         }
     }

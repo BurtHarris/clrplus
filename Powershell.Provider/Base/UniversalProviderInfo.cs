@@ -11,6 +11,7 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Provider.Base {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Management.Automation;
@@ -22,12 +23,18 @@ namespace ClrPlus.Powershell.Provider.Base {
         protected abstract string Prefix {get;}
 
         protected UniversalProviderInfo(ProviderInfo providerInfo) : base(providerInfo) {
-            PropertySheet = PropertySheet.Parse(@"@import ""pstab.properties"";", "default");
+            try {
+                PropertySheet = PropertySheet.Parse(@"@import ""pstab.properties"";", "default");
+            } catch (Exception) {
+
+                PropertySheet = new PropertySheet();
+            }
+            
         }
 
         public IEnumerable<Rule> Aliases {
             get {
-                return PropertySheet.Rules.Where(each => each.Name == Prefix).Where(alias => !alias.HasProperty("disabled") || !alias["disabled"].Value.IsTrue());
+                return PropertySheet.Rules.Where(each => each.Name == Prefix).Where(alias => !alias.HasProperty("disabled") || !alias["disabled"].Value.IsTrue()).Reverse();
             }
         }
 
