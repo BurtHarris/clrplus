@@ -12,9 +12,11 @@
 
 namespace ClrPlus.Powershell.Rest.Commands {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Management.Automation;
     using System.Reflection;
+    using System.Text.RegularExpressions;
     using ClrPlus.Core.Extensions;
     using ClrPlus.Powershell.Core.Service;
     using Core;
@@ -27,7 +29,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
         IAuthSession Session {get;set;}
     }
 
-    public class RestableCmdlet<T> : PSCmdlet, IHasSession , IService<T> where T : RestableCmdlet<T> {
+    public class RestableCmdlet<T> : RestableCmdlet, IHasSession , IService<T> where T : RestableCmdlet<T> {
         private PersistablePropertyInformation[] _persistableElements = typeof(T).GetPersistableElements().Where(p => p.Name == "Session" || !JsConfig<T>.ExcludePropertyNames.Contains(p.Name)).ToArray();
         private string _serviceUrl;
         private PSCredential _credential;
@@ -139,6 +141,40 @@ namespace ClrPlus.Powershell.Rest.Commands {
         }
 
        
+        
+    }
 
+    public abstract class RestableCmdlet : PSCmdlet {
+
+        public static readonly Regex CREDENTIAL_USERNAME = new Regex (@"(?<property>[a-zA-Z]\w*)_USERNAME");
+        public static readonly Regex CREDENTIAL_PASSWORD = new Regex(@"(?<property>[a-zA-Z]\w*)_PASSWORD");
+     
+        
+        public static Dictionary<string, object> ParseParameters(Dictionary<string, object> inputParameters) {
+            var keysWithUsername = inputParameters.Keys.Select(s => new {
+                                                                            key = s,
+                                                                            match = CREDENTIAL_USERNAME.Match(s)
+                                                                        }).Where(u => u.match != Match.Empty).ToArray();
+            var keysWithPassword = inputParameters.Keys.Select(s => new
+                                                                        {
+                                                                            key = s,
+                                                                            match = CREDENTIAL_PASSWORD.Match(s)
+                                                                        }).Where(u => u.match != Match.Empty).ToArray();
+
+            
+            //create credential if needed
+            if (keysWithPassword.Length == 1 && keysWithUsername.Length == 1 && keysWithUsername[0].match.Groups["property"].Value == keysWithPassword[0].match.Groups["property"].Value)
+            {
+                var ret = inputParameters.Where(kv => kv.Key != keysWithUsername[0].key && kv.Key != keysWithPassword[0].key).ToDictionary();
+                ret[keysWithUsername[0].match.Groups["property"].Value] = new PSCredential(inputParameters[keysWithUsername[0].key].ToString(), inputParameters[keysWithPassword[0].key].ToString().ToSecureString());
+                return ret;
+
+
+            } else {
+                return inputParameters;
+            }
+
+            
+        }
     }
 }

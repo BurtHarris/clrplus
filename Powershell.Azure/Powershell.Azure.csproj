@@ -76,6 +76,9 @@
     <EmbeddedResource Include="Provider\Azure.format.ps1xml">
       <LogicalName>Azure.format.ps1xml</LogicalName>
     </EmbeddedResource>
+    <None Include="test.props">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="test.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

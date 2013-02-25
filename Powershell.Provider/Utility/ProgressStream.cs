@@ -56,14 +56,29 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
         protected virtual void OnBytesWritten(int bytesMoved) {
             if (BytesWritten != null) {
-                var args = new ProgressStreamReportEventArgs(bytesMoved, _innerStream.Length, _innerStream.Position, false);
+                long length = 0;
+                try {
+                    length = _innerStream.Length;
+                } catch {
+                    
+                }
+                var args = new ProgressStreamReportEventArgs(bytesMoved, length, _innerStream.Position, false);
                 BytesWritten(this, args);
             }
         }
 
         protected virtual void OnBytesMoved(int bytesMoved, bool isRead) {
             if (BytesMoved != null) {
-                var args = new ProgressStreamReportEventArgs(bytesMoved, _innerStream.Length, _innerStream.Position, isRead);
+                long length = 0;
+                try
+                {
+                    length = _innerStream.Length;
+                }
+                catch
+                {
+
+                }
+                var args = new ProgressStreamReportEventArgs(bytesMoved, length, _innerStream.Position, isRead);
                 BytesMoved(this, args);
             }
         }

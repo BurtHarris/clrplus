@@ -24,21 +24,32 @@ namespace ClrPlus.Powershell.Azure.Commands {
     public class GetUploadLocation : RestableCmdlet<GetUploadLocation> {
         public const string DELETEABLE = "deleteable";
 
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public PSCredential AzureStorageCredential { get; set;}
 
         protected override void ProcessRecord() {
             // must use this to support processing record remotely.
-            if (!string.IsNullOrEmpty(ServiceUrl)) {
+            if (Remote)
+            {
                 ProcessRecordViaRest();
                 return;
             }
 
             //this actually connects to the Azure service
-            CloudStorageAccount account = new CloudStorageAccount(new StorageCredentials(Credential.UserName, Credential.Password.ToUnsecureString()), true);
+            CloudStorageAccount account = new CloudStorageAccount(new StorageCredentials(AzureStorageCredential.UserName, AzureStorageCredential.Password.ToUnsecureString()), true);
 
             var contName = "deletable" + Guid.NewGuid().ToString("D").ToLowerInvariant();
 
             var container = account.CreateCloudBlobClient().GetContainerReference(contName);
-            container.CreateIfNotExists();
+            try {
+                container.CreateIfNotExists();
+            } catch (StorageException e) {
+                
+                WriteError(new ErrorRecord(e, "0", ErrorCategory.ConnectionError, null));
+                return;
+            }
+            
 
             WriteObject(container.Name);
             WriteObject(container.Uri);

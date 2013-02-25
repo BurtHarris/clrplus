@@ -164,8 +164,8 @@ namespace ClrPlus.Powershell.Core.Service {
                 AddCommand(new RestCommand {
                     Name = cmdletName.Value,
                     PublishAs = publishAs.Value,
-                    DefaultParameters = (parameters == null) ? null : parameters.Labels.ToDictionary(label => label, label => parameters[label].IsSingleValue ? (object)parameters[label].Value : ((IEnumerable<string>)parameters[label]).ToArray()),
-                    ForcedParameters = (forcedParameters == null) ? null : forcedParameters.Labels.ToDictionary(label => label, label => forcedParameters[label].IsSingleValue ? (object)forcedParameters[label].Value : ((IEnumerable<string>)forcedParameters[label]).ToArray()),
+                    DefaultParameters = (parameters == null) ? null : RestableCmdlet.ParseParameters(parameters.Labels.ToDictionary(label => label, label => parameters[label].IsSingleValue ? (object)parameters[label].Value : ((IEnumerable<string>)parameters[label]).ToArray())),
+                    ForcedParameters = (forcedParameters == null) ? null : RestableCmdlet.ParseParameters(forcedParameters.Labels.ToDictionary(label => label, label => forcedParameters[label].IsSingleValue ? (object)forcedParameters[label].Value : ((IEnumerable<string>)forcedParameters[label]).ToArray())),
                     Roles = roles == null ? null : roles.Values.ToArray()
                 });
             }

@@ -20,6 +20,10 @@ namespace ClrPlus.Powershell.Azure.Commands
         [ValidateNotNullOrEmpty]
         public string ContainerName { get; set;}
 
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public PSCredential AzureStorageCredential { get; set; }
+
         protected override void ProcessRecord() {
             if (Remote)
             {
@@ -28,7 +32,7 @@ namespace ClrPlus.Powershell.Azure.Commands
             }
 
             //this actually connects to the Azure service
-            CloudStorageAccount account = new CloudStorageAccount(new StorageCredentials(Credential.UserName, Credential.Password.ToUnsecureString()), true);
+            CloudStorageAccount account = new CloudStorageAccount(new StorageCredentials(AzureStorageCredential.UserName, AzureStorageCredential.Password.ToUnsecureString()), true);
             var blobPolicy = new SharedAccessBlobPolicy {
                                                             Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List,
                                                            // SharedAccessStartTime = DateTimeOffset.Now,

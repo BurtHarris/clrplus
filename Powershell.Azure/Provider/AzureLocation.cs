@@ -91,7 +91,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public bool IsDirectory {
             get {
-                return !_invalidLocation && !string.IsNullOrEmpty(Path.SubPath) && _cloudItem.Value is CloudBlobDirectory;
+                return !_invalidLocation && !string.IsNullOrEmpty(Path.SubPath) && _cloudItem != null &&_cloudItem.Value is CloudBlobDirectory;
             }
         }
 
@@ -147,12 +147,28 @@ namespace ClrPlus.Powershell.Azure.Provider {
                         CloudContainer.GetDirectoryReference(Path.SubPath);
                     }
                     // check to see if it's a file.
-                    var blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
+
+                    ICloudBlob blobRef = null;
+                    try {
+
                     
-                    if (blobRef.BlobType == BlobType.BlockBlob) {
-                        blobRef.FetchAttributes();    
-                        return blobRef;
+                        blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
+                        if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                            blobRef.FetchAttributes();
+                            return blobRef;
+                        }
                     }
+                   catch {
+                        blobRef = CloudContainer.GetBlockBlobReference(Path.SubPath);
+
+                       if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                           return blobRef;
+                       }
+                   }
+
+                    
+                       
+                    
 
                     // well, we know it's not a file, container, or account. 
                     // it could be a directory (but the only way to really know that is to see if there is any files that have this as a parent path)
@@ -375,6 +391,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 case FileMode.Truncate:
                     var b = FileBlob;
                     if (b == null) {
+                        //CloudContainer.GetBlockBlobReference();
                     }
                     return _blobStream = FileBlob.OpenWrite();
 

@@ -1,0 +1,51 @@
+﻿rest-service  {
+	
+
+   listen-on : "http://*:888/";
+};
+
+
+rest-command {
+	// roles : users;
+
+    cmdlet : "show-test" ;
+    
+    default-parameters :  {
+        p2 = gws,
+        p3 = { "one", "two" }
+    };
+    
+    forced-parameters : {
+        P1 = "mr."
+    };
+    
+}
+
+
+rest-command[GetUploadLocation]
+{
+	cmdlet: "Get-UploadLocation";
+
+	forced-parameters : 
+	{
+		AzureStorageCredential_USERNAME = "coapp",
+		AzureStorageCredential_PASSWORD = "6lNxAESWewQ32GAVsCEDkah+wJzy4TrhJdfyCkVhrekT/ulZR2ecjwt69DIIzyIXXf7wiZqo0IaHFPK1gNu31g=="
+    };
+}
+
+
+rest-command[GetAzureCredentials]
+{
+	cmdlet: "Get-AzureCredentials";
+
+	forced-parameters : 
+	{
+		AzureStorageCredential_USERNAME = "coapp",
+		AzureStorageCredential_PASSWORD = "6lNxAESWewQ32GAVsCEDkah+wJzy4TrhJdfyCkVhrekT/ulZR2ecjwt69DIIzyIXXf7wiZqo0IaHFPK1gNu31g=="
+    };
+}
+
+rest-command[SetServicePassword] {
+	//roles : users;
+	cmdlet : "Set-ServicePassword";
+} ;

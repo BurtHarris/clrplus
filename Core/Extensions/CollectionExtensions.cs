@@ -303,5 +303,16 @@ namespace ClrPlus.Core.Extensions {
 
             return list;
         }
+
+        /// <summary>
+        /// A ToDictionary that does what you'd expect if you have an IEnumerable of KeyValuePairs
+        /// </summary>
+        /// <typeparam name="T1"></typeparam>
+        /// <typeparam name="T2"></typeparam>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static Dictionary<T1, T2> ToDictionary<T1, T2>(this IEnumerable<KeyValuePair<T1, T2>> input) {
+            return input.ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
     }
 }
