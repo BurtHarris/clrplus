@@ -149,9 +149,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             var v = CurrentView;
 
             if (v.Keys.Contains(property)) {
-                var prop = v.GetChildView(new Selector {
-                    Name = property
-                }) as Property;
+                var prop = v.GetChildView(property) as Property;
                 if (prop != null) {
                     return prop.Values;
                 }

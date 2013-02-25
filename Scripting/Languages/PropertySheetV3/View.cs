@@ -12,6 +12,7 @@
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
@@ -21,19 +22,36 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
     public delegate View Route(View context, Selector selector);
 
-    public class DDictionary<TKey, TVal>: View {
+    public class DDictionary : View {
+        public static object Create(Type type, Func<IDictionary> dictionaryAccessor) {
+            Type genericType = typeof(DDictionary<>).MakeGenericType(new[] { type });
+            return Activator.CreateInstance(genericType, new object[] { true, dictionaryAccessor });
+        }
+    }
 
-        private Func<IDictionary<TKey, TVal>> _accessor;
-        protected DDictionary(Func<IDictionary<TKey, TVal>> dictionaryAccessor) {
+    
+    public class DDictionary<TVal>: DDictionary {
+        // dictionaries must use strings for keys (at least for now...)
+
+        private Func<IDictionary<string, TVal>> _accessor;
+
+        protected DDictionary(bool bla, Func<IDictionary> dictionaryAccessor) {
+            _accessor = (Func<IDictionary<string, TVal>>)dictionaryAccessor;
+        }
+
+        protected DDictionary(Func<IDictionary<string, TVal>> dictionaryAccessor) {
             _accessor = dictionaryAccessor;
+        }
 
+        protected DDictionary(IDictionary<string, TVal> dictionary) : this(()=> dictionary) {
         }
-        protected DDictionary(IDictionary<TKey, TVal> dictionary) : this(()=> dictionary) {
-        }
+
+        
     }
 
     public class View : DynamicObject {
         protected readonly XDictionary<Selector, Route> Routes = new XDictionary<Selector, Route>();
+        protected readonly static Selector DefaultRouteName = new Selector("default");
 
         protected View() {
         }
@@ -68,20 +86,21 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 var e = element;
 
                 if (e.ActualType == typeof (Route)) {
-                    AddRoute(new Selector {
-                        Name = e.Name
-                    }, e.GetValue(routes, null) as Route);
+                    AddRoute(e.Name, e.GetValue(routes, null) as Route);
                     continue;
                 }
 
                 if (e.ActualType.IsAssignableFrom(typeof (View))) {
-                    AddRoute(new Selector {
-                        Name = e.Name
-                    }, (c, s) => (View)e.GetValue(routes, null));
+                    AddRoute(e.Name, (c, s) => (View)e.GetValue(routes, null));
                     continue;
                 }
 
                 switch (e.ActualType.GetPersistableInfo().PersistableCategory) {
+                    case PersistableCategory.Dictionary:
+                        // the member type is some sort of dictionary; we'll return a dictionary view from here.
+                        
+                        continue;
+
                     case PersistableCategory.Nullable:
                     case PersistableCategory.String:
                     case PersistableCategory.Enumeration:
@@ -89,16 +108,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     case PersistableCategory.Array:
                     case PersistableCategory.Enumerable:
                         var view = (View)Property.Create(e.ActualType, () => e.GetValue(routes, null), v => {});
-                        AddRoute(new Selector {
-                            Name = e.Name
-                        }, (context, selector) => view);
+                        AddRoute(e.Name, (context, selector) => view);
                         continue;
 
                     case PersistableCategory.Other:
                         var viewobj = new Reference(() => e.GetValue(routes, null));
-                        AddRoute(new Selector {
-                            Name = e.Name
-                        }, (context, selector) => viewobj);
+                        AddRoute(e.Name, (context, selector) => viewobj);
                         continue;
                 }
             }
@@ -212,11 +227,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             throw new ClrPlusException("Only instances of Reference can have child objects");
         }
 
-        public virtual View LookupChildObject(Selector selector) {
+        internal virtual View LookupChildObject(Selector selector) {
             throw new ClrPlusException("Only instances of Reference can have child objects");
         }
 
-        public virtual Property LookupChildProperty(Selector selector) {
+        internal virtual View LookupChildDictionary(Selector selector) {
+            throw new ClrPlusException("Only instances of Reference can have child dictionaries");
+        }
+
+        internal virtual Property LookupChildProperty(Selector selector) {
             throw new ClrPlusException("Only instances of Reference can have child properties");
         }
 

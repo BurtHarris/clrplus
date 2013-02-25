@@ -12,6 +12,7 @@
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
@@ -59,6 +60,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     }
 
     public class Reference : View {
+        
         private Func<object> _backingObjectAccessor;
         protected Type _backingType;
         private Dictionary<string, PersistablePropertyInformation> _backingObjectPropertyInfo;
@@ -89,39 +91,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return _backingObjectAccessor();
         }
 
-        public override View GetChildView(Selector selector) {
-            // if there is an exact selector match:
-            if(Routes.ContainsKey(selector)) {
-                return Routes[selector](this, selector);
-            }
-
-            // otherwise, if we've got a parameter, try it without the parameter. 
-            // HMM: if there isn't a match for this, it's gonna return just the base object you know...
-            if(!string.IsNullOrEmpty(selector.Parameter)) {
-                var parameterless = new Selector {
-                    Name = selector.Name
-                };
-                if(Routes.ContainsKey(parameterless)) {
-                    var result = Routes[parameterless](this, selector);
-                    if(result != null) {
-                        Routes[selector] = (context, sel) => result;
-                        return result;
-                    }
-                }
-            }
-
-            // if there isn't anything there, see if there is a @default rule.
-            if(Routes.ContainsKey(new Selector { Name = "default" })) {
-                var result = Routes[selector](this, selector);
-                if(result != null) {
-                    Routes[selector] = (context, sel) => result;
-                    return result;
-                }
-            }
-
-            return LookupChildObject(selector);
-        }
-
         protected void EnsurePropertyInfo() {
             if(_backingObjectPropertyInfo == null) {
                 if(_backingType == null) {
@@ -139,7 +108,48 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
-        public override View LookupChildObject(Selector selector) {
+        public override View GetChildView(Selector selector) {
+            // if there is an exact selector match:
+            if(Routes.ContainsKey(selector)) {
+                return Routes[selector](this, selector);
+            }
+
+            if (selector.IsCompound) {
+                return GetChildView(selector.Prefix).GetChildView(selector.Suffix);
+            }
+
+            // otherwise, if we've got a parameter, try it without the parameter. 
+            // HMM: if there isn't a match for this, it's gonna return just the base object you know...
+            if(selector.HasParameter) {
+                var parameterless = new Selector (selector.Name);
+
+                if(Routes.ContainsKey(parameterless)) {
+                    var result = Routes[parameterless](this, selector);
+                    if(result != null) {
+                        Routes[selector] = (context, sel) => result;
+                        return result;
+                    }
+                }
+            }
+
+            // if there isn't anything there, see if there is a @default rule.
+            if(Routes.ContainsKey(DefaultRouteName)) {
+                var result = Routes[selector](this, selector);
+                if(result != null) {
+                    Routes[selector] = (context, sel) => result;
+                    return result;
+                }
+            }
+
+            if (selector.HasParameter) {
+                // if there wasn't a default handler, this really has to be a dictionary.
+                return LookupChildDictionary(selector);
+            }
+
+            return LookupChildObject(selector);
+        }
+
+        internal override View LookupChildObject(Selector selector) {
             // if there isn't a match at this point, I guess we should check the backing object for a child with that name.
             EnsurePropertyInfo();
 
@@ -160,7 +170,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                         return LookupChildProperty(selector);   
 
                     case PersistableCategory.Dictionary:
-                        break;
+                        return LookupChildDictionary(selector);
+                        
                 }
                 
                 // looks like the child is an object I guess.
@@ -176,8 +187,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return anonResult;
         }
 
-        public override Property LookupChildProperty(Selector selector) {
+        internal override Property LookupChildProperty(Selector selector) {
             EnsurePropertyInfo();
+
+            if (selector.HasParameter) {
+                throw new ClrPlusException("Automatic Child Properties should not have parameters in a selector : '{0}' ".format(selector));
+            }
 
             if(_backingObjectPropertyInfo.ContainsKey(selector.Name)) {
                 // we're looking for a viewpropery object
@@ -195,6 +210,24 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             Routes[selector] = (context, sel) => anonResult;
             return anonResult;
         }
+
+        internal override View LookupChildDictionary(Selector selector) {
+            EnsurePropertyInfo();
+
+            if (_backingObjectPropertyInfo.ContainsKey(selector.Name)) {
+                var pi = _backingObjectPropertyInfo[selector.Name];
+
+                var valtype = pi.ActualType.GetGenericArguments()[1];
+                var result = (DDictionary)DDictionary.Create(valtype, () => (IDictionary)pi.GetValue(_backingObjectAccessor, null));
+                Routes[selector] = (context, sel) => result;
+                return result;
+            }
+
+            // if we *still* haven't found anything, we should really be providing a route to solve for this,
+            throw new ClrPlusException("Missing route for dictionary child '{0}'".format(selector));
+        }
+
+
 
         public static object Create(Type type, Func<object> objectAccessor) {
             Type genericType = typeof(Reference<>).MakeGenericType(new[] { type });
@@ -239,11 +272,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return base.TrySetIndex(binder, indexes, value);
         }
         public override bool TryGetMember(GetMemberBinder binder, out object result) {
-            var selector = new Selector {
-                Name = binder.Name
-            };
-
-            var child = GetChildView(selector);
+            var child = GetChildView(binder.Name);
             result = child is Property ? (object) (child as Property).Value : child;
             
             return true;

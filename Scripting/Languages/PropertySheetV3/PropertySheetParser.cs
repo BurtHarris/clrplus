@@ -252,11 +252,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                         if (string.IsNullOrEmpty(selectorName)) {
                             throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
                         }
-                        return new Selector {
-                            Name = selectorName,
-                            Parameter = parameter,
-                            //Instruction = instruction,
-                        };
+                        return new Selector(selectorName, parameter);
                     }
                     break; // fall thru to end fail.
             }
