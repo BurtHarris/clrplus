@@ -73,7 +73,7 @@
     <Compile Include="Languages\PropertySheetV3\RValue\Collection.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue\Instruction.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue\Iterator.cs" />
-    <Compile Include="Languages\PropertySheetV3\RValue\Scalar.cs" />
+    <Compile Include="Languages\PropertySheetV3\Scalar.cs" />
     <Compile Include="Languages\PropertySheetV3\Selector.cs" />
     <Compile Include="Languages\PropertySheetV3\View.cs" />
     <Compile Include="Languages\PropertySheetV3\Reference.cs" />

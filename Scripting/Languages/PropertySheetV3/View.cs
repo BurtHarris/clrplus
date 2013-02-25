@@ -12,6 +12,7 @@
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System;
+    using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
     using Core.Collections;
@@ -19,6 +20,17 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using Core.Extensions;
 
     public delegate View Route(View context, Selector selector);
+
+    public class DDictionary<TKey, TVal>: View {
+
+        private Func<IDictionary<TKey, TVal>> _accessor;
+        protected DDictionary(Func<IDictionary<TKey, TVal>> dictionaryAccessor) {
+            _accessor = dictionaryAccessor;
+
+        }
+        protected DDictionary(IDictionary<TKey, TVal> dictionary) : this(()=> dictionary) {
+        }
+    }
 
     public class View : DynamicObject {
         protected readonly XDictionary<Selector, Route> Routes = new XDictionary<Selector, Route>();
