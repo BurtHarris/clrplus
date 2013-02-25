@@ -91,7 +91,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public bool IsDirectory {
             get {
-                return !_invalidLocation && !string.IsNullOrEmpty(Path.SubPath) && _cloudItem.Value is CloudBlobDirectory;
+                return !_invalidLocation && !string.IsNullOrEmpty(Path.SubPath) && _cloudItem != null &&_cloudItem.Value is CloudBlobDirectory;
             }
         }
 
@@ -101,7 +101,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     return string.Empty;
                 }
                 var result = FileBlob.Properties.ContentMD5;
-                return string.IsNullOrEmpty(result) ? FileBlob.Metadata["MD5"] ?? string.Empty : result;
+                if (string.IsNullOrEmpty(result)) {
+                    if (FileBlob.Metadata.ContainsKey("MD5")) {
+                        return FileBlob.Metadata["MD5"];
+                    }
+                    return string.Empty;
+                }
+                return result;
             }
         }
 
@@ -117,7 +123,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
             Path.Validate();
 
             if (cloudItem != null) {
-                _cloudItem = new AsyncLazy<IListBlobItem>(() => cloudItem);
+
+                _cloudItem = new AsyncLazy<IListBlobItem>(() => {
+                    if (cloudItem is CloudBlockBlob) {
+                        (cloudItem as CloudBlockBlob).FetchAttributes();
+                    }
+                    return cloudItem;
+                });
             } else {
                 if (IsRootNamespace || IsAccount || IsContainer) {
                     // azure namespace mount.
@@ -132,13 +144,31 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     // not sure if it's a file or a directory.
                     if (path.EndsWithSlash) {
                         // can't be a file!
-                        return CloudContainer.GetDirectoryReference(Path.SubPath);
+                        CloudContainer.GetDirectoryReference(Path.SubPath);
                     }
                     // check to see if it's a file.
-                    var blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
-                    if (blobRef.BlobType == BlobType.BlockBlob) {
-                        return blobRef;
+
+                    ICloudBlob blobRef = null;
+                    try {
+
+                    
+                        blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
+                        if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                            blobRef.FetchAttributes();
+                            return blobRef;
+                        }
                     }
+                   catch {
+                        blobRef = CloudContainer.GetBlockBlobReference(Path.SubPath);
+
+                       if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                           return blobRef;
+                       }
+                   }
+
+                    
+                       
+                    
 
                     // well, we know it's not a file, container, or account. 
                     // it could be a directory (but the only way to really know that is to see if there is any files that have this as a parent path)
@@ -174,7 +204,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
             get {
                 return _invalidLocation ? "<invalid>"
                     : IsRootNamespace ? AzureDriveInfo.ProviderScheme + ":"
-                        : IsAccount ? _driveInfo.Account
+                        : IsAccount ? _driveInfo.HostAndPort
                             : IsContainer ? Path.Container
                                 : Path.Name;
             }
@@ -186,10 +216,10 @@ namespace ClrPlus.Powershell.Azure.Provider {
             get {
                 return _absolutePath ?? (_absolutePath = _invalidLocation ? "???"
                     : IsRootNamespace ? @"{0}:\".format(AzureDriveInfo.ProviderScheme)
-                        : IsAccount ? @"{0}:\{1}\".format(AzureDriveInfo.ProviderScheme, Path.Account)
-                            : IsContainer ? @"{0}:\{1}\{2}".format(AzureDriveInfo.ProviderScheme, Path.Account, Path.Container)
-                                : IsDirectory ? @"{0}:\{1}\{2}\{3}\".format(AzureDriveInfo.ProviderScheme, Path.Account, Path.Container, Path.SubPath)
-                                    : @"{0}:\{1}\{2}\{3}".format(AzureDriveInfo.ProviderScheme, Path.Account, Path.Container, Path.SubPath));
+                        : IsAccount ? @"{0}:\{1}\".format(AzureDriveInfo.ProviderScheme, Path.HostAndPort)
+                            : IsContainer ? @"{0}:\{1}\{2}".format(AzureDriveInfo.ProviderScheme, Path.HostAndPort, Path.Container)
+                                : IsDirectory ? @"{0}:\{1}\{2}\{3}\".format(AzureDriveInfo.ProviderScheme, Path.HostAndPort, Path.Container, Path.SubPath)
+                                    : @"{0}:\{1}\{2}\{3}".format(AzureDriveInfo.ProviderScheme, Path.HostAndPort, Path.Container, Path.SubPath));
             }
         }
 
@@ -259,10 +289,10 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
                 return AzureProviderInfo.NamespaceProvider.Drives
                                         .Select(each => each as AzureDriveInfo)
-                                        .Where(each => !string.IsNullOrEmpty(each.Account))
-                                        .Distinct(new ClrPlus.Core.Extensions.EqualityComparer<AzureDriveInfo>((a, b) => a.Account == b.Account, a => a.Account.GetHashCode()))
+                                        .Where(each => !string.IsNullOrEmpty(each.HostAndPort))
+                                        .Distinct(new ClrPlus.Core.Extensions.EqualityComparer<AzureDriveInfo>((a, b) => a.HostAndPort == b.HostAndPort, a => a.HostAndPort.GetHashCode()))
                                         .Select(each => new AzureLocation(each, new Path {
-                                            Account = each.Account,
+                                            HostAndPort = each.HostAndPort,
                                             Container = string.Empty,
                                             SubPath = string.Empty,
                                         }, null));
@@ -270,14 +300,14 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
             if (IsAccount) {
                 return _driveInfo.CloudFileSystem.ListContainers().Select(each => new AzureLocation(_driveInfo, new Path {
-                    Account = Path.Account,
+                    HostAndPort = Path.HostAndPort,
                     Container = each.Name,
                 }, null));
             }
 
             if (IsContainer) {
                 return ListSubdirectories(CloudContainer).Select(each => new AzureLocation(_driveInfo, new Path {
-                    Account = Path.Account,
+                    HostAndPort = Path.HostAndPort,
                     Container = Path.Container,
                     SubPath = Path.ParseUrl(each.Uri).Name,
                 }, each));
@@ -289,7 +319,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 return cbd == null
                     ? Enumerable.Empty<ILocation>()
                     : ListSubdirectories(cbd).Select(each => new AzureLocation(_driveInfo, new Path {
-                        Account = Path.Account,
+                        HostAndPort = Path.HostAndPort,
                         Container = Path.Container,
                         SubPath = Path.SubPath + '\\' + Path.ParseUrl(each.Uri).Name,
                     }, each));
@@ -321,7 +351,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
             if (IsContainer) {
                 return CloudContainer.ListBlobs().Where(each => each is ICloudBlob && !(each as ICloudBlob).Name.EndsWith("/")).Select(each => new AzureLocation(_driveInfo, new Path {
-                    Account = Path.Account,
+                    HostAndPort = Path.HostAndPort,
                     Container = Path.Container,
                     SubPath = Path.ParseUrl(each.Uri).Name,
                 }, each));
@@ -330,7 +360,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
             if (IsDirectory) {
                 var cbd = (_cloudItem.Value as CloudBlobDirectory);
                 return cbd == null ? Enumerable.Empty<ILocation>() : cbd.ListBlobs().Where(each => each is ICloudBlob && !(each as ICloudBlob).Name.EndsWith("/")).Select(each => new AzureLocation(_driveInfo, new Path {
-                    Account = Path.Account,
+                    HostAndPort = Path.HostAndPort,
                     Container = Path.Container,
                     SubPath = Path.SubPath + '\\' + Path.ParseUrl(each.Uri).Name,
                 }, each));
@@ -361,6 +391,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 case FileMode.Truncate:
                     var b = FileBlob;
                     if (b == null) {
+                        //CloudContainer.GetBlockBlobReference();
                     }
                     return _blobStream = FileBlob.OpenWrite();
 

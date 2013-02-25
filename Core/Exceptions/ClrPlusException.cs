@@ -18,7 +18,7 @@ namespace ClrPlus.Core.Exceptions {
     public class ClrPlusException : Exception {
         public bool Logged;
 
-        public string Stacktrace;
+        public string StackTraceString;
 
         public bool IsCanceled {get; set;}
 
@@ -27,7 +27,7 @@ namespace ClrPlus.Core.Exceptions {
         }
 
         private void Log() {
-            Stacktrace = new StackTrace(2, true).ToString();
+            StackTraceString = new StackTrace(2, true).ToString();
 #if TODO
     // CoApp should support logging in *it's* base class that inherits from this one.
             Logger.Error(this);

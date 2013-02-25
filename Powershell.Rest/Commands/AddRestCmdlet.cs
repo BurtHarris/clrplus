@@ -41,11 +41,12 @@ namespace ClrPlus.Powershell.Rest.Commands {
             }
             var set = parameters.Select(each => _keyValueRx.Match(each)).ToArray();
             var keys = set.Select(match => match.Groups["switch"].Value).Distinct();
-
-            return keys.ToDictionary(k => k, key => {
+            
+           return keys.ToDictionary(k => k, key => {
                 var items = set.Where(match => match.Groups["switch"].Value == key).Select(each => each.Groups["value"].Value).ToArray();
                 return items.Count() == 1 ? (object)items[0] : items;
             });
+            
         }
 
         protected override void ProcessRecord() {

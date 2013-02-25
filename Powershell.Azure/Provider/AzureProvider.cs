@@ -25,7 +25,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
         static AzureProvider() {
             var file = Assembly.GetExecutingAssembly().ExtractFileResourceToPath("Azure.format.ps1xml", Path.Combine(FilesystemExtensions.TempPath, "Azure.format.ps1xml"));
             // var file = Assembly.GetExecutingAssembly().ExtractFileResourceToTemp("Azure.format.ps1xml");
-            new SessionState().InvokeCommand.InvokeScript("Update-FormatData -PrependPath {0}".format(file));
+            new SessionState().InvokeCommand.InvokeScript("Update-FormatData -PrependPath '{0}'".format(file));
         }
 
         /// <summary>
@@ -113,15 +113,18 @@ namespace ClrPlus.Powershell.Azure.Provider {
         ///     interesting mount points for other drives.
         /// </remarks>
         protected override Collection<PSDriveInfo> InitializeDefaultDrives() {
-            var drives = new Collection<PSDriveInfo>();
-            drives.Add(new AzureDriveInfo("azure", ProviderInfo, string.Empty, "Azure namespace", null));
+            var rootDrive = new AzureDriveInfo(AzureDriveInfo.ProviderScheme, ProviderInfo, string.Empty, "Azure namespace", null);
+
+            UniversalProviderInfo.AddingDrives.Add(rootDrive);
+
             foreach (var alias in UniversalProviderInfo.Aliases) {
-                drives.Add(new AzureDriveInfo(alias, ProviderInfo));
+                UniversalProviderInfo.AddingDrives.Add(new AzureDriveInfo(alias, ProviderInfo));
             }
 
-            return drives;
+            return UniversalProviderInfo.AddingDrives;
         }
 
+        
         // InitializeDefaultDrives
     }
 }

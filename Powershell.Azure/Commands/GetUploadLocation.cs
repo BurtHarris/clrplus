@@ -11,37 +11,48 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Azure.Commands {
+    using System;
     using System.Management.Automation;
+    using System.Management.Automation.Runspaces;
     using ClrPlus.Core.Extensions;
+    using Microsoft.WindowsAzure.Storage;
+    using Microsoft.WindowsAzure.Storage.Auth;
+    using Microsoft.WindowsAzure.Storage.Blob;
     using Rest.Commands;
 
     [Cmdlet(VerbsCommon.Get, "UploadLocation")]
     public class GetUploadLocation : RestableCmdlet<GetUploadLocation> {
+        public const string DELETEABLE = "deleteable";
+
         [Parameter]
-        public string Name {get; set;}
+        [ValidateNotNullOrEmpty]
+        public PSCredential AzureStorageCredential { get; set;}
 
         protected override void ProcessRecord() {
             // must use this to support processing record remotely.
-            if (!string.IsNullOrEmpty(ServiceUrl)) {
+            if (Remote)
+            {
                 ProcessRecordViaRest();
                 return;
             }
-            /*
-            var v = SessionState.Drive;
-            var x = v.Current;
-            var c = x.CurrentLocation;
-            var pipe = Runspace.DefaultRunspace.CreateNestedPipeline();
-            Runspace.DefaultRunspace.Create
 
-            // Runspace.DefaultRunspace.CreateNestedPipeline("get-psdriveinfo", false);
-            */
+            //this actually connects to the Azure service
+            CloudStorageAccount account = new CloudStorageAccount(new StorageCredentials(AzureStorageCredential.UserName, AzureStorageCredential.Password.ToUnsecureString()), true);
 
-            // continue as normal.
-            // WriteObject("Hello there {0}".format(Name));
-            WriteObject(new {
-                Message = "Hello there {0}".format(Name),
-                Age = 41,
-            });
+            var contName = "deletable" + Guid.NewGuid().ToString("D").ToLowerInvariant();
+
+            var container = account.CreateCloudBlobClient().GetContainerReference(contName);
+            try {
+                container.CreateIfNotExists();
+            } catch (StorageException e) {
+                
+                WriteError(new ErrorRecord(e, "0", ErrorCategory.ConnectionError, null));
+                return;
+            }
+            
+
+            WriteObject(container.Name);
+            WriteObject(container.Uri);
         }
     }
 }
