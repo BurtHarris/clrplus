@@ -16,6 +16,8 @@ namespace ClrPlus.Powershell.Provider.Commands {
     using System.IO;
     using System.Linq;
     using System.Management.Automation;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Base;
     using Core.Exceptions;
     using Core.Extensions;
@@ -37,6 +39,9 @@ namespace ClrPlus.Powershell.Provider.Commands {
             }
             return result;
         }
+
+        private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+        
 
         protected override void BeginProcessing() {
            // Console.WriteLine("===BeginProcessing()===");
@@ -88,7 +93,13 @@ namespace ClrPlus.Powershell.Provider.Commands {
                 return;
             }
 
-            foreach (var operation in copyOperations) {
+            
+
+            for (var i = 0; i < copyOperations.Length; i++) 
+            {
+                var operation = copyOperations[i];
+                WriteProgress(CreateProgressRecord(1, "Copy", "Copying item {0} of {1}".format(i, copyOperations.Length), 100 * (double)i/copyOperations.Length));
+
                 //Console.WriteLine("COPY '{0}' to '{1}'", operation.Source.AbsolutePath, operation.Destination.AbsolutePath);
                 if (!force) {
                     if (operation.Destination.Exists) {
@@ -97,23 +108,37 @@ namespace ClrPlus.Powershell.Provider.Commands {
                     }
                 }
 
+
+
                 using (var inputStream = new ProgressStream(operation.Source.Open(FileMode.Open))) {
                   using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
 
                       var inputLength = inputStream.Length;
                       
                         inputStream.BytesRead += (sender, args) => {};
-                        outputStream.BytesWritten += (sender, args) => WriteProgress(new ProgressRecord(0, "Copy", "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath))
-                        {
-                                                                                                                                PercentComplete = (int)(100L*args.StreamPosition/inputLength)
-                                                                                                                            });
+                        outputStream.BytesWritten += (sender, args) => WriteProgress(CreateProgressRecord(2, "Copy",
+                          "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength, 1));
+                            
+                      Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token);
+                      try {
+                          t.Wait();
+                      } catch (TaskCanceledException e) {
+                          return;
+                      }
 
-                        inputStream.CopyTo(outputStream);
-                    }
+                  }
                 }
             }
 
-            Console.WriteLine("Done.");
+           
+        }
+
+        private ProgressRecord CreateProgressRecord(int activityId, string activity, string statusDescription, double percentComplete, int parentActivityId = 0) {
+            return new ProgressRecord(activityId, activity, statusDescription) {
+                                                                                      PercentComplete = (int)percentComplete,
+                                                                                      ParentActivityId = parentActivityId
+                                                                                  };
+
         }
 
         internal virtual IEnumerable<CopyOperation> ResolveSourceLocations(SourceSet[] sourceSet, ILocation destinationLocation) {
@@ -152,8 +177,10 @@ namespace ClrPlus.Powershell.Provider.Commands {
         }
 
         protected override void StopProcessing() {
-           // Console.WriteLine("===StopProcessing()===");
+          
             base.StopProcessing();
+            cancellationToken.Cancel();
+            
         }
     }
 }
