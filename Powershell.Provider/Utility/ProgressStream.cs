@@ -13,6 +13,8 @@
 namespace ClrPlus.Powershell.Provider.Utility {
     using System;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     ///     Wraps another stream and provides reporting for when bytes are read or written to the stream.
@@ -142,6 +144,33 @@ namespace ClrPlus.Powershell.Provider.Utility {
             
             OnBytesWritten(count);
             OnBytesMoved(count, false);
+        }
+
+        public Task CopyToAsync(Stream s) {
+            return CopyToAsync(s, CancellationToken.None);
+        }
+
+        public Task CopyToAsync(Stream s, CancellationToken cancelToken) {
+            return CopyToAsync(s, 1024, cancelToken);
+        }
+
+        public Task CopyToAsync(Stream s, int bufferSize) {
+            return CopyToAsync(s, bufferSize, CancellationToken.None);
+        }
+
+
+        public Task CopyToAsync(Stream s, int bufferSize, CancellationToken cancelToken) {
+            return Task.Factory.StartNew(() => LightCopy(s, bufferSize, cancelToken), cancelToken);
+        }
+
+        
+
+        private void LightCopy(Stream s, int bufferSize, CancellationToken cancelToken) {
+            var buffer = new byte[bufferSize];
+            for (long i = 0; !cancelToken.IsCancellationRequested && i < Length; i += bufferSize) {
+                var bytesRead = Read(buffer, 0, buffer.Length);
+                s.Write(buffer, 0, bytesRead);
+            }
         }
 
         public override void Close() {
