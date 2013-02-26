@@ -1,0 +1,4 @@
+﻿user[garrett] {
+	password: test;
+	roles: users;
+}
