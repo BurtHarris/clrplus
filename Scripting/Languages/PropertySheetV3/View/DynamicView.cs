@@ -74,18 +74,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.View {
         }
 
         public DynamicView AddRoute(Selector selector, Func<object> accessor) {
-            Routes.Add(selector, (c, s) => new Reference(accessor));
-            return this;
+            return AddRoute(selector, (c, s) => new Reference(accessor));
         }
 
         public DynamicView AddRoute(Selector selector, Func<DynamicView, object> accessor) {
-            Routes.Add(selector, (c, s) => new Reference(() => accessor(c)));
-            return this;
+            return AddRoute(selector, (c, s) => new Reference(() => accessor(c)));
         }
 
         public DynamicView AddRoute(Selector selector, Func<DynamicView, Selector, object> accessor) {
-            Routes.Add(selector, (c, s) => new Reference(() => accessor(c, s)));
-            return this;
+            return AddRoute(selector, (c, s) => new Reference(() => accessor(c, s)));
         }
 
         public DynamicView AddRoutes(object routes) {
@@ -148,13 +145,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.View {
 
             foreach (var selector in propertySheetNode.Keys) {
                 var childItem = propertySheetNode[selector];
-                
+
                 if (childItem is PropertyNode) {
                     AddPropertyRoute(selector, childItem as PropertyNode);
-                    continue;
+                } else {
+                    AddObjectRoute(selector, childItem);
                 }
-
-                AddObjectRoute(selector, childItem);
             }
             return this;
         }

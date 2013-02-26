@@ -20,6 +20,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
     using System.Text.RegularExpressions;
     using ClrPlus.Core.Collections;
     using ClrPlus.Core.Extensions;
+    using ClrPlus.Core.Utility;
     using ClrPlus.Powershell.Core.Service;
     using Core;
     using ServiceStack.ServiceClient.Web;
@@ -180,7 +181,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
             JsConfig<PSCredential>.RawDeserializeFn = s => {
                 var j = JsonObject.Parse(s);
-                return new PSCredential(j["Username"], j["Password"].ToSecureString());
+                return new PSCredential( HttpUtility.UrlDecode(j["Username"]), HttpUtility.UrlDecode(j["Password"]).ToSecureString());
             };
         }
         
