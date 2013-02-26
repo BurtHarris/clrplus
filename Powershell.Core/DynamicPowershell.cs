@@ -163,7 +163,9 @@ namespace ClrPlus.Powershell.Core {
                 _currentCommand.SetParameters(args.Take(unnamedCount), namedArguments);
 
                 // invoke
-                result = _currentCommand.InvokeAsyncIfPossible();
+                AsynchronouslyEnumerableList<ErrorRecord> errors;
+                result = _currentCommand.InvokeAsyncIfPossible(out errors);
+
                 return true;
             } catch(Exception e) {
                 Console.WriteLine(e.Message);
@@ -172,7 +174,7 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        public AsynchronouslyEnumerableList<object> Invoke(string functionName, IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string,object> defaults, IDictionary<string,object> forced  ) {
+        public AsynchronouslyEnumerableList<object> Invoke(string functionName, IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string, object> defaults, IDictionary<string, object> forced, out AsynchronouslyEnumerableList<ErrorRecord> errors) {
             Wait();
 
             // command
@@ -184,7 +186,7 @@ namespace ClrPlus.Powershell.Core {
             _currentCommand.SetParameters(elements, objectContainingParameters,defaults,forced);
 
             // invoke
-            return _currentCommand.InvokeAsyncIfPossible();
+            return _currentCommand.InvokeAsyncIfPossible(out errors);
         }
 
         public void Wait() {

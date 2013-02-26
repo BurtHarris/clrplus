@@ -86,6 +86,8 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="Commands\AddRestCmdlet.cs" />
+    <Compile Include="Commands\PowershellReponse.cs" />
+    <Compile Include="Commands\RemoteError.cs" />
     <Compile Include="Commands\RemoveRestCmdlet.cs" />
     <Compile Include="Commands\RestableCmdLet.cs" />
     <Compile Include="Commands\SetDefaultRemoteService.cs" />

@@ -10,15 +10,14 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+namespace ClrPlus.Scripting.Languages.PropertySheetV3.View {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
-    using Core.Exceptions;
-    using Core.Extensions;
-    using RValue;
+    using ClrPlus.Core.Exceptions;
+    using ClrPlus.Core.Extensions;
+    using ClrPlus.Scripting.Languages.PropertySheetV3.RValue;
 
     public class Reference<T> : Reference {
         public Reference(Func<T> backingObjectAccessor) : base(() => backingObjectAccessor()) {
@@ -59,7 +58,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
     }
 
-    public class Reference : View {
+    public class Reference : DynamicView {
         
         private Func<object> _backingObjectAccessor;
         protected Type _backingType;
@@ -108,7 +107,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
-        public override View GetChildView(Selector selector) {
+        public override DynamicView GetChildView(Selector selector) {
             // if there is an exact selector match:
             if(Routes.ContainsKey(selector)) {
                 return Routes[selector](this, selector);
@@ -149,7 +148,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return LookupChildObject(selector);
         }
 
-        internal override View LookupChildObject(Selector selector) {
+        internal override DynamicView LookupChildObject(Selector selector) {
             // if there isn't a match at this point, I guess we should check the backing object for a child with that name.
             EnsurePropertyInfo();
 
@@ -163,7 +162,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     case PersistableCategory.Enumeration:
                     case PersistableCategory.Parseable:
                         // parsable types should probably be returned as a Property.
-                        return LookupChildProperty(selector);    
+                        return LookupChildProperty(selector);
 
                     case PersistableCategory.Array:
                     case PersistableCategory.Enumerable:
@@ -176,7 +175,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 
                 // looks like the child is an object I guess.
                 var result = (Reference)Create(pi.ActualType, ()=>pi.GetValue(_backingObjectAccessor(), null));
-                //  var result = new Reference(pi.GetValue(_backingObjectAccessor(), null));
                 Routes[selector] = (context, sel) => result;
                 return result;
             }
@@ -211,16 +209,19 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return anonResult;
         }
 
-        internal override View LookupChildDictionary(Selector selector) {
+        internal override DynamicView LookupChildDictionary(Selector selector) {
             EnsurePropertyInfo();
 
             if (_backingObjectPropertyInfo.ContainsKey(selector.Name)) {
                 var pi = _backingObjectPropertyInfo[selector.Name];
 
+
+                /*
                 var valtype = pi.ActualType.GetGenericArguments()[1];
                 var result = (DDictionary)DDictionary.Create(valtype, () => (IDictionary)pi.GetValue(_backingObjectAccessor, null));
                 Routes[selector] = (context, sel) => result;
                 return result;
+                 */
             }
 
             // if we *still* haven't found anything, we should really be providing a route to solve for this,

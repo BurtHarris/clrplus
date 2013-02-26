@@ -18,6 +18,7 @@ namespace Scratch {
     using System.Management.Automation.Runspaces;
     using ClrPlus.Powershell.Core;
     using ClrPlus.Scripting.Languages.PropertySheetV3;
+    using ClrPlus.Scripting.Languages.PropertySheetV3.View;
 
 #if FALSE
 
@@ -316,21 +317,21 @@ namespace Scratch {
 
 /*
                    * 
-      public View(Func<object> backingObjectAccessor, params Route[] routes) {
+      public DynamicView(Func<object> backingObjectAccessor, params Route[] routes) {
           _backingObjectAccessor = backingObjectAccessor;
       }
 
-      public View(object backingObject, params Route[] routes) {
+      public DynamicView(object backingObject, params Route[] routes) {
           _backingObjectAccessor = () => backingObject;
       }
 
                   var map = model.MapTo(autopkg,
                       pkgSelector => {
                           if (pkgSelector.Name == "Project") {
-                              return new View(autopkg.Project,
+                              return new DynamicView(autopkg.Project,
                                   sel => {
                                       if (sel.Name == "case") {
-                                          return new View(() => {
+                                          return new DynamicView(() => {
                                               // bla bla bla ... code that looks up the right object
                                               var resultObject = SomeLookup(sel.Parameter);
                                               return resultObject; 
@@ -345,9 +346,9 @@ namespace Scratch {
 
                   var map2 = model.MapTo(autopkg, new {
                       @Project = (Route)(pkgSelector => {
-                          return new View(autopkg.Project, new {
+                          return new DynamicView(autopkg.Project, new {
                               @case = (Route)(sel => {
-                                  return new View(() => {
+                                  return new DynamicView(() => {
                                       // bla bla bla ... code that looks up the right object
                                       var resultObject = SomeLookup(sel.Parameter);
                                       return resultObject; 

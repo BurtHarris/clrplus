@@ -10,19 +10,19 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+namespace ClrPlus.Scripting.Languages.PropertySheetV3.View {
     using System;
     using System.Collections;
-    using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
     using Core.Collections;
     using Core.Exceptions;
     using Core.Extensions;
 
-    public delegate View Route(View context, Selector selector);
+    public delegate DynamicView Route(DynamicView context, Selector selector);
 
-    public class DDictionary : View {
+#if maybe_not
+    public class DDictionary : DynamicView {
         public static object Create(Type type, Func<IDictionary> dictionaryAccessor) {
             Type genericType = typeof(DDictionary<>).MakeGenericType(new[] { type });
             return Activator.CreateInstance(genericType, new object[] { true, dictionaryAccessor });
@@ -45,38 +45,47 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         protected DDictionary(IDictionary<string, TVal> dictionary) : this(()=> dictionary) {
         }
-
-        
     }
+#endif
 
-    public class View : DynamicObject {
-        protected readonly XDictionary<Selector, Route> Routes = new XDictionary<Selector, Route>();
-        protected readonly static Selector DefaultRouteName = new Selector("default");
+    public class DDictionary : DynamicView {
+        private Func<IDictionary> _accessor;
 
-        protected View() {
+        protected DDictionary(Func<IDictionary> dictionaryAccessor) {
+            _accessor = dictionaryAccessor;
         }
 
-        public View AddRoute(Selector selector, Route route) {
+        protected DDictionary(IDictionary dictionary)
+            : this(() => dictionary) {
+        }
+    }
+
+    public class DynamicView : DynamicObject {
+        protected static readonly Selector DefaultRouteName = new Selector("default");
+
+        protected readonly XDictionary<Selector, Route> Routes = new XDictionary<Selector, Route>();
+
+        protected DynamicView() {
+        }
+
+        public DynamicView AddRoute(Selector selector, Route route) {
             Routes.Add(selector, route);
             return this;
         }
 
-        public View AddRoute(Selector selector, Func<object> accessor) {
-            Routes.Add(selector, (c, s) => new Reference(accessor));
-            return this;
+        public DynamicView AddRoute(Selector selector, Func<object> accessor) {
+            return AddRoute(selector, (c, s) => new Reference(accessor));
         }
 
-        public View AddRoute(Selector selector, Func<View, object> accessor) {
-            Routes.Add(selector, (c, s) => new Reference(()=>accessor(c)));
-            return this;
+        public DynamicView AddRoute(Selector selector, Func<DynamicView, object> accessor) {
+            return AddRoute(selector, (c, s) => new Reference(() => accessor(c)));
         }
 
-        public View AddRoute(Selector selector, Func<View, Selector, object> accessor) {
-            Routes.Add(selector, (c, s) => new Reference(() => accessor(c,s)));
-            return this;
+        public DynamicView AddRoute(Selector selector, Func<DynamicView, Selector, object> accessor) {
+            return AddRoute(selector, (c, s) => new Reference(() => accessor(c, s)));
         }
 
-        public View AddRoutes(object routes) {
+        public DynamicView AddRoutes(object routes) {
             if (routes == null) {
                 return this;
             }
@@ -90,15 +99,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     continue;
                 }
 
-                if (e.ActualType.IsAssignableFrom(typeof (View))) {
-                    AddRoute(e.Name, (c, s) => (View)e.GetValue(routes, null));
+                if (e.ActualType.IsAssignableFrom(typeof (DynamicView))) {
+                    AddRoute(e.Name, (c, s) => (DynamicView)e.GetValue(routes, null));
                     continue;
                 }
 
                 switch (e.ActualType.GetPersistableInfo().PersistableCategory) {
                     case PersistableCategory.Dictionary:
                         // the member type is some sort of dictionary; we'll return a dictionary view from here.
-                        
+
                         continue;
 
                     case PersistableCategory.Nullable:
@@ -107,7 +116,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     case PersistableCategory.Parseable:
                     case PersistableCategory.Array:
                     case PersistableCategory.Enumerable:
-                        var view = (View)Property.Create(e.ActualType, () => e.GetValue(routes, null), v => {});
+                        var view = (DynamicView)Property.Create(e.ActualType, () => e.GetValue(routes, null), v => {});
                         AddRoute(e.Name, (context, selector) => view);
                         continue;
 
@@ -120,14 +129,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return this;
         }
 
-        internal virtual View BuildRoutesFromNodes(PropertySheet propertySheet) {
+        internal virtual DynamicView BuildRoutesFromNodes(PropertySheet propertySheet) {
             foreach (var import in propertySheet.Imports) {
                 BuildRoutesFromNodes(import);
             }
             return AddRoutesFromNode(propertySheet);
         }
 
-        protected virtual View AddRoutesFromNode(INode node) {
+        protected virtual DynamicView AddRoutesFromNode(INode node) {
             var propertySheetNode = node as ObjectNode;
 
             if (propertySheetNode == null) {
@@ -139,43 +148,47 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
                 if (childItem is PropertyNode) {
                     AddPropertyRoute(selector, childItem as PropertyNode);
-                    continue;
-                }
-                var memberName = selector.Prefix;
-
-                if (selector.IsCompound) {
-                    var childSelector = selector.Suffix;
-                    // if there is a '.' in the name, the object is really a child of one of the current node's children.
-                    if (Routes.ContainsKey(memberName)) {
-                        // already a child with that name ? 
-                        var currentRoute = Routes[memberName];
-
-                        Routes[memberName] = (context, selector1) => {
-                            var result = currentRoute(context, selector1);
-                            result.GetChildView(childSelector).AddRoutesFromNode(childItem);
-                            return result;
-                        };
-                    } else {
-                        // add a route for that child object where it sets 
-                        Routes[memberName] = (context, selector1) => {
-                            var result = LookupChildObject(memberName);
-                            result.GetChildView(childSelector).AddRoutesFromNode(childItem);
-                            return result;
-                        };
-                    }
                 } else {
-                    if (Routes.ContainsKey(memberName)) {
-                        var currentRoute = Routes[memberName];
-                        Routes[memberName] = (context, selector1) => currentRoute(context, selector1).AddRoutesFromNode(childItem);
-                    } else {
-                        Routes[memberName] = (context, selector1) => context.LookupChildObject(selector1).AddRoutesFromNode(childItem);
-                    }
+                    AddObjectRoute(selector, childItem);
                 }
             }
             return this;
         }
 
-        protected virtual View AddPropertyRoute(Selector selector, PropertyNode childPropertyNode) {
+        private void AddObjectRoute(Selector selector, INode childItem) {
+            var memberName = selector.Prefix;
+
+            if (selector.IsCompound) {
+                var childSelector = selector.Suffix;
+                // if there is a '.' in the name, the object is really a child of one of the current node's children.
+                if (Routes.ContainsKey(memberName)) {
+                    // already a child with that name ? 
+                    var currentRoute = Routes[memberName];
+
+                    Routes[memberName] = (context, selector1) => {
+                        var result = currentRoute(context, selector1);
+                        result.GetChildView(childSelector).AddRoutesFromNode(childItem);
+                        return result;
+                    };
+                } else {
+                    // add a route for that child object where it sets 
+                    Routes[memberName] = (context, selector1) => {
+                        var result = LookupChildObject(memberName);
+                        result.GetChildView(childSelector).AddRoutesFromNode(childItem);
+                        return result;
+                    };
+                }
+            } else {
+                if (Routes.ContainsKey(memberName)) {
+                    var currentRoute = Routes[memberName];
+                    Routes[memberName] = (context, selector1) => currentRoute(context, selector1).AddRoutesFromNode(childItem);
+                } else {
+                    Routes[memberName] = (context, selector1) => context.LookupChildObject(selector1).AddRoutesFromNode(childItem);
+                }
+            }
+        }
+
+        protected virtual DynamicView AddPropertyRoute(Selector selector, PropertyNode childPropertyNode) {
             var memberName = selector.Prefix;
 
             if (selector.IsCompound) {
@@ -223,15 +236,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return this;
         }
 
-        public virtual View GetChildView(Selector selector) {
+        public virtual DynamicView GetChildView(Selector selector) {
             throw new ClrPlusException("Only instances of Reference can have child objects");
         }
 
-        internal virtual View LookupChildObject(Selector selector) {
+        internal virtual DynamicView LookupChildObject(Selector selector) {
             throw new ClrPlusException("Only instances of Reference can have child objects");
         }
 
-        internal virtual View LookupChildDictionary(Selector selector) {
+        internal virtual DynamicView LookupChildDictionary(Selector selector) {
             throw new ClrPlusException("Only instances of Reference can have child dictionaries");
         }
 

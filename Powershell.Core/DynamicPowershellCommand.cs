@@ -14,13 +14,12 @@ namespace ClrPlus.Powershell.Core {
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Management.Automation;
     using System.Management.Automation.Runspaces;
     using System.Threading;
-    using System.Threading.Tasks;
     using ClrPlus.Core.Collections;
     using ClrPlus.Core.Exceptions;
     using ClrPlus.Core.Extensions;
-    using ClrPlus.Core.Tasks;
 
 #if DISCARD_UNUSED
     public class OnDisposable<T> : IDisposable where T : IDisposable {
@@ -59,13 +58,13 @@ namespace ClrPlus.Powershell.Core {
             return obj._disposable;
         }
     }
-#endif 
+#endif
 
     internal class DynamicPowershellCommand : IDisposable {
         internal Command Command;
-        internal AsynchronouslyEnumerableList<object> Result = new AsynchronouslyEnumerableList<object>();
-
         internal Pipeline CommandPipeline;
+        internal AsynchronouslyEnumerableList<object> Result = new AsynchronouslyEnumerableList<object>();
+        internal AsynchronouslyEnumerableList<ErrorRecord> ResultErrors = new AsynchronouslyEnumerableList<ErrorRecord>();
 
         internal DynamicPowershellCommand(Pipeline pipeline) {
             CommandPipeline = pipeline;
@@ -73,7 +72,7 @@ namespace ClrPlus.Powershell.Core {
 
         public void Dispose() {
             lock (this) {
-                if(CommandPipeline != null) {
+                if (CommandPipeline != null) {
                     CommandPipeline.Dispose();
                     CommandPipeline = null;
                 }
@@ -88,13 +87,13 @@ namespace ClrPlus.Powershell.Core {
                 }
             }
         }
-     
+
         internal void SetParameters(IEnumerable<object> unnamedArguments, IEnumerable<KeyValuePair<string, object>> namedArguments) {
-            foreach(var arg in unnamedArguments) {
+            foreach (var arg in unnamedArguments) {
                 Command.Parameters.Add(null, arg);
             }
-            foreach(var arg in namedArguments) {
-                Command.Parameters.Add(arg.Key, arg.Value );
+            foreach (var arg in namedArguments) {
+                Command.Parameters.Add(arg.Key, arg.Value);
             }
         }
 
@@ -103,13 +102,13 @@ namespace ClrPlus.Powershell.Core {
             defaults = defaults ?? new Dictionary<string, object>();
             string key = null;
 
-            foreach(var arg in elements) {
-                if( (key = (from each in forced.Keys where each.Equals(arg.Name, StringComparison.CurrentCultureIgnoreCase) select each).FirstOrDefault()) != null ) {
+            foreach (var arg in elements) {
+                if ((key = (from each in forced.Keys where each.Equals(arg.Name, StringComparison.CurrentCultureIgnoreCase) select each).FirstOrDefault()) != null) {
                     Command.Parameters.Add(arg.Name, forced[key]);
                 } else {
                     var val = arg.GetValue(objectContainingParameters, null);
 
-                    if((key = (from each in defaults.Keys where each.Equals(arg.Name, StringComparison.CurrentCultureIgnoreCase) select each).FirstOrDefault()) == null) {
+                    if ((key = (from each in defaults.Keys where each.Equals(arg.Name, StringComparison.CurrentCultureIgnoreCase) select each).FirstOrDefault()) == null) {
                         if (val != null) {
                             Command.Parameters.Add(arg.Name, val);
                         }
@@ -121,7 +120,6 @@ namespace ClrPlus.Powershell.Core {
                                 var col = ((IEnumerable<object>)(val));
                                 var sz = col.Count();
 
-
                                 var def = defaults[key];
                                 if (def.GetType().IsIEnumerable()) {
                                     // both halves are collections.
@@ -131,7 +129,7 @@ namespace ClrPlus.Powershell.Core {
                                     Command.Parameters.Add(arg.Name, col.Concat(def.SingleItemAsEnumerable()).ToArray());
                                 }
                             } else {
-                                Command.Parameters.Add(arg.Name, val); 
+                                Command.Parameters.Add(arg.Name, val);
                             }
                         }
                     }
@@ -139,7 +137,7 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        internal AsynchronouslyEnumerableList<object> InvokeAsyncIfPossible() {
+        internal AsynchronouslyEnumerableList<object> InvokeAsyncIfPossible(out AsynchronouslyEnumerableList<ErrorRecord> errors) {
             CommandPipeline.Commands.Add(Command);
             CommandPipeline.Input.Close();
 
@@ -156,25 +154,48 @@ namespace ClrPlus.Powershell.Core {
                 }
             };
 
+            CommandPipeline.Error.DataReady += (sender, args) => {
+                lock (ResultErrors) {
+                    if (ResultErrors.IsCompleted) {
+                        throw new ClrPlusException("Attempted to add to completed collection");
+                    }
+
+                    var items = CommandPipeline.Error.NonBlockingRead();
+                    foreach (var item in items) {
+                        if (item is PSObject) {
+                            var record = (item as PSObject).ImmediateBaseObject;
+                            if (record is ErrorRecord) {
+                                ResultErrors.Add(record as ErrorRecord);
+                                ;
+                            }
+                        }
+                    }
+                }
+            };
 
             CommandPipeline.StateChanged += (x, y) => {
-                switch(CommandPipeline.PipelineStateInfo.State) {
+                switch (CommandPipeline.PipelineStateInfo.State) {
                     case PipelineState.NotStarted:
                         break;
 
                     case PipelineState.Completed:
-                    // case PipelineState.Disconnected:
+                        // case PipelineState.Disconnected:
                     case PipelineState.Failed:
                     case PipelineState.Stopped:
 
-                        while(!CommandPipeline.Output.EndOfPipeline) {
+                        while (!CommandPipeline.Output.EndOfPipeline) {
                             Thread.Sleep(1);
+                        }
+
+                        lock (ResultErrors) {
+                            ResultErrors.Completed();
                         }
 
                         lock (Result) {
                             Result.Completed();
                             Dispose();
                         }
+
                         break;
 
                     case PipelineState.Stopping:
@@ -185,19 +206,18 @@ namespace ClrPlus.Powershell.Core {
                 }
             };
 
-            if(CommandPipeline.IsNested) {
+            if (CommandPipeline.IsNested) {
                 // goofy-powershell doesn't let nested pipelines async.
                 CommandPipeline.Invoke();
             } else {
                 CommandPipeline.InvokeAsync();
             }
 
+            errors = ResultErrors;
             return Result;
         }
     }
 
-
-  
 #if FALSE
     public class DynamicPowershell : DynamicObject, IDisposable {
         private static OnDisposable<RunspacePool> _sharedRunspacePool;
@@ -360,5 +380,5 @@ namespace ClrPlus.Powershell.Core {
             _runspacePool = null; // will call dispose if this is the last instance using it.
         }
     }
-#endif 
+#endif
 }
