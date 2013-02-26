@@ -14,6 +14,8 @@ namespace ClrPlus.Powershell.Core {
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Management.Automation;
+    using System.Management.Automation.Remoting;
     using System.Management.Automation.Runspaces;
     using System.Threading;
     using System.Threading.Tasks;
@@ -64,6 +66,7 @@ namespace ClrPlus.Powershell.Core {
     internal class DynamicPowershellCommand : IDisposable {
         internal Command Command;
         internal AsynchronouslyEnumerableList<object> Result = new AsynchronouslyEnumerableList<object>();
+        internal AsynchronouslyEnumerableList<ErrorRecord> ResultErrors = new AsynchronouslyEnumerableList<ErrorRecord>();
 
         internal Pipeline CommandPipeline;
 
@@ -139,10 +142,10 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        internal AsynchronouslyEnumerableList<object> InvokeAsyncIfPossible() {
+        internal AsynchronouslyEnumerableList<object> InvokeAsyncIfPossible(out AsynchronouslyEnumerableList<ErrorRecord> errors) {
             CommandPipeline.Commands.Add(Command);
             CommandPipeline.Input.Close();
-
+            
             CommandPipeline.Output.DataReady += (sender, args) => {
                 lock (Result) {
                     if (Result.IsCompleted) {
@@ -156,6 +159,23 @@ namespace ClrPlus.Powershell.Core {
                 }
             };
 
+            CommandPipeline.Error.DataReady += (sender, args) => {
+                lock (ResultErrors) {
+                    if (ResultErrors.IsCompleted) {
+                        throw new ClrPlusException("Attempted to add to completed collection");
+                    }
+
+                    var items = CommandPipeline.Error.NonBlockingRead();
+                    foreach (var item in items) {
+                        if (item is PSObject) {
+                            var record = (item as PSObject).ImmediateBaseObject;
+                            if (record is ErrorRecord) {
+                                ResultErrors.Add(record as ErrorRecord);;
+                            }
+                        }
+                    }
+                }
+            };
 
             CommandPipeline.StateChanged += (x, y) => {
                 switch(CommandPipeline.PipelineStateInfo.State) {
@@ -171,10 +191,16 @@ namespace ClrPlus.Powershell.Core {
                             Thread.Sleep(1);
                         }
 
+                        lock (ResultErrors) {
+                            ResultErrors.Completed();
+                        }
+
                         lock (Result) {
                             Result.Completed();
                             Dispose();
                         }
+
+
                         break;
 
                     case PipelineState.Stopping:
@@ -192,6 +218,7 @@ namespace ClrPlus.Powershell.Core {
                 CommandPipeline.InvokeAsync();
             }
 
+            errors = ResultErrors;
             return Result;
         }
     }

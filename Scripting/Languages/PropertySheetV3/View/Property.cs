@@ -10,12 +10,12 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+namespace ClrPlus.Scripting.Languages.PropertySheetV3.View {
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using Core.Extensions;
+    using ClrPlus.Core.Extensions;
 
     internal static class ObjectExtensions {
         public static string SafeToString(this object o) {
@@ -218,7 +218,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
     }
 
-    public abstract class Property : View {
+    public abstract class Property : DynamicView {
         public abstract PropertyNode PropertyNode {get;}
         public abstract bool HasProperty {get;}
         public abstract bool HasChangeList {get;}

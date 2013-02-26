@@ -15,8 +15,10 @@ namespace ClrPlus.Powershell.Rest.Commands {
     using System.Collections.Generic;
     using System.Linq;
     using System.Management.Automation;
+    using System.Management.Automation.Runspaces;
     using System.Reflection;
     using System.Text.RegularExpressions;
+    using ClrPlus.Core.Collections;
     using ClrPlus.Core.Extensions;
     using ClrPlus.Powershell.Core.Service;
     using Core;
@@ -88,16 +90,33 @@ namespace ClrPlus.Powershell.Rest.Commands {
             if (Credential != null) {
                 client.SetCredentials(Credential.UserName, Credential.Password.ToUnsecureString());            
             }
-            object[] response = null;
+            PowershellReponse response = null;
 
             try {
                 // try connecting where the URL is the base URL
-                response = client.Send<object[]>((this as T));
+                response = client.Send<PowershellReponse>((this as T));
                 
-                if (!response.IsNullOrEmpty()) {
-                    foreach (var ob in response) {
-                        WriteObject(ob);
+                if (response != null ) {
+
+                    if(!response.Warnings.IsNullOrEmpty()) {
+                        foreach(var warning in response.Warnings) {
+                            WriteWarning(warning);
+                        }
                     }
+
+                    if(!response.Error.IsNullOrEmpty()) {
+                        foreach(var error in response.Error) {
+                            WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                        }
+                    }
+
+                    if(!response.Output.IsNullOrEmpty()) {
+                        foreach(var ob in response.Output) {
+                            WriteObject(ob);
+                        }
+                    }
+
+
                 }
 
             } catch (WebServiceException wse) {
@@ -122,18 +141,31 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
         public virtual object Execute(T cmdlet) {
             var restCommand = RestService.ReverseLookup[cmdlet.GetType()];
-            
-            using(var dps = new DynamicPowershell(RestService.RunspacePool)) {
-                if(cmdlet.Session != null && cmdlet.Session.HasRole("password_must_be_changed") && typeof(T) != typeof(SetServicePassword)) {
-                    return new object[] {"WARNING: USER PASSWORD SHOULD BE CHANGED.\r\n"}.Concat( dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters));
+            var result = new PowershellReponse();
+            AsynchronouslyEnumerableList<ErrorRecord> errors = null; 
+
+            using (var dps = new DynamicPowershell(RestService.RunspacePool)) {
+                if (cmdlet.Session != null && cmdlet.Session.HasRole("password_must_be_changed") && typeof (T) != typeof (SetServicePassword)) {
+                    result.Warnings = new string[] {
+                        "WARNING: USER PASSWORD SHOULD BE CHANGED.\r\n"
+                    };
+                    result.Output = dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters, out errors).ToArray();
+                } else {
+                    result.Output = dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters, out errors).ToArray();
                 }
-
-                return dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters);
             }
-        }
+           
+            if (errors != null && errors.Any()) {
+                result.Error = errors.Select(e => new RemoteError {
+                    Category = e.CategoryInfo.Category,
+                    Message = e.FullyQualifiedErrorId,
+                    ExceptionType = e.Exception.GetType().Name,
+                    ExceptionMessage = e.Exception.Message,
+                }).ToArray();
+            }
 
-       
-        
+            return result;
+        }
     }
 
     public abstract class RestableCmdlet : PSCmdlet {
@@ -180,3 +212,4 @@ namespace ClrPlus.Powershell.Rest.Commands {
         }
     }
 }
+

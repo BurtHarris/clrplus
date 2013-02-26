@@ -73,11 +73,11 @@
     <Compile Include="Languages\PropertySheetV3\RValue\Collection.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue\Instruction.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue\Iterator.cs" />
-    <Compile Include="Languages\PropertySheetV3\Scalar.cs" />
+    <Compile Include="Languages\PropertySheetV3\RValue\Scalar.cs" />
     <Compile Include="Languages\PropertySheetV3\Selector.cs" />
-    <Compile Include="Languages\PropertySheetV3\View.cs" />
-    <Compile Include="Languages\PropertySheetV3\Reference.cs" />
-    <Compile Include="Languages\PropertySheetV3\Property.cs" />
+    <Compile Include="Languages\PropertySheetV3\View\DynamicView.cs" />
+    <Compile Include="Languages\PropertySheetV3\View\Reference.cs" />
+    <Compile Include="Languages\PropertySheetV3\View\Property.cs" />
     <Compile Include="Languages\PropertySheet\ActualPropertyValue.cs" />
     <Compile Include="Languages\PropertySheet\Indexer.cs" />
     <Compile Include="Languages\PropertySheet\IPropertyValue.cs" />

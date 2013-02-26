@@ -15,6 +15,7 @@
 namespace ClrPlus.Powershell.Rest.Commands {
     using System;
     using System.Management.Automation;
+    using ClrPlus.Core.Exceptions;
     using ClrPlus.Core.Extensions;
 
     public class Result {
@@ -43,10 +44,12 @@ namespace ClrPlus.Powershell.Rest.Commands {
                 return;
             }
 
+            WriteError(new ErrorRecord(new ClrPlusException("testing an error"), "this is the error id", ErrorCategory.ResourceUnavailable, null));
+
             if (Session != null) {
                 WriteObject("You are authenticated as {0}".format(Session.UserAuthName));
             }
-
+            WriteWarning("test");
             if (P3 == null) {
                 WriteObject(new Result {
                     Message = "Nothing!",

@@ -20,6 +20,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using Core.Exceptions;
     using Core.Extensions;
     using RValue;
+    using View;
 
     public class ObjectNode : XDictionary<Selector, INode>, INode {
         private static readonly Regex _macro = new Regex(@"(\$\{(.*?)\})");
@@ -30,7 +31,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         public StringExtensions.GetMacroValueDelegate GetMacroValue;
         public IDictionary<Selector, PropertyNode> Properties;
         protected List<PropertySheet> _imports;
-        protected View _view;
+        protected DynamicView _view;
 
         private ObjectNode() {
             Properties = new DelegateDictionary<Selector, PropertyNode>(
@@ -256,11 +257,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             _view.AddRoute(selector, accessor);
         }
 
-        public void AddRoute(Selector selector, Func<View, object> accessor) {
+        public void AddRoute(Selector selector, Func<DynamicView, object> accessor) {
             _view.AddRoute(selector, accessor);
         }
 
-        public void AddRoute(Selector selector, Func<View, Selector, object> accessor) {
+        public void AddRoute(Selector selector, Func<DynamicView, Selector, object> accessor) {
             _view.AddRoute(selector, accessor);
         }
 

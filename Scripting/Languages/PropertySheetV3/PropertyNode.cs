@@ -16,6 +16,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.Linq;
     using Core.Collections;
     using RValue;
+    using View;
 
     public class PropertyNode : List<PropertyNode.Change>, INode {
         public enum Operation {
