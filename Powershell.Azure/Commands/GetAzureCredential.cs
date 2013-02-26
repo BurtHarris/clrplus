@@ -64,11 +64,6 @@ namespace ClrPlus.Powershell.Azure.Commands
            
             WriteObject(psCredential);
 
-            WriteObject(new boo {
-                Name = "garrett",
-                Color = "blue"
-            });
-
         }
     }
 }
