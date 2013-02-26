@@ -12,17 +12,72 @@
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.Diagnostics;
+    using Core.Exceptions;
     using Core.Extensions;
 
     [DebuggerDisplay("Selector = {Name}[{Parameter}]")]
-    public class Selector  {
-        public string Name { get; set; }
-        public string Parameter { get; set; }
-        // public string Instruction { get; set; }
-     
-        public static Selector Empty = new Selector {
-            Name = string.Empty
-        };
+    public class Selector {
+        public static Selector Empty = new Selector(string.Empty);
+
+        public string Name {get; private set;}
+        public string Parameter {get; private set;}
+
+        public Selector(string selector) :this(ParseName(selector), ParseParameter(selector)) {
+        }
+
+        private static string ParseParameter(string selector) {
+            if (string.IsNullOrEmpty(selector)) {
+                return null;
+            }
+
+            var p = selector.IndexOf('[');
+            if (p > -1) {
+                var c = selector.LastIndexOf(']');
+                if (c == -1) {
+                    throw new ClrPlusException("Missing ']' in Selector '{0}'".format(selector));
+                }
+                p++;
+                return selector.Substring(p, c - p);
+            }
+            return null;
+        }
+
+        private static string ParseName(string selector) {
+            if(string.IsNullOrEmpty(selector)) {
+                return string.Empty;
+            }
+            var p = selector.IndexOf('[');
+            return p > -1 ? ParseName(selector.Substring(0, p)) : selector;
+        }
+
+        public Selector(string name, string parameter) {
+            Name = name;
+            Parameter = parameter;
+        }
+
+        public bool HasParameter { get {
+            return !string.IsNullOrEmpty(Parameter);
+        }}
+
+        public bool IsCompound {
+            get {
+                return Name.IndexOf('.') > 0;
+            }
+        }
+
+        public Selector Prefix {
+            get {
+                var p = Name.IndexOf('.');
+                return p > 0 ? new Selector (Name.Substring(0, p)): this;
+            }
+        }
+
+        public Selector Suffix {
+            get {
+                var p = Name.IndexOf('.');
+                return p <= 0 ? this : new Selector(Name.Substring(p + 1),Parameter);
+            }
+        }
 
         public override int GetHashCode() {
             return this.CreateHashCode(Name, Parameter);
@@ -34,27 +89,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         public override string ToString() {
-            return string.Format("{0}{1}", Name,string.IsNullOrEmpty(Parameter) ? "" : "[{0}]".format(Parameter));
+            return string.Format("{0}{1}", Name, string.IsNullOrEmpty(Parameter) ? "" : "[{0}]".format(Parameter));
         }
 
-        public bool IsCompound {
-            get {
-                return Name.IndexOf('.') > 0;
-            }
+        public static implicit operator Selector(string s) {
+            return new Selector(s);
         }
 
-        public Selector Prefix {
-            get {
-                var p = Name.IndexOf('.');
-                return p > 0 ? new Selector { Name = Name.Substring(0,p)} : this;
-            }
-        }
-
-        public Selector Suffix {
-            get {
-                var p = Name.IndexOf('.');
-                return p <= 0 ? this : new Selector { Name = Name.Substring(p+1), Parameter = Parameter };
-            }
+        public static implicit operator string(Selector s) {
+            return s.ToString();
         }
     }
 }

@@ -13,6 +13,11 @@ namespace ClrPlus.Powershell.Azure.Commands
     using Provider;
     using Rest.Commands;
 
+    public class boo {
+        public string Name { get; set;}
+        public string Color { get; set; }
+    }
+
     [Cmdlet(VerbsCommon.Get, "AzureCredentials")]
     public class GetAzureCredentials: RestableCmdlet<GetAzureCredentials>
     {
@@ -58,6 +63,12 @@ namespace ClrPlus.Powershell.Azure.Commands
             var psCredential = new PSCredential("{0}{1}".format(AzureDriveInfo.SAS_GUID, account.Credentials.AccountName), sharedAccessSignature.ToSecureString());
            
             WriteObject(psCredential);
+
+            WriteObject(new boo {
+                Name = "garrett",
+                Color = "blue"
+            });
+
         }
     }
 }

@@ -29,6 +29,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         InvalidAssignment,
         StringLiteralInReference,
         UnexpectedEnd,
-        IdAlreadySpecified
+        IdAlreadySpecified,
+        ChildExists
     }
 }

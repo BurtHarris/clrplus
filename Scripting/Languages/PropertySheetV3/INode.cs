@@ -11,20 +11,10 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
-    public class RVInstruction : RValue {
-        public readonly string InstructionText;
-        public RVInstruction(string instructionText) {
-            InstructionText = instructionText;
-        }
+    using System.Collections.Generic;
+    using RValue;
 
-        public override RVSingle Single() {
-            return new RVSingle("Instruction as single value");
-            
-        }
-
-        public override RVCollection Collection() {
-            return new RVSingle("Instruction as collection value").Collection();
-            
-        }
+    public interface INode {
+        IDictionary<string, IValue> Metadata {get;}
     }
 }

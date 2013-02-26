@@ -10,7 +10,6 @@
 // </license>
 //-----------------------------------------------------------------------
 
-
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using Core.Exceptions;
     using Core.Extensions;

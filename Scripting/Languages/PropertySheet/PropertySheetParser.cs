@@ -143,8 +143,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
                         continue;
                 }
 
-                // System.Console.WriteLine("Token : {0} == [{1}]", token.Type, token.Data);
-
                 switch (state) {
                     case ParseState.Global:
                         sourceLocation = new SourceLocation {

@@ -14,3 +14,5 @@ _Resharper*
 ipch
 *.InstallLog
 packages
+Scratch/snippets.txt
+Scratch/test2.props

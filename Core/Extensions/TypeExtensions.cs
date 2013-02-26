@@ -195,9 +195,42 @@ namespace ClrPlus.Core.Extensions {
 
         private static readonly XDictionary<Type, PersistableInfo> _piCache = new XDictionary<Type, PersistableInfo>();
         private static readonly XDictionary<Type, PersistablePropertyInformation[]> _ppiCache = new XDictionary<Type, PersistablePropertyInformation[]>();
+        private static readonly XDictionary<Type, PersistablePropertyInformation[]> _readablePropertyCache = new XDictionary<Type, PersistablePropertyInformation[]>();
 
         public static PersistableInfo GetPersistableInfo(this Type t) {
             return _piCache.GetOrAdd(t, () => new PersistableInfo(t));
+        }
+
+        public static PersistablePropertyInformation[] GetReadableElements(this Type type) {
+            return _readablePropertyCache.GetOrAdd(type, () =>
+                (from each in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                 let persistableAttribute = each.GetCustomAttributes(typeof(PersistableAttribute), true).FirstOrDefault() as PersistableAttribute
+                 where !each.GetCustomAttributes(typeof(NotPersistableAttribute), true).Any() &&
+                         (each.IsPublic || persistableAttribute != null)
+                 select new PersistablePropertyInformation {
+                     SetValue = null,
+                     GetValue = (o, objects) => each.GetValue(o),
+                     SerializeAsType = null,
+                     DeserializeAsType = null,
+                     ActualType = each.FieldType,
+                     Name = each.Name
+                 }).Union((from each in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                           let getMethodInfo = each.GetGetMethod(true)
+                           let persistableAttribute = each.GetCustomAttributes(typeof(PersistableAttribute), true).FirstOrDefault() as PersistableAttribute
+                           where
+                               ((getMethodInfo != null) &&
+                                   !each.GetCustomAttributes(typeof(NotPersistableAttribute), true).Any() &&
+                                   each.GetGetMethod(true).IsPublic) ||
+                                   persistableAttribute != null
+                           select new PersistablePropertyInformation {
+                               SetValue = null,
+                               GetValue = getMethodInfo != null ? new Func<object, object[], object>(each.GetValue) : null,
+                               SerializeAsType = null,
+                               DeserializeAsType = null,
+                               ActualType = each.PropertyType,
+                               Name = (persistableAttribute != null ? persistableAttribute.Name : null) ?? each.Name
+                           })).ToArray()
+                );
         }
 
         public static PersistablePropertyInformation[] GetPersistableElements(this Type type) {
@@ -330,4 +363,6 @@ namespace ClrPlus.Core.Extensions {
             return typeof (IEnumerable).IsAssignableFrom(ienumerableType);
         }
     }
+
+
 }

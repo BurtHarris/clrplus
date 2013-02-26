@@ -80,14 +80,6 @@ namespace ClrPlus.Powershell.Rest.Commands {
             JsConfig<T>.ExcludePropertyNames = new[] {
                 "CommandRuntime", "CurrentPSTransaction", "Stopping","Remote", "ServiceUrl", "Credential", "CommandOrigin", "Events", "Host", "InvokeCommand", "InvokeProvider" , "JobManager", "MyInvocation", "PagingParameters", "ParameterSetName", "SessionState", "Session"
             }.Union(excludes).ToArray();
-
-
-            JsConfig<PSCredential>.SerializeFn = credential => string.Format("{0}&{1}", ClrPlus.Core.Extensions.StringExtensions.UrlEncode(credential.UserName), ClrPlus.Core.Extensions.StringExtensions.UrlEncode(credential.Password.ToUnsecureString()));
-
-            JsConfig<PSCredential>.DeSerializeFn = s => {
-                var items = s.Split('&');
-                return new PSCredential(items[0], items[1].ToSecureString());
-            };
         }
 
         protected virtual void ProcessRecordViaRest() {
@@ -149,6 +141,16 @@ namespace ClrPlus.Powershell.Rest.Commands {
         public static readonly Regex CREDENTIAL_USERNAME = new Regex (@"(?<property>[a-zA-Z]\w*)_USERNAME");
         public static readonly Regex CREDENTIAL_PASSWORD = new Regex(@"(?<property>[a-zA-Z]\w*)_PASSWORD");
      
+        static RestableCmdlet() {
+            JsConfig<PSCredential>.RawSerializeFn = credential => {
+                return string.Format(@"{{""__type"":""System.Management.Automation.PSCredential, System.Management.Automation"",""Username"":""{0}"",""Password"":""{1}""}}", ClrPlus.Core.Extensions.StringExtensions.UrlEncode(credential.UserName), ClrPlus.Core.Extensions.StringExtensions.UrlEncode(credential.Password.ToUnsecureString()));
+            };
+
+            JsConfig<PSCredential>.RawDeserializeFn = s => {
+                var j = JsonObject.Parse(s);
+                return new PSCredential(j["Username"], j["Password"].ToSecureString());
+            };
+        }
         
         public static Dictionary<string, object> ParseParameters(Dictionary<string, object> inputParameters) {
             var keysWithUsername = inputParameters.Keys.Select(s => new {
