@@ -150,8 +150,8 @@ namespace ClrPlus.Powershell.Provider.Utility {
             return CopyToAsync(s, CancellationToken.None);
         }
 
-        public Task CopyToAsync(Stream s, CancellationToken cancelToken) {
-            return CopyToAsync(s, 1024, cancelToken);
+        public Task CopyToAsync(Stream s, CancellationToken cancelToken, bool autoStart = true) {
+            return CopyToAsync(s, 81920, cancelToken, autoStart);
         }
 
         public Task CopyToAsync(Stream s, int bufferSize) {
@@ -159,8 +159,14 @@ namespace ClrPlus.Powershell.Provider.Utility {
         }
 
 
-        public Task CopyToAsync(Stream s, int bufferSize, CancellationToken cancelToken) {
-            return Task.Factory.StartNew(() => LightCopy(s, bufferSize, cancelToken), cancelToken);
+        public Task CopyToAsync(Stream s, int bufferSize, CancellationToken cancelToken, bool autoStart = true) {
+            if (autoStart) {
+               
+               return Task.Factory.StartNew(() => LightCopy(s, bufferSize, cancelToken), cancelToken);
+
+            }
+            else
+                return new Task(() => LightCopy(s, bufferSize, cancelToken), cancelToken, TaskCreationOptions.AttachedToParent);
         }
 
         
