@@ -13,6 +13,7 @@
 namespace ClrPlus.Powershell.Provider.Commands {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Management.Automation;
@@ -58,11 +59,12 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
         protected override void ProcessRecord() {
             ProviderInfo destinationProviderInfo;
-
+            string destinationPath;
 
             // must figure out if the destination is on the same provider, even if the destination doesn't exist.
 
-            var destinationPath = SessionState.Path.GetResolvedProviderPathFromPSPath(Destination, out destinationProviderInfo);
+            var destinationIsFile = ResolveDestinationPath(out destinationPath, out destinationProviderInfo);
+
 
             var sources = Path.Select(each => {
                 ProviderInfo spi;
@@ -73,17 +75,26 @@ namespace ClrPlus.Powershell.Provider.Commands {
                 };
             }).ToArray();
 
+
+            if (destinationIsFile && sources.Length != 1) {
+                ThrowTerminatingError(new ErrorRecord(new DirectoryNotFoundException(), "0", ErrorCategory.InvalidArgument, null ));
+            }
+
+            // if there's more than one source location and the destination is a file, let's throw because that won't work
+
             var providerInfos = sources.Select(each => each.ProviderInfo).Distinct().ToArray();
             if (providerInfos.Length > 1 && providerInfos[0] == destinationProviderInfo) {
-                Console.WriteLine("Using regular copy-item");
+                WriteVerbose("Using regular copy-item");
                 base.ProcessRecord();
                 return;
             }
 
             bool force = Force;
-
+            
+           
+            
             // resolve where files are going to go.
-            var destinationLocation = GetLocationResolver(destinationProviderInfo).GetLocation(destinationPath[0]);
+            var destinationLocation = GetLocationResolver(destinationProviderInfo).GetLocation(destinationPath);
 
             var copyOperations = ResolveSourceLocations(sources, destinationLocation).ToArray();
 
@@ -109,7 +120,8 @@ namespace ClrPlus.Powershell.Provider.Commands {
                 }
 
 
-
+                var s = new Stopwatch();
+                s.Start();
                 using (var inputStream = new ProgressStream(operation.Source.Open(FileMode.Open))) {
                   using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
 
@@ -119,18 +131,40 @@ namespace ClrPlus.Powershell.Provider.Commands {
                         outputStream.BytesWritten += (sender, args) => WriteProgress(CreateProgressRecord(2, "Copy",
                           "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength, 1));
                             
-                      Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token);
+                      Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token, false);
                       try {
-                          t.Wait();
+                          t.RunSynchronously();
                       } catch (TaskCanceledException e) {
                           return;
                       }
 
                   }
                 }
+
+                s.Stop();
+                WriteVerbose("Completed in {0}".format( s.Elapsed));
             }
 
            
+        }
+
+
+        //track if destination supposed to be filename, what the destination should be, the providerinfo
+        private bool ResolveDestinationPath(out string destinationPath, out ProviderInfo destinationProviderInfo) {
+            try {
+                var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(Destination, out destinationProviderInfo);
+                destinationPath = destination[0];
+                return !InvokeProvider.Item.IsContainer(destinationPath);
+            } catch {
+                //the destination didn't exist, probably a file
+                var lastSlash = Destination.LastIndexOf('\\');
+                var probablyDirectoryDestination = Destination.Substring(0, lastSlash);
+                //if this throws not even the directory exists
+                var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(probablyDirectoryDestination, out destinationProviderInfo);
+                destinationPath = destination[0] + '\\' + Destination.Substring(lastSlash + 1);
+                return true;
+
+            }
         }
 
         private ProgressRecord CreateProgressRecord(int activityId, string activity, string statusDescription, double percentComplete, int parentActivityId = 0) {
@@ -169,7 +203,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
                     }
 
                     yield return new CopyOperation {
-                        Destination = destinationLocation.GetChildLocation(location.Name),
+                        Destination = destinationLocation.IsFileContainer ?  destinationLocation.GetChildLocation(location.Name) : destinationLocation,
                         Source = location
                     };
                 }
