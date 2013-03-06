@@ -46,5 +46,9 @@ namespace ClrPlus.Powershell.Provider.Base {
         public abstract Stream Open(FileMode mode);
 
         public abstract ILocation GetChildLocation(string relativePath);
+
+        public override string ToString() {
+            return Name;
+        }
     }
 }

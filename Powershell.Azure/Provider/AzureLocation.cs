@@ -420,5 +420,8 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public override void ClearContent() {
         }
+
+
+        
     }
 }

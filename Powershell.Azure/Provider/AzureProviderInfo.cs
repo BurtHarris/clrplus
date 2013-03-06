@@ -11,9 +11,11 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Azure.Provider {
+    using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.Linq;
     using System.Management.Automation;
+    using System.Text.RegularExpressions;
     using Powershell.Provider.Base;
     using Powershell.Provider.Utility;
 
@@ -113,16 +115,35 @@ namespace ClrPlus.Powershell.Azure.Provider {
                 return AzureNamespace;
             }
 
+
+            
             var byAccount = AddingDrives.Union(Drives).Select(each => each as AzureDriveInfo).Where(each => each.HostAndPort == parsedPath.HostAndPort);
 
             if (!byAccount.Any()) {
-                return AzureLocation.UnknownLocation;
+
+                parsedPath.HostAndPort = AzureProvider.GetAccountFromHostAndPort(parsedPath.HostAndPort);
+
+                byAccount = AddingDrives.Union(Drives).Select(each => each as AzureDriveInfo).Where(e => string.IsNullOrEmpty(e.HostAndPort));
+                if (!byAccount.Any())
+                {
+
+                    return AzureLocation.UnknownLocation;
+                }
             }
 
             var byContainer = byAccount.Where(each => each.ContainerName == parsedPath.Container);
             var byFolder = byContainer.Where(each => each.Path.IsSubpath(parsedPath)).OrderByDescending(each => each.RootPath.Length);
 
-            return new AzureLocation(byFolder.FirstOrDefault() ?? byContainer.FirstOrDefault() ?? byAccount.FirstOrDefault(), parsedPath, null);
+            var result = byFolder.FirstOrDefault() ?? byContainer.FirstOrDefault() ?? byAccount.FirstOrDefault();
+
+            
+
+            return new AzureLocation(result, parsedPath, null);
         }
+/*
+        private IEnumerable<AzureDriveInfo> GetByAccount(Path parsedPath) {
+            var drive = AddingDrives.Union(Drives).Select(each => each as AzureDriveInfo).First(e => string.IsNullOrEmpty(e.HostAndPort));
+            
+        }*/
     }
 }

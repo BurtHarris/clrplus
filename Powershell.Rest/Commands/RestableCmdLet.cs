@@ -124,19 +124,22 @@ namespace ClrPlus.Powershell.Rest.Commands {
                 switch(wse.StatusCode) {
                     case 401:
                         if (Credential == null) {
-                            throw new Exception("Not Authenticated: you must supply credentials to access the remote service");
+                            ThrowTerminatingError(new ErrorRecord(new Exception("Not Authenticated: you must supply credentials to access the remote service",wse), "", ErrorCategory.PermissionDenied, null));
+                            return;
                         } else {
-                            throw new Exception("Invalid Authentication: the given credentials are not valid with the remote service");
+                            ThrowTerminatingError(new ErrorRecord(new Exception("Invalid Authentication: the given credentials are not valid with the remote service",wse), "", ErrorCategory.PermissionDenied, null));
+                            return;
                         }
 
                     case 403:
-                        throw new Exception("Not Authorized: You are not authorized to access that remote service");
-                        
+                        ThrowTerminatingError(new ErrorRecord(new Exception("Not Authorized: You are not authorized to access that remote service", wse), "", ErrorCategory.PermissionDenied, null));
+                        return;
                     case 404:
-                        throw new Exception("Unknown Service: no remote service for {0} found at {1}".format( GetType().Name, ServiceStack.Text.StringExtensions.WithTrailingSlash(client.SyncReplyBaseUri) + GetType().Name));
+                        ThrowTerminatingError(new ErrorRecord(new Exception("Unknown Service: no remote service for {0} found at {1}".format( GetType().Name, ServiceStack.Text.StringExtensions.WithTrailingSlash(client.SyncReplyBaseUri) + GetType().Name), wse), "", ErrorCategory.ResourceUnavailable, null)) ;
+                        return;
                 }
 
-                throw new Exception("Unable to call remote cmdlet -- error: {0}".format(wse.Message));
+                ThrowTerminatingError(new ErrorRecord(new Exception("Unable to call remote cmdlet -- error: {0}".format(wse.Message), wse), "", ErrorCategory.NotSpecified, null));
             }
         }
 

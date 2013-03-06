@@ -68,16 +68,17 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     if (_isSas) {
                         _account = new CloudStorageAccount(new StorageCredentials(Secret), _baseUri, null, null);
                        
-                        var rootStore = _account.CreateCloudBlobClient();
-                        _blobStore = GetCloudBlobClientForRelativeUri(rootStore);
+                        _blobStore = _account.CreateCloudBlobClient();
+                        
                         //get it to the right container and stuff
-                      /*  if (_blobStore == null)
+                      /*if (_blobStore == null)
                             throw new ClrPlusException("Couldn't get a CloudBlobClient for SasAccount {0} and SasContainer {1}".format(SasAccountUri, SasContainer));*/
                     } else {
                         _account = new CloudStorageAccount(new StorageCredentials(_accountName, Secret), _baseUri, null, null);
-                        //get it to the right container and stuff
-                        var rootStore = _account.CreateCloudBlobClient();
-                        _blobStore = GetCloudBlobClientForRelativeUri(rootStore);
+                       
+                        _blobStore = _account.CreateCloudBlobClient();
+                       /* if (_blobStore == null)
+                            throw new ClrPlusException("Couldn't get a CloudBlobClient for SasAccount {0} and SasContainer {1}".format(SasAccountUri, SasContainer));*/
                     }
                     
                 }
@@ -85,52 +86,6 @@ namespace ClrPlus.Powershell.Azure.Provider {
             }
         }
 
-        internal CloudBlobClient GetCloudBlobClientForRelativeUri(CloudBlobClient rootClient) {
-            
-          
-            if (!String.IsNullOrEmpty(ContainerName)) {
-                var container = rootClient.GetContainerReference(ContainerName);
-                if (!String.IsNullOrEmpty(RootPath)) {
-                    CloudBlobDirectory directory = null;
-                    foreach (var segment in RootPath.Split('\\')) {
-                        if (directory == null) {
-                            directory = container.GetDirectoryReference(segment);
-                        } else {
-                            directory = directory.GetSubdirectoryReference(segment);
-                        }
-                    }
-
-                    return directory.ServiceClient;
-
-                } else {
-                    return container.ServiceClient;
-                }
-            }
-
-            else
-                return rootClient;
-            /*
-            CloudBlobContainer container = null;
-            CloudBlobDirectory directory = null;
-            if (blobDirUri.Container != null) {
-                container = rootClient.GetContainerReference(blobDirUri.Container);
-
-            } else
-                return null;
-
-            if (blobDirUri.VirtualDirectories != null) {
-               
-                foreach (var virtualDir in blobDirUri.VirtualDirectories) {
-                    directory = directory == null ? container.GetDirectoryReference(virtualDir) : directory.GetSubdirectoryReference(virtualDir);
-                }
-            }
-
-            return directory == null ? container.ServiceClient : directory.ServiceClient;*/
-
-        }
-
-
-        
 
         internal CloudBlobContainer GetContainer(string containerName) {
             if (_containerCache.ContainsKey(containerName)) {

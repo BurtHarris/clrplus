@@ -59,11 +59,13 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
         protected override void ProcessRecord() {
             ProviderInfo destinationProviderInfo;
-            string destinationPath;
+       
 
-            // must figure out if the destination is on the same provider, even if the destination doesn't exist.
+          
 
-            var destinationIsFile = ResolveDestinationPath(out destinationPath, out destinationProviderInfo);
+            var destinationLocation = ResolveDestinationLocation(out destinationProviderInfo);
+
+           
 
 
             var sources = Path.Select(each => {
@@ -76,14 +78,12 @@ namespace ClrPlus.Powershell.Provider.Commands {
             }).ToArray();
 
 
-            if (destinationIsFile && sources.Length != 1) {
-                ThrowTerminatingError(new ErrorRecord(new DirectoryNotFoundException(), "0", ErrorCategory.InvalidArgument, null ));
-            }
+           
 
-            // if there's more than one source location and the destination is a file, let's throw because that won't work
+           
 
             var providerInfos = sources.Select(each => each.ProviderInfo).Distinct().ToArray();
-            if (providerInfos.Length > 1 && providerInfos[0] == destinationProviderInfo) {
+            if (providerInfos.Length == 1 && providerInfos[0] == destinationProviderInfo) {
                 WriteVerbose("Using regular copy-item");
                 base.ProcessRecord();
                 return;
@@ -93,79 +93,93 @@ namespace ClrPlus.Powershell.Provider.Commands {
             
            
             
-            // resolve where files are going to go.
-            var destinationLocation = GetLocationResolver(destinationProviderInfo).GetLocation(destinationPath);
+   
+           
+
+
 
             var copyOperations = ResolveSourceLocations(sources, destinationLocation).ToArray();
 
             if (copyOperations.Length > 1 && destinationLocation.IsFile) {
                 // source can only be a single file.
-                WriteError(new ErrorRecord(new ClrPlusException("Destination file exists--multiple source files specified."), "ErrorId", ErrorCategory.InvalidArgument, null));
+                ThrowTerminatingError(new ErrorRecord(new DirectoryNotFoundException(), "0", ErrorCategory.InvalidArgument, null));
+                //WriteError(new ErrorRecord(new ClrPlusException("Destination file exists--multiple source files specified."), "ErrorId", ErrorCategory.InvalidArgument, null));
                 return;
             }
 
-            
 
-            for (var i = 0; i < copyOperations.Length; i++) 
-            {
-                var operation = copyOperations[i];
-                WriteProgress(CreateProgressRecord(1, "Copy", "Copying item {0} of {1}".format(i, copyOperations.Length), 100 * (double)i/copyOperations.Length));
+            var s = new Stopwatch();
+            s.Start();
+            foreach (var operation in copyOperations) {
+                //WriteProgress(CreateProgressRecord(1, "Copy", "Copying item {0} of {1}".format(i, copyOperations.Length), 100 * (double)i/copyOperations.Length));
 
                 //Console.WriteLine("COPY '{0}' to '{1}'", operation.Source.AbsolutePath, operation.Destination.AbsolutePath);
                 if (!force) {
                     if (operation.Destination.Exists) {
-                        WriteError(new ErrorRecord(new ClrPlusException("Destination file '{0}' exists. Must use -force to override".format(operation.Destination.AbsolutePath)), "ErrorId", ErrorCategory.ResourceExists, null));
+                        ThrowTerminatingError(new ErrorRecord(new ClrPlusException("Destination file '{0}' exists. Must use -force to override".format(operation.Destination.AbsolutePath)), "ErrorId", ErrorCategory.ResourceExists, null));
                         return;
                     }
                 }
 
 
-                var s = new Stopwatch();
-                s.Start();
+                
                 using (var inputStream = new ProgressStream(operation.Source.Open(FileMode.Open))) {
-                  using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
+                    using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
 
-                      var inputLength = inputStream.Length;
+                        var inputLength = inputStream.Length;
                       
                         inputStream.BytesRead += (sender, args) => {};
+                        CopyOperation operation1 = operation;
                         outputStream.BytesWritten += (sender, args) => WriteProgress(CreateProgressRecord(2, "Copy",
-                          "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength, 1));
+                            "Copying '{0}' to '{1}'".format(operation1.Source.AbsolutePath, operation1.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength));
                             
-                      Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token, false);
-                      try {
-                          t.RunSynchronously();
-                      } catch (TaskCanceledException e) {
-                          return;
-                      }
+                        Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token, false);
+                        try {
+                            t.RunSynchronously();
+                        } catch (TaskCanceledException e) {
+                            return;
+                        }
 
-                  }
+                    }
                 }
 
-                s.Stop();
-                WriteVerbose("Completed in {0}".format( s.Elapsed));
+                WriteVerbose("Copy from {0} to {1}".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath));
             }
-
+            s.Stop();
+            WriteVerbose("Completed in {0}".format(s.Elapsed));
            
         }
 
 
-        //track if destination supposed to be filename, what the destination should be, the providerinfo
-        private bool ResolveDestinationPath(out string destinationPath, out ProviderInfo destinationProviderInfo) {
+       
+
+        private ILocation ResolveDestinationLocation(out ProviderInfo destinationProviderInfo) {
+            
             try {
+                //if Destination doesn't exist, this will throw
                 var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(Destination, out destinationProviderInfo);
-                destinationPath = destination[0];
-                return !InvokeProvider.Item.IsContainer(destinationPath);
-            } catch {
+                var path = destination[0];
+                
+                return GetLocationResolver(destinationProviderInfo).GetLocation(path);
+                
+            } catch (Exception) {
                 //the destination didn't exist, probably a file
                 var lastSlash = Destination.LastIndexOf('\\');
                 var probablyDirectoryDestination = Destination.Substring(0, lastSlash);
                 //if this throws not even the directory exists
                 var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(probablyDirectoryDestination, out destinationProviderInfo);
-                destinationPath = destination[0] + '\\' + Destination.Substring(lastSlash + 1);
-                return true;
 
+                var path = destination[0];
+
+                return GetLocationResolver(destinationProviderInfo).GetLocation(path);
             }
         }
+
+       
+        
+
+
+        
 
         private ProgressRecord CreateProgressRecord(int activityId, string activity, string statusDescription, double percentComplete, int parentActivityId = 0) {
             return new ProgressRecord(activityId, activity, statusDescription) {
@@ -195,7 +209,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
                         foreach (var f in files) {
                             var relativePath = (copyContainer ? location.Name + @"\\" : "") + absolutePath.GetRelativePath(f.AbsolutePath);
                             yield return new CopyOperation {
-                                Destination = destinationLocation.GetChildLocation(relativePath),
+                                Destination = destinationLocation.IsFileContainer ? destinationLocation.GetChildLocation(relativePath) : destinationLocation,
                                 Source = f
                             };
                         }

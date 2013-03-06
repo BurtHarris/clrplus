@@ -143,7 +143,12 @@ namespace ClrPlus.Powershell.Provider.Base {
 #if TRACE_NOT_FINISHED
             Console.WriteLine("==RemoveDrive==");
 #endif
-            return drive;
+
+            if (UniversalProviderInfo.Drives.Remove(drive))
+                return drive;
+            else {
+                return null;
+            }
         }
 
         // RemoveDrive
