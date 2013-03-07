@@ -165,12 +165,14 @@ namespace ClrPlus.Powershell.Provider.Commands {
             } catch (Exception) {
                 //the destination didn't exist, probably a file
                 var lastSlash = Destination.LastIndexOf('\\');
-                var probablyDirectoryDestination = Destination.Substring(0, lastSlash);
+                var hasASlash = lastSlash >= 0;
+                var probablyDirectoryDestination = hasASlash ? Destination.Substring(0, lastSlash) : ".";
                 //if this throws not even the directory exists
                 var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(probablyDirectoryDestination, out destinationProviderInfo);
 
                 var path = destination[0];
-
+                path += hasASlash ? Destination.Substring(lastSlash) : @"\" + Destination;
+                
                 return GetLocationResolver(destinationProviderInfo).GetLocation(path);
             }
         }
