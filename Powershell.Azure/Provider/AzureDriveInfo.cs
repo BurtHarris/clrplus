@@ -300,7 +300,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
             
         }
 
-        
+        internal string ActualHostAndPort
+        {
+            get
+            {
+                return _baseUri == null ? "" : (((_baseUri.Scheme == "https" && _baseUri.Port == 443) || (_baseUri.Scheme == "http" && _baseUri.Port == 80) || _baseUri.Port == 0) ? _baseUri.Host : _baseUri.Host + ":" + _baseUri.Port);
+            }
+        }
     }
     /*
     internal class RelativeBlobDirectoryUri
