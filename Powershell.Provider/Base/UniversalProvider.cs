@@ -140,10 +140,6 @@ namespace ClrPlus.Powershell.Provider.Base {
         ///     any resources that may be associated with the drive being removed.
         /// </remarks>
         protected override PSDriveInfo RemoveDrive(PSDriveInfo drive) {
-#if TRACE_NOT_FINISHED
-            Console.WriteLine("==RemoveDrive==");
-#endif
-
             if (UniversalProviderInfo.Drives.Remove(drive))
                 return drive;
             else {
@@ -1171,9 +1167,6 @@ namespace ClrPlus.Powershell.Provider.Base {
         ///     StringComparison.InvariantCultureIgnoreCase.
         /// </remarks>
         protected override string NormalizeRelativePath(string path, string basePath) {
-#if TRACE_NOT_FINISHED
-            Console.WriteLine("==NormailizeRelativePath [{0}][{1}]==", path, basePath);
-#endif
             return base.NormalizeRelativePath(path, basePath);
         }
 
