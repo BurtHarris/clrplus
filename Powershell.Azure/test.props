@@ -1,6 +1,6 @@
 ﻿rest-service  {
 	
-
+	user-accounts : "users.props";
    listen-on : "http://*:888/";
 };
 
@@ -24,6 +24,7 @@ rest-command {
 
 rest-command[GetUploadLocation]
 {
+	roles : users;
 	cmdlet: "Get-UploadLocation";
 
 	forced-parameters : 
@@ -36,6 +37,7 @@ rest-command[GetUploadLocation]
 
 rest-command[GetAzureCredentials]
 {
+	roles : users;
 	cmdlet: "Get-AzureCredentials";
 
 	forced-parameters : 

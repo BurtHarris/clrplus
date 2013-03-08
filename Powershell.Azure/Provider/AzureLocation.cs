@@ -186,7 +186,9 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public override void Delete(bool recurse) {
             if (IsFile) {
-                FileBlob.DeleteIfExists();
+                var result = FileBlob.DeleteIfExists();
+                if (!result)
+                    throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
                 return;
             }
             if (IsDirectory && recurse) {
@@ -418,5 +420,8 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public override void ClearContent() {
         }
+
+
+        
     }
 }

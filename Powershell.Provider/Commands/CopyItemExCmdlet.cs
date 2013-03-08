@@ -13,9 +13,12 @@
 namespace ClrPlus.Powershell.Provider.Commands {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using System.Management.Automation;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Base;
     using Core.Exceptions;
     using Core.Extensions;
@@ -38,6 +41,9 @@ namespace ClrPlus.Powershell.Provider.Commands {
             return result;
         }
 
+        private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+        
+
         protected override void BeginProcessing() {
            // Console.WriteLine("===BeginProcessing()===");
             base.BeginProcessing();
@@ -53,11 +59,14 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
         protected override void ProcessRecord() {
             ProviderInfo destinationProviderInfo;
+       
 
+          
 
-            // must figure out if the destination is on the same provider, even if the destination doesn't exist.
+            var destinationLocation = ResolveDestinationLocation(out destinationProviderInfo);
 
-            var destinationPath = SessionState.Path.GetResolvedProviderPathFromPSPath(Destination, out destinationProviderInfo);
+           
+
 
             var sources = Path.Select(each => {
                 ProviderInfo spi;
@@ -68,52 +77,118 @@ namespace ClrPlus.Powershell.Provider.Commands {
                 };
             }).ToArray();
 
+
+           
+
+           
+
             var providerInfos = sources.Select(each => each.ProviderInfo).Distinct().ToArray();
-            if (providerInfos.Length > 1 && providerInfos[0] == destinationProviderInfo) {
-                Console.WriteLine("Using regular copy-item");
+            if (providerInfos.Length == 1 && providerInfos[0] == destinationProviderInfo) {
+                WriteVerbose("Using regular copy-item");
                 base.ProcessRecord();
                 return;
             }
 
             bool force = Force;
+            
+           
+            
+   
+           
 
-            // resolve where files are going to go.
-            var destinationLocation = GetLocationResolver(destinationProviderInfo).GetLocation(destinationPath[0]);
+
 
             var copyOperations = ResolveSourceLocations(sources, destinationLocation).ToArray();
 
             if (copyOperations.Length > 1 && destinationLocation.IsFile) {
                 // source can only be a single file.
-                WriteError(new ErrorRecord(new ClrPlusException("Destination file exists--multiple source files specified."), "ErrorId", ErrorCategory.InvalidArgument, null));
+                ThrowTerminatingError(new ErrorRecord(new DirectoryNotFoundException(), "0", ErrorCategory.InvalidArgument, null));
+                //WriteError(new ErrorRecord(new ClrPlusException("Destination file exists--multiple source files specified."), "ErrorId", ErrorCategory.InvalidArgument, null));
                 return;
             }
 
+
+            var s = new Stopwatch();
+            s.Start();
             foreach (var operation in copyOperations) {
+                //WriteProgress(CreateProgressRecord(1, "Copy", "Copying item {0} of {1}".format(i, copyOperations.Length), 100 * (double)i/copyOperations.Length));
+
                 //Console.WriteLine("COPY '{0}' to '{1}'", operation.Source.AbsolutePath, operation.Destination.AbsolutePath);
                 if (!force) {
                     if (operation.Destination.Exists) {
-                        WriteError(new ErrorRecord(new ClrPlusException("Destination file '{0}' exists. Must use -force to override".format(operation.Destination.AbsolutePath)), "ErrorId", ErrorCategory.ResourceExists, null));
+                        ThrowTerminatingError(new ErrorRecord(new ClrPlusException("Destination file '{0}' exists. Must use -force to override".format(operation.Destination.AbsolutePath)), "ErrorId", ErrorCategory.ResourceExists, null));
                         return;
                     }
                 }
 
-                using (var inputStream = new ProgressStream(operation.Source.Open(FileMode.Open))) {
-                  using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
 
-                      var inputLength = inputStream.Length;
+                
+                using (var inputStream = new ProgressStream(operation.Source.Open(FileMode.Open))) {
+                    using (var outputStream = new ProgressStream(operation.Destination.Open(FileMode.Create))) {
+
+                        var inputLength = inputStream.Length;
                       
                         inputStream.BytesRead += (sender, args) => {};
-                        outputStream.BytesWritten += (sender, args) => WriteProgress(new ProgressRecord(0, "Copy", "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath))
-                        {
-                                                                                                                                PercentComplete = (int)(100L*args.StreamPosition/inputLength)
-                                                                                                                            });
+                        CopyOperation operation1 = operation;
+                        outputStream.BytesWritten += (sender, args) => WriteProgress(CreateProgressRecord(2, "Copy",
+                            "Copying '{0}' to '{1}'".format(operation1.Source.AbsolutePath, operation1.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength));
+                            
+                        Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token, false);
+                        try {
+                            t.RunSynchronously();
+                        } catch (TaskCanceledException e) {
+                            return;
+                        }
 
-                        inputStream.CopyTo(outputStream);
                     }
                 }
-            }
 
-            Console.WriteLine("Done.");
+                WriteVerbose("Copy from {0} to {1}".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath));
+            }
+            s.Stop();
+            WriteVerbose("Completed in {0}".format(s.Elapsed));
+           
+        }
+
+
+       
+
+        private ILocation ResolveDestinationLocation(out ProviderInfo destinationProviderInfo) {
+            
+            try {
+                //if Destination doesn't exist, this will throw
+                var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(Destination, out destinationProviderInfo);
+                var path = destination[0];
+                
+                return GetLocationResolver(destinationProviderInfo).GetLocation(path);
+                
+            } catch (Exception) {
+                //the destination didn't exist, probably a file
+                var lastSlash = Destination.LastIndexOf('\\');
+                var hasASlash = lastSlash >= 0;
+                var probablyDirectoryDestination = hasASlash ? Destination.Substring(0, lastSlash) : ".";
+                //if this throws not even the directory exists
+                var destination = SessionState.Path.GetResolvedProviderPathFromPSPath(probablyDirectoryDestination, out destinationProviderInfo);
+
+                var path = destination[0];
+                path += hasASlash ? Destination.Substring(lastSlash) : @"\" + Destination;
+                
+                return GetLocationResolver(destinationProviderInfo).GetLocation(path);
+            }
+        }
+
+       
+        
+
+
+        
+
+        private ProgressRecord CreateProgressRecord(int activityId, string activity, string statusDescription, double percentComplete, int parentActivityId = 0) {
+            return new ProgressRecord(activityId, activity, statusDescription) {
+                                                                                      PercentComplete = (int)percentComplete,
+                                                                                      ParentActivityId = parentActivityId
+                                                                                  };
+
         }
 
         internal virtual IEnumerable<CopyOperation> ResolveSourceLocations(SourceSet[] sourceSet, ILocation destinationLocation) {
@@ -136,7 +211,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
                         foreach (var f in files) {
                             var relativePath = (copyContainer ? location.Name + @"\\" : "") + absolutePath.GetRelativePath(f.AbsolutePath);
                             yield return new CopyOperation {
-                                Destination = destinationLocation.GetChildLocation(relativePath),
+                                Destination = destinationLocation.IsFileContainer ? destinationLocation.GetChildLocation(relativePath) : destinationLocation,
                                 Source = f
                             };
                         }
@@ -144,7 +219,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
                     }
 
                     yield return new CopyOperation {
-                        Destination = destinationLocation.GetChildLocation(location.Name),
+                        Destination = destinationLocation.IsFileContainer ?  destinationLocation.GetChildLocation(location.Name) : destinationLocation,
                         Source = location
                     };
                 }
@@ -152,8 +227,10 @@ namespace ClrPlus.Powershell.Provider.Commands {
         }
 
         protected override void StopProcessing() {
-           // Console.WriteLine("===StopProcessing()===");
+          
             base.StopProcessing();
+            cancellationToken.Cancel();
+            
         }
     }
 }

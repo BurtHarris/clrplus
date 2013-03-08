@@ -16,12 +16,15 @@ namespace ClrPlus.Powershell.Azure.Provider {
     using System.Management.Automation;
     using System.Management.Automation.Provider;
     using System.Reflection;
+    using System.Text.RegularExpressions;
     using ClrPlus.Core.Extensions;
     using Platform;
     using Powershell.Provider.Base;
 
     [CmdletProvider("Azure", ProviderCapabilities.Credentials | ProviderCapabilities.Filter)]
     public class AzureProvider : UniversalProvider<AzureProviderInfo> {
+
+        public static readonly Regex AccountFromHostPortRegex = new Regex(@"(?<account>\w+).blob.core.windows.net(?::\d+)?");
         static AzureProvider() {
             var file = Assembly.GetExecutingAssembly().ExtractFileResourceToPath("Azure.format.ps1xml", Path.Combine(FilesystemExtensions.TempPath, "Azure.format.ps1xml"));
             // var file = Assembly.GetExecutingAssembly().ExtractFileResourceToTemp("Azure.format.ps1xml");
@@ -87,6 +90,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
             return new AzureDriveInfo(drive);
         }
 
+
         // NewDrive
 
         /// <summary>
@@ -125,6 +129,17 @@ namespace ClrPlus.Powershell.Azure.Provider {
         }
 
         
+
+
         // InitializeDefaultDrives
+
+
+
+        public static string GetAccountFromHostAndPort(string hostAndPort) {
+            var match = AccountFromHostPortRegex.Match(hostAndPort);
+            if (match == Match.Empty)
+                return null;
+            return match.Groups["account"].Value;
+        }
     }
 }

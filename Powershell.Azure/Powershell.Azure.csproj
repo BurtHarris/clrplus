@@ -75,6 +75,7 @@
     <None Include="packages.config" />
     <EmbeddedResource Include="Provider\Azure.format.ps1xml">
       <LogicalName>Azure.format.ps1xml</LogicalName>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="test.props">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -83,6 +84,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="testcode.ps1" />
+    <None Include="users.props">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">
