@@ -176,7 +176,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
             }
             var uri = new Uri((path ?? string.Empty).UrlDecode());
 
-            var pathToParse = uri.AbsoluteUri;
+            var pathToParse = uri.AbsoluteUri.UrlDecode();
 
             var match = UriRx.Match(pathToParse);
             if (match.Success) {
