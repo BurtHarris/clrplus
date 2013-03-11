@@ -15,7 +15,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     using System.Linq;
 
     public class Collection :List<IValue>, IValue {
-        public ObjectNode Context { get; private set; }
+        public IValueContext Context { get; set; }
 
         public Collection(ObjectNode context) {
             Context = context;
@@ -44,7 +44,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
                 return new [] {string.Empty};
             }
             
-            return this.Select(each => Context.ResolveMacrosInContext(each.Value));
+            return this.Select(each => Context.ResolveMacrosInContext(each.Value, null));
         }}
 
         public string Value {

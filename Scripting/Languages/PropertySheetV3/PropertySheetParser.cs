@@ -234,6 +234,23 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         /// <exception cref="ParseException">Invalid token in selector declaration after < >  or [ ] --found '{0}'</exception>
         private Selector ParseSelector(TokenTypes terminators, string selectorName = null, string instruction = null, string parameter = null) {
             switch (NextAfter(WhiteSpaceOrComments)) {
+                case TokenType.Colon:
+                    if (selectorName == null && parameter == null) {
+                        if (NextType != TokenType.Colon) {
+                            throw Fail(ErrorCode.TokenNotExpected, "Single colon not permitted before selector name");
+                        }
+                        return ParseSelector(terminators, "::");
+                    }
+
+                    if (terminators.Contains(Type)) {
+                        if (string.IsNullOrEmpty(selectorName)) {
+                            throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
+                        }
+                        return new Selector(selectorName, parameter);
+                    }
+                    break;
+                    
+
                 case TokenType.Identifier:
                 case TokenType.Dot:
                     if (instruction != null || parameter != null) {
@@ -295,13 +312,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var identifier = Data;
                     switch (NextAfter(WhiteSpaceOrComments)) {
                         case TokenType.Equal:
-                            metadataContainer.Metadata.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
+                            metadataContainer.Metadata.Value.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
                             //context.AddMetadata(identifier, ParseRValue(context, Semicolon));
                             return Continue;
 
                         case TokenType.Colon:
                             // should we really support this?
-                            metadataContainer.Metadata.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
+                            metadataContainer.Metadata.Value.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
                             //context.AddMetadata(identifier, ParseRValue(context, Semicolon));
                             return Continue;
 
@@ -310,7 +327,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
                             if (metadata != null && metadata.Count > 0) {
                                 foreach (var key in metadata.Keys) {
-                                    metadataContainer.Metadata.AddOrSet(identifier, metadata[key]);
+                                    metadataContainer.Metadata.Value.AddOrSet(identifier+"."+key, metadata[key]);
                                 }
                                 //context.AddMetadata(identifier, metadata);
                             }
@@ -328,7 +345,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var identifier = Data;
                     switch (NextAfter(WhiteSpaceOrComments)) {
                         case TokenType.Equal:
-                            context.AddAlias(identifier, ParseSelector(Semicolon));
+                            context.Aliases.Value.Add(identifier, ParseSelector(Semicolon));
                             return Continue;
                     }
                     throw Fail(ErrorCode.TokenNotExpected, "Expected '=' in alias declaration, found {0}");

@@ -18,7 +18,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
 
     public class Iterator : List<IValue>, IValue {
         public readonly StringBuilder Template;
-        public ObjectNode Context {get; private set;}
+        public IValueContext Context {
+            get;
+            set;
+        }
 
         public Iterator(ObjectNode context) {
             Template = new StringBuilder();

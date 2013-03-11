@@ -11,10 +11,14 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+    using System;
     using System.Collections.Generic;
+    using Mapping;
     using RValue;
 
     public interface INode {
-        IDictionary<string, IValue> Metadata {get;}
+        Lazy<IDictionary<string, IValue>> Metadata {get;}
     }
+
+   
 }
