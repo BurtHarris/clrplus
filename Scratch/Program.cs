@@ -21,20 +21,220 @@ namespace Scratch {
     using ClrPlus.Powershell.Core;
     using ClrPlus.Scripting.Languages.PropertySheetV3;
     using ClrPlus.Scripting.Languages.PropertySheetV3.Mapping;
-    using ClrPlus.Scripting.Languages.PropertySheetV3.RValue;
+    
+    using Microsoft.Build.Construction;
+    using Microsoft.Build.Evaluation;
 
-    class MSBuildProject {
-        public int test;
-        public string ouch;
+    public class NuspecFields {
+
+    };
+
+    public class NuspecFiles {
+
+    };
+
+    public class Case {
+        internal string Parameter;
+        internal Project Project;
+
+        private static XDictionary<string, Case> _cases = new XDictionary<string, Case>();
+
+        public static IDictionary<string, Case> Create(Project parent) {
+
+            return new DelegateDictionary<string, Case>(
+                () => _cases.Keys,
+
+                key => _cases.ContainsKey(key) ? _cases[key] : (_cases[key] = new Case {
+                    Parameter = key,
+                    Project = parent
+                }),
+                (s, c) => _cases[s] = new Case { Parameter = s, Project = parent },
+                _cases.Remove);
+        }
     }
 
-    public class nug {
-        public string[] cars = new string[] { "ford", "honda", "gm" };
+    public class MList : ObservableList<string> {
+        public MList(Func<string> getter, Action<string> setter) {
+            var initial = getter();
+            if (!string.IsNullOrEmpty(initial)) {
+                foreach (var i in initial.Split(';')) {
+                    Add(i);    
+                }
+            }
+
+            ListChanged += (source, args) => setter(this.Reverse().Aggregate((current, each) => current + ";" + each));
+        }
     }
 
-    class Autopackage {
-        public MSBuildProject Project = new MSBuildProject();
+    public class PackageScript  {
+        private NuspecFields _fields = new NuspecFields();
+        private NuspecFiles _files = new NuspecFiles();
+        private Project _targets = new Project();
+        private Project _props = new Project();
+
+        public string Filename { get; set; }
+        protected PropertySheet _sheet;
+
+        public void Save() {
+            _sheet.SaveFile(Filename);
+        }
+
+        public PackageScript(string filename) {
+            
+            _sheet = new PropertySheet(this);
+            _sheet.ParseFile(filename);
+
+            _sheet.Route("nuget.nuspec".MapTo(() => _fields));
+            _sheet.Route("nuget.files".MapTo(() => _files ));
+            
+            MapProject("nuget.props", _props);
+            MapProject("nuget.targets", _targets);
+
+            _sheet.View.CopyToModel();
+        }
+
+        private void MapProject(string location, Project project) {
+            _sheet.Route(
+                location.MapTo(() => project,
+
+                    "ItemDefinitionGroup".MapTo(() => FindOrCreateIDG(project, ""), ItemDefinitionGroupChildren().ToArray()),
+                    /*
+                    "PropertyGroup".MapTo(),
+                    "Import".MapTo(),
+                    "ImportGroup".MapTo(),
+                    "ItemGroup".MapTo(),
+                    "
+                     
+                     */
+                    "case".MapTo<Project, string, Case>(parent => Case.Create(parent), key => key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {'\\', ' '}, StringSplitOptions.RemoveEmptyEntries).OrderBy(each => each).Aggregate((c, e) => c + "\\" + e).Trim('\\'),
+
+                        "ItemDefinitionGroup".MapTo<Case>(c => FindOrCreateIDG(c.Project, c.Parameter), ItemDefinitionGroupChildren().ToArray())
+
+                        ))
+
+                );
+        }
+
+
+        private IEnumerable<ToRoute> ItemDefinitionGroupChildren() {
+            yield return ItemDefinitionRoute("PostBuildEvent");
+            //Command
+            //Message
+
+            yield return ItemDefinitionRoute("Midl");
+            //TypeLibraryName
+
+            yield return ItemDefinitionRoute("ResourceCompile");
+            //Culture
+            //ResourcOutputFileName
+            //AdditionalIncludeDirectories
+            //PreprocessorDefinitions
+
+            yield return ItemDefinitionRoute("BcsMake");
+            //SuppressStartupBanner
+            //OutputFile
+
+            yield return ItemDefinitionRoute("ResourceCompile");
+
+
+            yield return ItemDefinitionRoute("ClCompile", 
+                MetadataListRoute("PreprocessorDefinitions", "%(PreprocessorDefinitions)"),
+                MetadataListRoute("AdditionalIncludeDirectories", "%(AdditionalIncludeDirectories)")
+               
+
+                );
+
+            yield return ItemDefinitionRoute("Link",
+                MetadataListRoute("AdditionalDependencies", "%(AdditionalDependencies)")
+              
+               
+                );
+        }
+
+        private ToRoute ItemDefinitionRoute(string name, params ToRoute[] children) {
+            return name.MapTo<ProjectItemDefinitionGroupElement>(idg => {
+                foreach(var i in idg.Children) {
+                    var pide = (i as ProjectItemDefinitionElement);
+                    if(pide != null) {
+                        if(pide.ItemType == name ) {
+                            return pide;
+                        }
+                    }
+                }
+
+                var c = idg.AddItemDefinition(name);
+                return c;
+            }, children );
+        }
+
+        private ToRoute MetadataRoute(string metadataName, string defaultValue = null) {
+            return metadataName.MapTo<ProjectItemDefinitionElement>(pide => {
+                foreach (var m in pide.Metadata) {
+                    var metadata = m;
+                    if (metadata.Name == metadataName) {
+                        return new Accessor(() => metadata.Value, (v) => metadata.Value = v.ToString());
+                    }
+                }
+                var n = pide.AddMetadata(metadataName, defaultValue ?? "");
+                return new Accessor(() => n.Value, (v) => n.Value = v.ToString());
+            });
+        }
+
+        private ToRoute MetadataListRoute(string metadataName, string defaultValue = null) {
+            return metadataName.MapTo<ProjectItemDefinitionElement>(pide => {
+                foreach(var m in pide.Metadata) {
+                    var metadata = m;
+                    if(metadata.Name == metadataName) {
+                        return (IList) new MList(() => metadata.Value, v => metadata.Value = v);
+                    }
+                }
+                var n = pide.AddMetadata(metadataName, defaultValue ?? "");
+                return (IList) new MList(() => n.Value, v => n.Value = v);
+            });
+        }
+
+        public void SaveNuspec() {
+
+        }
+
+        public void SaveTargets() {
+            _targets.Save("test.targets");
+        }
+
+        public void SaveProps() {
+            _targets.Save("test.props");
+        }
+
+        private ProjectItemDefinitionGroupElement FindOrCreateIDG(Project p, string condition) {
+            // look it up or create it.
+            if (string.IsNullOrEmpty(condition)) {
+                var result = p.Xml.ItemDefinitionGroups.FirstOrDefault(each => string.IsNullOrEmpty(each.Label));
+                if (result != null) {
+                    return result;
+                }
+            } else {
+                var result = p.Xml.ItemDefinitionGroups.FirstOrDefault(each => condition == each.Label);
+                if(result != null) {
+                    return result;
+                }
+            }
+
+            var idg = p.Xml.AddItemDefinitionGroup();
+
+            if (!string.IsNullOrEmpty(condition)) {
+                idg.Label = condition;
+                idg.Condition = condition;    
+            }
+            
+            return idg;
+        }
+
+      //  private object FindOrCreate<TElement>(Project p, string elementType) {
+        // "UsingTask".MapTo( FindOrCreate(_targets, "UsingTask") ),          
+//        }
     }
+
+    
 
     internal class Program {
         public object SomeLookup(string param) {
@@ -45,122 +245,17 @@ namespace Scratch {
             new Program().Start(args);
         }
 
-        public class Case {
-            internal string Parameter;
-            internal nug Project;
-
-            private static XDictionary<string, Case> _cases = new XDictionary<string, Case>();
-
-            public static IDictionary<string, Case> Create(nug parent) {
-                
-                return new DelegateDictionary<string, Case>(() => _cases.Keys , key =>
-                    _cases.ContainsKey(key) ? _cases[key] : (_cases[key] = new Case {
-                        Parameter = key,
-                        Project = parent
-                    }), (s,c) => _cases[s] = new Case{Parameter = s, Project = parent},_cases.Remove);
-            }
-        }
+      
 
         private void Start(string[] args) {
             try {
-                var n = new nug();
+                Console.WriteLine("Package script" );
+                var script = new PackageScript("test.autopkg");
+                script.SaveProps();
+                script.SaveTargets();
+                script.SaveNuspec();
 
-                var stuff = new Dictionary<string, string> {
-                    {"abc", "item1"}, 
-                    {"def", "item2"}
-                };
-
-                var tests = new[] {
-                     @"tests\pass\test.txt" //, @"tests\pass\Alias_decl.txt"// @"tests\pass\Coll_ops.txt", @"tests\pass\Dict_ops.txt",
-                };
-
-                foreach (var t in tests) {
-                    var autopkg = new Autopackage();
-
-                    var ps = new PropertySheet(autopkg);
-                    Console.WriteLine("\r\n\r\n=================[Parsing]==============");
-                    ps.ParseFile(t);
-
-                    Console.WriteLine("\r\n\r\n=================[Adding Routes]==============");
-                   //  ps.Route( "Project.apple".MapTo( () => "applepropertyvalue", v => {} ));
-                    ps.Route("nuget".MapTo(n,
-
-                        "case".MapTo<nug,string,Case>(parent=> Case.Create(parent),  // <--  
-
- 
-                        // applies to every element of parent
-
-                            "ItemDefinitionGroup".MapTo<Case>((Case => {                // when case is a parent, pass the case to this accessor.
-                                // the key is the c.Parameter string.
-                                // return (object)  "hello " + c.Parameter; // return the scoped item definition group 
-                                return "hi";
-                            }))
-                            
-                            ) 
-
-
-                        ));
-                   // ps.Route("dict".MapTo(stuff));
-                    // ps.Route("outer.dic".MapTo(stuff));
-                    var view = ps.View;
-
-                    Console.WriteLine("\r\n\r\n=================[Using]==============");
-                    // Console.WriteLine(view.Project);
-
-                    
-                    //Console.WriteLine("Sample? {0}",view.sample);
-                    View v = view.nuget;
-                    Console.WriteLine(v.Metadata.Keys.Aggregate((c, e) => c + ", " + e));
-                    var n1 = view.nuget;
-                    var n2 = n1.@case;
-                    var n3 = n2["x86"];
-
-                    
-                    
-
-                    var x86 = view.nuget.@case["x86"];
-                    
-                    Console.WriteLine(x86);
-                    Console.WriteLine(x86.text);
-                    Console.WriteLine(view.nuget.fudge.goo);
-
-
-                    /*
-
-                    Console.WriteLine("\r\n\r\n=================[0]==============");
-
-                    Console.WriteLine(view.nuget);
-                    view.CopyToModel();
-
-                    
-                    Console.WriteLine(view.nuget.sample);
-                    Console.WriteLine("\r\n\r\n=================[1]==============");
-                    Console.WriteLine(view.Project.ouch);
-                    Console.WriteLine("\r\n\r\n=================[2]==============");
-                    Console.WriteLine(view.Project.apple);
-                    Console.WriteLine("\r\n\r\n=================[3]==============");
-                    foreach(var i in view.nuget.cars) {
-                        Console.WriteLine("Car: {0}", i);
-                    }
-
-                    Console.WriteLine("\r\n\r\n=================[4]==============");
-                    Console.WriteLine(view.outer.dic["abc"]);
-                    Console.WriteLine(view.dict["def"]);
-
-
-                    var x86 = view.nuget.@case["x86"];
-                    
-                    Console.WriteLine(x86);
-                    Console.WriteLine(x86.text);
-
-                    Console.WriteLine("\r\n\r\n == TEST: {0} ==", t);
-
-                    IDictionary<string, IValue> d = view.nuget.Metadata;
-                    foreach (var k in d.Keys) {
-                        Console.WriteLine("Metadata {0} => {1} ",k, d[k].Value);
-                    }
-*/
-                }
+                
             } catch (Exception e) {
                 Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
             }

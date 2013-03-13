@@ -20,6 +20,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     using Core.Collections;
     using Core.Extensions;
     using RValue;
+    using Utility;
 
     // ReSharper disable PossibleNullReferenceException
     public partial class View : DynamicObject, IValueContext {
@@ -102,7 +103,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 return null;
             }
 
-            var delegates = getMacroDelegate.GetInvocationList();
+            var delegates = getMacroDelegate.GetInvocationList().Reverse();
             return delegates.Count() > 1 ? delegates.Select(each => AcceptFirstAnswer(each as StringExtensions.GetMacroValueDelegate, innerMacro)).FirstOrDefault(each => each != null) : getMacroDelegate(innerMacro);
         }
 
@@ -130,8 +131,23 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                     var ndx = GetIndex(innerMacro);
                     if (ndx < 0) {
                         // get the first responder.
-                        replacement = SearchForMacro(innerMacro);
+                        var indexOfDot = innerMacro.IndexOf('.');
+
+                        if (indexOfDot > -1 ) {
+                            var membr = innerMacro.Substring(0, indexOfDot);
+                            var val = SearchForMacro(membr);    
+                            if (val != null) {
+                                var obval = val.SimpleEval2(innerMacro.Substring(indexOfDot + 1).Trim());
+                                if (obval != null) {
+                                    replacement = obval.ToString();
+                                }
+                            }
+                        } else {
+                            replacement = SearchForMacro(innerMacro);    
+                        }
                     }
+
+
 
                     if (!eachItems.IsNullOrEmpty()) {
                         // try resolving it as an ${each.property} style.
@@ -151,7 +167,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                                         if (ndx < eachItems.Length) {
                                             innerMacro = innerMacro.Substring(indexOfDot + 1).Trim();
 
-                                            var v = eachItems[ndx].SimpleEval(innerMacro);
+                                            var v = eachItems[ndx].SimpleEval2(innerMacro);
                                             if (v != null) {
                                                 var r = v.ToString();
                                                 value = value.Replace(outerMacro, r);
@@ -255,6 +271,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             if (node.Metadata.IsValueCreated) {
                 _metadata.Value.Add(node.Metadata.Value);
             }
+            if (node is PropertySheet) {
+                foreach (var i in (node as PropertySheet).AllImportedSheets) {
+                    if (i.Metadata.IsValueCreated) {
+                        _metadata.Value.Add(i.Metadata.Value);
+                    }
+                    _aliases.Value.Add(i.Aliases.Value);
+                }
+
+            }
         }
 
         protected static View Unroll(string memberName, View view) {
@@ -277,7 +302,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                     (() => new View(Unroll(memberName.Substring(p + 1), map)))
                 });
             }
-
             return map(memberName);
         }
 
@@ -289,6 +313,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
 
             if (selector.HasParameter) {
+                // add an initializer to the new node that adds the element to the child container.
                 return new PlaceholderMap(selector.Name, new ToRoute[] {
                     (() => new View(new ElementMap(null,selector.Parameter, node), node))
                 }) ;
@@ -444,6 +469,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         }
 
         public void CopyToModel() {
+            var x = Value;
             map.CopyToModel();
         }
 
@@ -462,7 +488,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             : base(Unroll(memberName, (member) => new ObjectMap<TParent>(member, route, childRoutes))) {
         }
 
-        internal View(ObjectNode rootNode, Route<TParent> backingObjectAccessor)
+        internal View(PropertySheet rootNode, Route<TParent> backingObjectAccessor)
             : base(new ObjectMap<TParent>("ROOT", p=> backingObjectAccessor, null), rootNode) {
             // used for the propertysheet itself.
         }
@@ -480,8 +506,19 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
     internal class View<TParent, TKey, TVal> : View  {
         public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, params ToRoute[] childRoutes)
-            : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, childRoutes))) {
+            : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, null) {
+                childInitializers = childRoutes
+            })) {
+            // childRoutes are to be used as initializers for the children, not for the dictionary itself.
         }
+
+        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string, string> keyExchanger, params ToRoute[] childRoutes)
+            : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, keyExchanger, null) {
+                childInitializers = childRoutes
+            })) {
+            // childRoutes are to be used as initializers for the children, not for the dictionary itself.
+        }
+
     }
    // ReSharper restore PossibleNullReferenceException
 }

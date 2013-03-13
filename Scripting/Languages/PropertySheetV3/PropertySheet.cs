@@ -54,16 +54,34 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             // used by imported sheets to bind themselves to the right root object.
         }
        
+        private void AddRoutesForImport(PropertySheet importedSheet) {
+            Root._view.AddChildRoute(importedSheet.Routes);
+            foreach(var i in importedSheet.Imports) {
+                AddRoutesForImport(i);
+            }
+        }
+
         public void ParseFile(string filename) {
             new PropertySheetParser(PropertySheetTokenizer.Tokenize(File.ReadAllText(filename), TokenizerVersion.V3), this, filename).Parse();
             _view = new View<object>(this, _backingObjectAccessor);
-            ((PropertySheet)(Root))._view.AddChildRoute(Routes);
+            if (Root._view != null) {
+                Root._view.AddChildRoute(Routes);
+                foreach(var i in Imports) {
+                    AddRoutesForImport(i);
+                }
+            }
+           
         }
 
         public void ParseText(string propertySheetText, string originalFilename) {
             new PropertySheetParser(PropertySheetTokenizer.Tokenize(propertySheetText, TokenizerVersion.V3), this, originalFilename).Parse();
             _view = new View<object>(this, _backingObjectAccessor);
-            ((PropertySheet)(Root))._view.AddChildRoute(Routes);
+            if(Root._view != null) {
+                Root._view.AddChildRoute(Routes);
+                foreach(var i in _imports) {
+                    AddRoutesForImport(i);
+                }
+            }
         }
 
         public void ImportFile(string filename) {
@@ -80,6 +98,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         public void Route(params ToRoute[] routes) {
             _view.AddChildRoute(routes);
+        }
+
+        public IEnumerable<PropertySheet> AllImportedSheets {
+            get {
+                return Imports.Concat(Imports.SelectMany(each => each.Imports));
+            }
         }
 
     }

@@ -1,0 +1,156 @@
+﻿@import template.autopkg;
+
+configurations {
+	Platform {
+		key : "Platform"; // ie, applies when Condition="$(Platform) == 'Win32'
+		choices: { Win32, x64, ARM };
+	};
+
+	Toolset { 
+		key : "PlatformToolset"; // ie, applies when Condition="$(PlatformToolset) == 'v110'
+		choices: { v110, v100 };
+	};
+
+	Linkage {
+		// the first choice is the default
+		// so, unless a choice is made, it will assume the first choice
+		choices: { cdecl, stdcall, static };
+	}
+};
+
+
+
+nuget {
+
+
+	// the nuspec file metadata. Gets created/updated on build
+	nuspec {
+		id : zlib;
+		version : 1.2.5.48;
+		title: ZLib compression library;
+		authors: Garrett Serack;
+		owners: Garrett Serack;
+		licenseUrl: "http://opensource.org/licenses/Apache-2.0";
+		projectUrl: "http://perpetual-motion.com/ClrPlus</projectUrl>";
+		iconUrl: "http://coapp.org/images/logo-small.png</iconUrl>";
+		requireLicenseAcceptance:false;
+		summary:A zlib library;
+		description: "A native zlib library";
+		releaseNotes: this is a test build.;
+		copyright: Copyright 2013;
+		tags: { zlib };
+	};
+
+	// the files that go into the content folders
+	// (inserted into the nuspec file)
+	files {
+		include: {
+			#destination : ${d_include};
+			.\include\*.h;
+		};
+
+		docs: { 
+			#destination : ${d_docs};
+			docs\**;
+		};
+    
+		case[Win32,v110,cdecl] { 
+			lib: {
+				#destination : ${d_lib};
+				#source: .\output\win32\release\lib;
+				*.lib
+			};
+		}
+
+		case[x64,v110,cdecl] {
+			lib: {
+				#destination : ${d_lib};
+				#source: .\output\x64\release\lib;
+				*.lib
+			};
+		}
+		
+		case[Win32,v110,cdecl] {
+			bin: {
+				#destination : ${d_bin};
+				#source: .\output\win32\release\bin;
+				zlib1.dll;
+			};
+		}
+
+		case[Win32,v110,stdcall] {
+			bin: {
+				#destination : ${d_bin};
+				#source: .\output\win32\release\bin;
+				zlibwapi.dll;
+			};
+		}
+
+		case[x64,v110,cdecl] {
+			bin: {
+				#destination : ${d_bin};
+				#source: .\output\win32\release\bin;
+				zlib1.dll;
+			};
+		}
+
+	};
+
+	// the VC++ .props file that gets generated and inserted into the ${d_content} folder
+	props { 
+		// we're going to generate a number of properties anyway. 
+        // so even if the packager doesn't specify the props object 
+        // we're going to make this file.
+	};
+
+	// the VC++ .targets file that gets generated and inserted into the ${d_content} folder
+	targets {
+
+	/*
+		UsingTask {
+			TaskName = "Contains";
+			TaskFactory = "CodeTaskFactory";
+			AssemblyFile="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0\Microsoft.Build.Tasks.v4.0.dll";
+			ParameterGroup {
+				Text { ParameterType = "System.String"; };
+				Library { ParameterType = "System.String"; Required="true"; };
+				Value { ParameterType = "System.String"; Required="true"; };
+				Result { ParameterType = "System.String"; Output="true"; };
+			}
+		};
+		*/
+		
+
+		// every configuration needs to reference the include directories.
+		Includes += ${pkg_root}${d_include};
+
+		// a reference that generates Condition="..." on the first child.
+
+		case[Win32,v110,dynamic] {
+			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
+		};
+
+		case[x64,v110,dynamic] {
+			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
+		}
+
+		case[Win32,v110,static] {
+			Libraries += ${pkg_root}${d_lib}\zlibstat.lib;
+		};
+
+		case[Win32,v110,stdcall] {
+			Libraries += ${pkg_root}${d_lib}\zlibwapi.lib;
+		};
+
+		case[x64,v110,static] {
+			Libraries += ${pkg_root}${d_lib}\zlibstat.lib;
+		};
+
+		case[x64,v110,cdecl] {
+			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
+		};
+
+        // the copy commands to copy the dll into the build folder.
+	};
+}
+

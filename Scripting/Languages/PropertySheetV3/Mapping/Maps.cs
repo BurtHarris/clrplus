@@ -69,13 +69,19 @@
 
             internal string Identity {
                 get {
+                    var p = ParentView;
+                    var name = "";
+                    if (ParentView != null) {
+                        name = ParentView._map.Identity + ".";
+                    }
+
                     if(string.IsNullOrEmpty(_memberName)) {
                         if(this is ElementMap) {
-                            return "parameter:"+ (this as ElementMap).Parameter;
+                            return name + "[parameter:"+ (this as ElementMap).Parameter +"]";
                         }
-                        return this.GetType().Name + "-???";
+                        return name + this.GetType().Name + "-???";
                     }
-                    return _memberName;
+                    return name+_memberName;
                 }
             }
 
@@ -142,7 +148,7 @@
             }
 
             public override void Add(string key, View value) {
-                value.map._parentReferenceValue = () => ComputedValue;
+                value._map._parentReferenceValue = () => ComputedValue;
                 ChildItems.Add(key, value);
             }
 
@@ -163,8 +169,11 @@
             }
 
             internal virtual void CopyToModel() {
+                //Console.WriteLine("COPYTOMODEL: {0}", Identity);
+                
                 if (_childItems != null) {
                     foreach (var i in _childItems.Values) {
+                       
                         i.CopyToModel();
                     }
                 }
@@ -221,7 +230,9 @@
                             Initializers = new Queue<ToRoute>();
                         }
                         foreach (var i in routes) {
-                            Initializers.Enqueue(i);
+                            if (i != null) {
+                                Initializers.Enqueue(i);
+                            }
                         }
                     }
                 }
@@ -229,6 +240,7 @@
             }
 
             protected internal virtual void MergeElement( View childView) {
+                Console.WriteLine("NOT SUPPOSED TO MERGE ELEMENT HERE");
             }
 
             protected virtual void CopyElementsTo(Map childMap) {
@@ -306,15 +318,22 @@
         protected class DictionaryMap<TParent, TKey, TVal> : Map, IElements, IHasValueFromBackingStorage  {
             private DictionaryDelegate<TParent, TKey, TVal> _route;
             private List<ToRoute> _childInitializers = new List<ToRoute>();
+            public ToRoute[] childInitializers;
+            private readonly Func<string, string> _keyExchanger;
 
             private IDictionary<TKey, TVal> Dictionary { get {
                 return _route(() => (TParent)_parentReferenceValue());
             }}
 
             internal DictionaryMap(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
-                : base(memberName, childRoutes) {
-                    
+                : this(memberName, route,x => x, childRoutes) {
                 _route = route;
+            }
+
+            internal DictionaryMap(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string,string> keyExchanger, IEnumerable<ToRoute> childRoutes)
+                : base(memberName, childRoutes) {
+                _route = route;
+                _keyExchanger = keyExchanger;
             }
 
             protected internal override object ComputedValue {
@@ -329,26 +348,56 @@
                 }
             }
 
+            public override bool ContainsKey(string key) {
+                return base.ContainsKey(_keyExchanger(key));
+            }
+
+            public override bool Remove(string key) {
+                return base.Remove(_keyExchanger(key));
+            }
+
+            public override bool TryGetValue(string key, out View value) {
+                return base.TryGetValue(_keyExchanger(key), out value);
+            }
+
+            internal override void CopyToModel() {
+                if(_childItems != null) {
+                    foreach(var k in Keys) {
+                        this[k].CopyToModel();
+                    }
+                }
+            }
+
+
             internal override Map OnAccess(View thisView) {
                 // each of the children that already exist (either from the property sheet or the backing collection)
                 // must have routes created for each of the routes in this container.
 
                 // and then we hold onto the routes in case there are more elements added after this. ?
-
-
-                if(Initializers != null) {
+                if(Initializers != null && Initializers.Count > 0 ) {
                     lock(this) {
+                        while(Initializers.Count > 0) {
+                            var childView = Initializers.Dequeue()();
+                            if(childView != null) {
+                                if (childView._map is ElementMap) {
+                                    MergeElement(childView);
+                                } else {
+                                    MergeChild(thisView, childView);
+                                }
+                            }
+                        }
+                    }
+
+                    // now, run the childinitializers over each child.
+                    if (childInitializers != null) {
                         foreach (var key in Keys) {
                             var childItem = this[key];
-                            foreach (var i in Initializers) {
+                            foreach (var i in childInitializers) {
                                 if (!childItem._map.Initializers.Contains(i)) {
                                     childItem._map.Initializers.Enqueue(i);
                                 }
                             }
                         }
-
-                        _childInitializers.AddRange(Initializers);
-                        Initializers.Clear();
                     }
                 }
                 return this;
@@ -357,12 +406,14 @@
             public override void Add(string key, View value) {
                 // we should see if this ever gets called on a node that hasn't been initialized by OnAccess...
 
-                base.Add(key, value);
+                base.Add(_keyExchanger(key), value);
             }
 
          
             public override View this[string key] {
                 get {
+                    key = _keyExchanger(key);
+
                     // if the view we have 
                     if (!ChildItems.ContainsKey(key)) {
                         var _key = (TKey)(object)key;
@@ -378,6 +429,8 @@
                     return ChildItems[key];
                 }
                 set {
+                    key = _keyExchanger(key);
+
                     base[key] = value;
                 }
             }
@@ -415,14 +468,16 @@
                 // dictionaries children  == elements.
                 var item = childView._map as ElementMap;
                 if (item != null) {
+
                     // translate elements into child nodes here.
-                    var _key = (TKey)(object)item.Parameter;
+                    var _key = (TKey)(object)_keyExchanger(item.Parameter);
+
                     var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
 
                     var childMap = new ValueMap<object>(item.Parameter, (p) => accessor, item.Initializers);
-                    
 
-                    childMap.GetMacroValue += name => name == "__ELEMENT_ID__" || name == MemberName ? item.Parameter : null;
+
+                    childMap.GetMacroValue += name => name == "__ELEMENT_ID__" || name == MemberName ? _key.ToString() : null;
 
                     MergeChild(ParentView, new View(childMap) {
                         _propertyNode = childView._propertyNode

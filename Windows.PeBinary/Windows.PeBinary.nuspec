@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Windows.PeBinary</id>
-    <version>1.8.0.57</version>
+    <version>1.8.0.61</version>
     <title>CLRPlus Windows.PeBinary Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -21,9 +21,9 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp PEBinary StrongNaming DigitalSigning Authenticode</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.57" />
-        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.57" />
-        <dependency  id="ClrPlus.Platform" version="1.8.0.57" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.61" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.61" />
+        <dependency  id="ClrPlus.Platform" version="1.8.0.61" />
         <dependency  id="CCI" version="1.0.12" />
     </dependencies>
   </metadata>

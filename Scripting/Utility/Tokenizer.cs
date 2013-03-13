@@ -11,9 +11,13 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.Utility {
+    using System;
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.Globalization;
+    using System.Linq;
+    using System.Text.RegularExpressions;
+    using Core.Extensions;
 
     /// <summary>
     ///     A moderatly generic tokenizer class
@@ -379,6 +383,7 @@ namespace ClrPlus.Scripting.Utility {
 
         protected void RecognizeNextCharacter() {
             CharsLeft = (Text.Length - Index) - 1; // not not including the current character.
+            
             CurrentCharacter = Text[Index];
             NextCharacter = CharsLeft > 0 ? Text[Index + 1] : '\u0000';
             NextNextCharacter = CharsLeft > 1 ? Text[Index + 2] : '\u0000';
@@ -696,6 +701,9 @@ namespace ClrPlus.Scripting.Utility {
                 AdvanceAndRecognize();
                 if (CurrentCharacter == '\\') {
                     Index += 2;
+                    if (Index >= Text.Length) {
+                        break;
+                    }
                     RecognizeNextCharacter();
                 }
             }
@@ -1095,6 +1103,71 @@ namespace ClrPlus.Scripting.Utility {
             var tokenizer = new Tokenizer(text);
             tokenizer.Tokenize();
             return tokenizer.Tokens;
+        }
+    }
+
+    public static class ScriptingExtensions {
+        public static object SimpleEval2(this object instance, string simpleCode) {
+            var parameters = new Regex(@"\s*([:,])\s*(?!(?<=(?:^|([:,]))\s*""(?:[^""]|""""|\\"")*([:,]))(?:[^""]|""""|\\"")*""\s*(?:([:,])|$))");
+            var functions = new Regex(@"(.*?)(\w*)(\((?>\"".*?\""|\((?<DEPTH>)|\)(?<-DEPTH>)|[^()]?)*\)(?(DEPTH)(?!)))");
+            var state = instance;
+
+            foreach(Match match in functions.Matches(simpleCode)) {
+                var before = match.Groups[1].Captures[0].Value.Trim('.');
+                if(!string.IsNullOrEmpty(before)) {
+                    // we have a field/property access here.
+                    var members = before.Split('.');
+                    foreach(var member in members) {
+                        var readable = state.GetType().GetReadableElements();
+                        var memFn = readable.FirstOrDefault(each => each.Name == member);
+                        if(memFn != null) {
+                            state = memFn.GetValue(state, null);
+                        }
+                        else {
+                            throw new Exception("Unknown member '{0}' in object of type '{1}'".format(member, state.GetType()));
+                        }
+                    }
+                }
+
+                var fn = match.Groups[2].Captures[0].Value;
+                var paramz = match.Groups[3].Captures[0].Value.Substring(1, match.Groups[3].Captures[0].Value.Length - 2);
+
+
+                var typeArray = new List<Type>();
+                var paramArray = new List<string>();
+
+                var n = parameters.Split(paramz);
+                if(n.Contains(":")) {
+                    // must supply types for parameters
+                    for(int i = 0; i < n.Length; i += 4) {
+                        typeArray.Add(Type.GetType(n[i]));
+                        if(n[i + 1] != ":") {
+                            throw new Exception("Should have a colon after the type");
+                        }
+                        var token = Tokenizer.Tokenize(n[i + 2]).FirstOrDefault();
+                        paramArray.Add(token.Data);
+                    }
+                }
+                else {
+                    // no types.
+                    if(n.Length == 1 && string.IsNullOrWhiteSpace(n[0])) {
+                        // no parameters
+                    }
+                    else {
+                        foreach (var each in n) {
+                            var token = Tokenizer.Tokenize(each).FirstOrDefault();
+                            paramArray.Add(token.Data);
+                        }
+                        
+                    }
+                }
+
+                var info = typeArray.IsNullOrEmpty() ? state.GetType().GetMethod(fn) : state.GetType().GetMethod(fn, typeArray.ToArray());
+                var pInfo = info.GetParameters();
+
+                state = info.Invoke(instance, pInfo.Select((t, i) => Convert.ChangeType(paramArray[i], t.ParameterType)).ToArray());
+            }
+            return state;
         }
     }
 }
