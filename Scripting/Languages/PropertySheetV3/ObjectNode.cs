@@ -126,6 +126,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
+        private int _indexValue;
+
+        internal int IndexValue { get {
+            return _indexValue++;
+        }}
+
         public IEnumerable<string> TryGetRValueInContext(string property) {
             return CurrentView.TryGetRValueInContext(property);
         }

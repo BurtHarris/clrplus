@@ -411,7 +411,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             Rewind();
 
             var selector = ParseSelector(MemberTerminator);
-
+            if (selector.Name.StartsWith(".")) {
+                selector = new Selector( context.IndexValue  + selector.Name, selector.Parameter  );
+            }
             // should be at the terminator still!
 
             switch (Type) {

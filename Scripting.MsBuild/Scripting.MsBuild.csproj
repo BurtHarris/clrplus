@@ -28,6 +28,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.Build" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -39,6 +40,7 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="MsBuildMap.cs" />
+    <Compile Include="StringPropertyList.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">
@@ -52,6 +54,10 @@
     <ProjectReference Include="..\Scripting\Scripting.csproj">
       <Project>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</Project>
       <Name>Platform</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Scripting\Scripting.csproj">
+      <Project>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</Project>
+      <Name>Scripting</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

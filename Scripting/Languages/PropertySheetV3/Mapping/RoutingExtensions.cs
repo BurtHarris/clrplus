@@ -90,6 +90,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return MapToDictionary<object,TKey,TVal>( memberName, (p) => route, childRoutes);
         }
 
+        public static ToRoute MapTo<TParent, TKey, TVal>(this string memberName, IDictionary<TKey, TVal> route, params ToRoute[] childRoutes) {
+            return MapToDictionary<TParent, TKey, TVal>(memberName, (p) => route, childRoutes);
+        }
+
         internal static ToRoute MapToDictionary<TParent, TKey, TVal>(this string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string,string> keyExchanger , params ToRoute[] childRoutes) {
             return () => new View<TParent, TKey, TVal>(memberName, route, keyExchanger, childRoutes);
         }
@@ -97,6 +101,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         public static ToRoute MapTo<TParent, TKey, TVal>(this string memberName, DictionaryRoute<TParent, TKey, TVal> route, Func<string, string> keyExchanger, params ToRoute[] childRoutes) {
             return MapToDictionary<TParent, TKey, TVal>(memberName, (p) => route(p()), keyExchanger, childRoutes);
         }
+
+        public static ToRoute MapTo<TKey, TVal>(this string memberName, DictionaryRoute<TKey, TVal> route, Func<string, string> keyExchanger, params ToRoute[] childRoutes) {
+            return MapToDictionary<object, TKey, TVal>(memberName, (p) => route(), keyExchanger, childRoutes);
+        }
+
 
         public static ToRoute MapTo<TKey, TVal>(this string memberName, IDictionary<TKey, TVal> route, Func<string, string> keyExchanger, params ToRoute[] childRoutes) {
             return MapToDictionary<object, TKey, TVal>(memberName, (p) => route, keyExchanger, childRoutes);

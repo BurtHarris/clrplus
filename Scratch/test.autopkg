@@ -1,5 +1,9 @@
 ﻿@import template.autopkg;
 
+#defines {
+	pkgname = zlib;
+}
+
 configurations {
 	Platform {
 		key : "Platform"; // ie, applies when Condition="$(Platform) == 'Win32'
@@ -14,15 +18,13 @@ configurations {
 	Linkage {
 		// the first choice is the default
 		// so, unless a choice is made, it will assume the first choice
-		choices: { cdecl, stdcall, static };
+		choices: { dynamic, stdcall, static };
 	}
 };
 
 
 
 nuget {
-
-
 	// the nuspec file metadata. Gets created/updated on build
 	nuspec {
 		id : zlib;
@@ -44,54 +46,28 @@ nuget {
 	// the files that go into the content folders
 	// (inserted into the nuspec file)
 	files {
-		include: {
-			#destination : ${d_include};
-			.\include\*.h;
-		};
+		include: { .\include\*.h; };
 
-		docs: { 
-			#destination : ${d_docs};
-			docs\**;
-		};
+		docs: {  docs\**; };
     
-		case[Win32,v110,cdecl] { 
-			lib: {
-				#destination : ${d_lib};
-				#source: .\output\win32\release\lib;
-				*.lib
-			};
+		condition[Win32,v110,dynamic] { 
+			lib: { .\output\win32\release\lib\*.lib };
 		}
 
-		case[x64,v110,cdecl] {
-			lib: {
-				#destination : ${d_lib};
-				#source: .\output\x64\release\lib;
-				*.lib
-			};
+		condition[x64,v110,dynamic] {
+			lib: { .\output\x64\release\lib\*.lib };
 		}
 		
-		case[Win32,v110,cdecl] {
-			bin: {
-				#destination : ${d_bin};
-				#source: .\output\win32\release\bin;
-				zlib1.dll;
-			};
+		condition[Win32,v110,dynamic] {
+			bin: { .\output\win32\release\bin\zlib1.dll; };
 		}
 
-		case[Win32,v110,stdcall] {
-			bin: {
-				#destination : ${d_bin};
-				#source: .\output\win32\release\bin;
-				zlibwapi.dll;
-			};
+		condition[Win32,v110,stdcall] {
+			bin: { .\output\win32\release\bin\zlibwapi.dll; };
 		}
 
-		case[x64,v110,cdecl] {
-			bin: {
-				#destination : ${d_bin};
-				#source: .\output\win32\release\bin;
-				zlib1.dll;
-			};
+		condition[x64,v110,dynamic] {
+			bin: { .\output\win32\release\bin\zlib1.dll; };
 		}
 
 	};
@@ -105,52 +81,46 @@ nuget {
 
 	// the VC++ .targets file that gets generated and inserted into the ${d_content} folder
 	targets {
-
-	/*
-		UsingTask {
-			TaskName = "Contains";
-			TaskFactory = "CodeTaskFactory";
-			AssemblyFile="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0\Microsoft.Build.Tasks.v4.0.dll";
-			ParameterGroup {
-				Text { ParameterType = "System.String"; };
-				Library { ParameterType = "System.String"; Required="true"; };
-				Value { ParameterType = "System.String"; Required="true"; };
-				Result { ParameterType = "System.String"; Output="true"; };
-			}
-		};
-		*/
-		
-
 		// every configuration needs to reference the include directories.
 		Includes += ${pkg_root}${d_include};
 
-		// a reference that generates Condition="..." on the first child.
-
-		case[Win32,v110,dynamic] {
+		condition[Win32,v110,dynamic] {  // a reference that generates Condition="..." on the first child.
 			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
 		};
 
-		case[x64,v110,dynamic] {
+		condition[x64,v110,dynamic] {
 			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
 		}
 
-		case[Win32,v110,static] {
+		condition[v110,Win32,static] {
+			Target[AfterBuild] {
+				.Copy {
+					SourceFiles = ${pkg_root}$(Platform)\$(Toolset)\$(Linkage-${pkgname})\*;
+					DestinationFolder = $(TargetDir);
+					SkipUnchangedFiles=true;
+				}
+			}
+
 			Libraries += ${pkg_root}${d_lib}\zlibstat.lib;
 		};
 
-		case[Win32,v110,stdcall] {
+		condition[Win32,v110,stdcall] {
 			Libraries += ${pkg_root}${d_lib}\zlibwapi.lib;
 		};
 
-		case[x64,v110,static] {
+		condition[x64,v110,static] {
 			Libraries += ${pkg_root}${d_lib}\zlibstat.lib;
 		};
 
-		case[x64,v110,cdecl] {
-			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
+        // todo: the copy commands to copy the dlls into the build folder.
+
+		Target[AfterBuild] {
+			.Copy {
+				SourceFiles = ${pkg_root}$(Platform)\$(Toolset)\$(Linkage-${pkgname})\*;
+				DestinationFolder = $(TargetDir);
+			}
 		};
 
-        // the copy commands to copy the dll into the build folder.
 	};
 }
 

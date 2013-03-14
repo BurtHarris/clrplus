@@ -55,8 +55,18 @@
             internal View ParentView;
             protected IDictionary<string, View> _childItems;
             protected internal Queue<ToRoute> Initializers;
-            internal StringExtensions.GetMacroValueDelegate GetMacroValue;
+            internal GetMacroValueDelegate GetMacroValue;
             private string _memberName;
+            protected internal bool _active;
+
+            internal bool Active {
+                get {
+                    return (_active) || _childItems != null && _childItems.Values.Any(i => i._map.Active);
+                } 
+                set {
+                    _active = value;
+                }
+            }
 
             internal string MemberName {
                 get {
@@ -173,8 +183,9 @@
                 
                 if (_childItems != null) {
                     foreach (var i in _childItems.Values) {
-                       
-                        i.CopyToModel();
+                        if (i._map.Active) {
+                            i.CopyToModel();
+                        }
                     }
                 }
             }
@@ -256,6 +267,7 @@
 
                 // ensure this child's parent is set correctly.
                 childView.ParentView = thisView;
+                
 
                 if (!ChildItems.Keys.Contains(name)) {
                     // we're first -- add it to the view, and get out.
@@ -284,6 +296,7 @@
 
                 // if the child view map is replaceable, then simply steal it's child routes 
                 if (childView._map is IReplaceable) {
+                    currentView._map.Active = childView._map.Active || currentView._map.Active;
                     currentView._map.AddChildren(childView._map.Initializers);
                     currentView._map.GetMacroValue += childView._map.GetMacroValue;
                     return;
@@ -291,6 +304,7 @@
 
                 // if this current view map is replaceable, then let's go the other way.
                 if (currentView._map is IReplaceable) {
+                    childView._map.Active = childView._map.Active || currentView._map.Active;
                     currentView._map.AddChildren(childView._map.Initializers);
                     childView._map.Initializers = currentView._map.Initializers;
                     childView._map._parentReferenceValue = currentView._map._parentReferenceValue;
@@ -311,7 +325,7 @@
                 }
 
                 // if neither is replaceable, then we're in a kind of pickle.
-                throw new ClrPlusException("Neither map is replaceable");
+                throw new ClrPlusException("Neither map is replaceable [{0}] vs [{1}]".format( currentView._map.Identity , childView._map.MemberName ));
             }
         }
 
@@ -422,7 +436,7 @@
                             var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
                             var childMap = new ValueMap<object>(key, (p) => accessor, null);
 
-                            childMap.GetMacroValue += name => name == "__ELEMENT_ID__" || name == MemberName ? key : null;
+                            childMap.GetMacroValue += (name,context) => name == "__ELEMENT_ID__" || name == MemberName ? key : null;
                             MergeChild(ParentView, new View(childMap));
                         }
                     }
@@ -477,7 +491,7 @@
                     var childMap = new ValueMap<object>(item.Parameter, (p) => accessor, item.Initializers);
 
 
-                    childMap.GetMacroValue += name => name == "__ELEMENT_ID__" || name == MemberName ? _key.ToString() : null;
+                    childMap.GetMacroValue += (name, context) => name == "__ELEMENT_ID__" || name == MemberName ? _key.ToString() : null;
 
                     MergeChild(ParentView, new View(childMap) {
                         _propertyNode = childView._propertyNode
@@ -495,6 +509,7 @@
             internal ElementMap(string memberName, string parameter, INode node)
                 : base(memberName, (node is ObjectNode) ? (node as ObjectNode).Routes : null) {
                 Parameter = parameter;
+                Active = true;
             }
         }
 
@@ -602,6 +617,7 @@
         protected class NodeMap : PlaceholderMap, IReplaceable {
             internal NodeMap(string memberName, INode node)
                 : base(memberName, node is ObjectNode ? (node as ObjectNode).Routes : null) {
+                _active = true;
             }
         }
 
@@ -637,7 +653,11 @@
 
                             switch (ppi.ActualType.GetPersistableInfo().PersistableCategory) {
                                 case PersistableCategory.String:
-                                    yield return (ppi.Name.MapTo(new Accessor(() => ppi.GetValue(result, null), v => ppi.SetValue(result, v, null))));
+                                    yield return (ppi.Name.MapTo(new Accessor(() => {
+                                        return ppi.GetValue(result, null);
+                                    }, v => {
+                                        ppi.SetValue(result, v, null);
+                                    })));
                                     break;
 
                                 case PersistableCategory.Nullable:

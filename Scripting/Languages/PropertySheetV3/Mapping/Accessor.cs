@@ -58,6 +58,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
     internal delegate IDictionary<TKey, TVal> DictionaryDelegate<TParent, TKey, TVal>(Value<TParent> parent);
     public delegate IDictionary<TKey, TVal> DictionaryRoute<TParent, TKey, TVal>(TParent parent);
+
+    public delegate IDictionary<TKey, TVal> DictionaryRoute<TKey, TVal>();
     
     
 

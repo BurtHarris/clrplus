@@ -1,19 +1,18 @@
-﻿
+﻿#defines { condition = ""; }
 
 nuget {
  
-	
 	// built-in defines 
 	#defines { 
 		d_content   = \content\native,
 		d_tools     = \tools\native,
 		d_root      = \lib\native,
         
-		d_include   = ${d_root}\include\${case},
-		d_docs      = ${d_root}\docs\${case},
-		d_bin       = ${d_root}\bin\${case},
-		d_lib       = ${d_root}\lib\${case},
-		d_exes		= ${d_tools}\${case},
+		d_include   = ${d_root}\include\${condition},
+		d_docs      = ${d_root}\docs\${condition},
+		d_bin       = ${d_root}\bin\${condition},
+		d_lib       = ${d_root}\lib\${condition},
+		d_exes		= ${d_tools}\${condition},
 
 		pkg_root    = $(MSBuildThisFileDirectory)..\..\,
 	};
@@ -28,4 +27,11 @@ nuget {
         @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
         @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
     }
+
+	files {
+		include: { #destination : ${d_include}; };
+		docs: {  #destination : ${d_docs}; };
+		lib: { #destination : ${d_lib}; };
+		bin: { #destination : ${d_bin}; };
+	};
 }

@@ -64,6 +64,10 @@
       <Project>{df38aa27-e211-4a3c-a3ab-add32347a25a}</Project>
       <Name>Powershell.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Scripting.MsBuild\Scripting.MsBuild.csproj">
+      <Project>{123467A0-2FCE-43F8-9814-0EB1F6C91234}</Project>
+      <Name>Scripting.MsBuild</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Scripting\Scripting.csproj">
       <Project>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</Project>
       <Name>Scripting</Name>
