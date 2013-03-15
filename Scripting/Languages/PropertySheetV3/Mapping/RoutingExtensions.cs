@@ -110,5 +110,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         public static ToRoute MapTo<TKey, TVal>(this string memberName, IDictionary<TKey, TVal> route, Func<string, string> keyExchanger, params ToRoute[] childRoutes) {
             return MapToDictionary<object, TKey, TVal>(memberName, (p) => route, keyExchanger, childRoutes);
         }
+
+        internal static ToRoute MapChildTo<TParent>(this string memberName, ChildRouteDelegate<TParent> route, params ToRoute[] childRoutes) {
+            // set up a virtual view as a child of the view.
+            // that virutal view can then expose the #'d grandchildren as children.
+            return () =>  new View<TParent>(memberName, route, childRoutes);
+        }
+
+        public static ToRoute MapChildTo<TParent>(this string memberName, ChildRoute<TParent> route, params ToRoute[] childRoutes) {
+            return MapChildTo<TParent>(memberName, (p, v) => route(p(), v), childRoutes);
+        }
     }
 }

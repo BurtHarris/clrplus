@@ -39,6 +39,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="Condition.cs" />
+    <Compile Include="Configurations.cs" />
     <Compile Include="MsBuildMap.cs" />
     <Compile Include="StringPropertyList.cs" />
   </ItemGroup>

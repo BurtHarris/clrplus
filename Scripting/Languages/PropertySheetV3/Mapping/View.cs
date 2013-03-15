@@ -33,7 +33,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         private readonly Lazy<List<IDictionary<string, IValue>>> _metadata = new Lazy<List<IDictionary<string, IValue>>>(() => new List<IDictionary<string, IValue>>());
         private readonly Lazy<List<IDictionary<string, string>>> _aliases = new Lazy<List<IDictionary<string, string>>>(() => new List<IDictionary<string, string>>());
 
-        private static IDictionary<string, IValue> _empty = new Dictionary<string, IValue>();
+        private static readonly IDictionary<string, IValue> _empty = new Dictionary<string, IValue>();
         private IDictionary<string, IValue> _metadataValue;
 
         private Map _map;
@@ -65,7 +65,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
         }
 
-        public string ResolveMacro(string valueName, IValueContext context) {
+        public string ResolveMacro(string valueName, IValueContext context = null) {
             if (Metadata != _empty) {
                 var match = "defines." + valueName;
                 if (Metadata.ContainsKey(match)) {
@@ -111,9 +111,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext) ?? (ParentView != null ? ParentView.SearchForMacro(innerMacro, originalContext) : null);
         }
 
-        private string ProcessMacroInternal(string value, object[] eachItems) {
+        public string ResolveMacrosInContext(string value, object[] eachItems = null) {
             bool keepGoing;
-            if (value == null) {
+            if(value == null) {
                 return null;
             }
 
@@ -121,7 +121,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 keepGoing = false;
 
                 var matches = _macro.Matches(value);
-                foreach (var m in matches) {
+                foreach(var m in matches) {
                     var match = m as Match;
                     var innerMacro = match.Groups[2].Value;
                     var outerMacro = match.Groups[1].Value;
@@ -129,44 +129,46 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                     string replacement = null;
 
                     var ndx = GetIndex(innerMacro);
-                    if (ndx < 0) {
+                    if(ndx < 0) {
                         // get the first responder.
                         var indexOfDot = innerMacro.IndexOf('.');
 
-                        if (indexOfDot > -1) {
+                        if(indexOfDot > -1) {
                             var membr = innerMacro.Substring(0, indexOfDot);
                             var val = SearchForMacro(membr, this);
-                            if (val != null) {
+                            if(val != null) {
                                 var obval = val.SimpleEval2(innerMacro.Substring(indexOfDot + 1).Trim());
-                                if (obval != null) {
+                                if(obval != null) {
                                     replacement = obval.ToString();
                                 }
                             }
-                        } else {
+                        }
+                        else {
                             replacement = SearchForMacro(innerMacro, this);
                         }
                     }
 
-                    if (!eachItems.IsNullOrEmpty()) {
+                    if(!eachItems.IsNullOrEmpty()) {
                         // try resolving it as an ${each.property} style.
                         // the element at the front is the 'this' value
                         // just trim off whatever is at the front up to and including the first dot.
                         try {
-                            if (ndx >= 0) {
-                                if (ndx < eachItems.Length) {
+                            if(ndx >= 0) {
+                                if(ndx < eachItems.Length) {
                                     value = value.Replace(outerMacro, eachItems[ndx].ToString());
                                     keepGoing = true;
                                 }
-                            } else {
-                                if (innerMacro.Contains(".")) {
+                            }
+                            else {
+                                if(innerMacro.Contains(".")) {
                                     var indexOfDot = innerMacro.IndexOf('.');
                                     ndx = GetIndex(innerMacro.Substring(0, indexOfDot));
-                                    if (ndx >= 0) {
-                                        if (ndx < eachItems.Length) {
+                                    if(ndx >= 0) {
+                                        if(ndx < eachItems.Length) {
                                             innerMacro = innerMacro.Substring(indexOfDot + 1).Trim();
 
                                             var v = eachItems[ndx].SimpleEval2(innerMacro);
-                                            if (v != null) {
+                                            if(v != null) {
                                                 var r = v.ToString();
                                                 value = value.Replace(outerMacro, r);
                                                 keepGoing = true;
@@ -175,44 +177,19 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                                     }
                                 }
                             }
-                        } catch {
+                        }
+                        catch {
                             // meh. screw em'
                         }
                     }
 
-                    if (replacement != null) {
+                    if(replacement != null) {
                         value = value.Replace(outerMacro, replacement);
                         keepGoing = true;
                         break;
                     }
                 }
-            } while (keepGoing);
-            return value;
-        }
-
-#if turn_on_preandpostproc_macros 
-        private StringExtensions.GetMacroValueDelegate PreprocessProperty { get {
-            return _map.RootMap.PreprocessProperty;
-        }}
-#endif
-
-        public string ResolveMacrosInContext(string value, object[] items = null) {
-#if turn_on_preandpostproc_macros 
-            if (PreprocessProperty != null) {
-                foreach (StringExtensions.GetMacroValueDelegate preprocess in PreprocessProperty.GetInvocationList()) {
-                    value = preprocess(value);
-                }
-            }
-#endif
-            value = ProcessMacroInternal(value, items);
-
-#if turn_on_preandpostproc_macros 
-            if (Root.PostprocessProperty != null) {
-                foreach (StringExtensions.GetMacroValueDelegate postprocess in Root.PostprocessProperty.GetInvocationList()) {
-                    value = postprocess(value);
-                }
-            }
-#endif
+            } while(keepGoing);
             return value;
         }
 
@@ -325,6 +302,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
             return new NodeMap(selector.Name, node);
         }
+
+        public string MemberName { get {
+            return _map.MemberName;
+        }}
 
         public static implicit operator string(View v) {
             return v.Value;
@@ -507,6 +488,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     }
 
     internal class View<TParent> : View {
+
         public View(string memberName, RouteDelegate<TParent> route, params ToRoute[] childRoutes)
             : base(Unroll(memberName, (member) => new ObjectMap<TParent>(member, route, childRoutes))) {
         }
@@ -527,6 +509,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         internal View(string memberName, EnumerableDelegate<TParent> route, params ToRoute[] childRoutes)
             : base(Unroll(memberName, (member) => new EnumerableMap<TParent>(member, route, childRoutes))) {
         }
+
+        public View(string memberName, ChildRouteDelegate<TParent> childAccessor, ToRoute[] childRoutes)
+            : base(Unroll( memberName, (member) => new ChildMap<TParent>(member, childAccessor, null) {
+                childInitializers = childRoutes
+            })) {
+
+        }
+
+      
     }
 
     internal class View<TParent, TKey, TVal> : View {

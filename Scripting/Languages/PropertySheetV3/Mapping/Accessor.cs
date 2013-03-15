@@ -60,7 +60,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     public delegate IDictionary<TKey, TVal> DictionaryRoute<TParent, TKey, TVal>(TParent parent);
 
     public delegate IDictionary<TKey, TVal> DictionaryRoute<TKey, TVal>();
-    
-    
+
+    public delegate object ChildRoute<TParent>(TParent parent, View childView);
+    internal delegate object ChildRouteDelegate<TParent>(Value<TParent> parent, View childView);
+
 
 }

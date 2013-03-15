@@ -482,5 +482,9 @@ namespace ClrPlus.Core.Extensions {
 
             return xmlSerializer.Deserialize(new StringReader(xmlText)) as T;
         }
+
+        public static XmlNode Append(this XmlNode node, string xmlElement) {
+            return node.AppendChild(node.OwnerDocument.CreateNode(XmlNodeType.Element, xmlElement, node.NamespaceURI));
+        }
     }
 }

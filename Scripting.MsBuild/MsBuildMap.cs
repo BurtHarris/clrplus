@@ -10,137 +10,40 @@
 // </license>
 //-----------------------------------------------------------------------
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace ClrPlus.Scripting.MsBuild {
     using System.Collections;
+    using System.Xml;
     using Core.Collections;
-    using Core.Exceptions;
     using Core.Extensions;
+    using Core.Utility;
     using Languages.PropertySheetV3;
     using Languages.PropertySheetV3.Mapping;
     using Microsoft.Build.Construction;
     using Microsoft.Build.Evaluation;
-
-    public class Configurations {
-       
-        public static void Add(View view, Project project) {
-            if (_projects.ContainsKey(project)) {
-                throw new ClrPlusException("Configurations already registered for project");
-            }
-            _projects.Add(project, view);
-        }
-        
-
-        private static XDictionary<Project, View> _projects = new XDictionary<Project, View>();
-
-        public static string NormalizeConditionKey(Project project, string key) {
-            if (!_projects.ContainsKey(project)) {
-                return key;
-            }
-            var view = _projects[project];
-            var pivots = view.PropertyNames;
-            
-            var options = key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
-                '\\', ' '
-            }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            
-            var ordered = new List<string>();
-
-
-            foreach (var pivot in pivots) {
-                foreach(var option in options) {
-                    dynamic cfg = view.GetProperty(pivot);
-                    if (cfg.choices.Values.Contains(option)) {
-                        ordered.Add(option);
-                        options.Remove(option);
-                        break;
-                    }
-                }
-                
-            }
-            if(options.Any()) {
-                throw new ClrPlusException("Unknown configuration choice: {0}".format(options.FirstOrDefault()));
-            }
-
-
-            return ordered.Aggregate((c, e) => c + "\\" + e).Trim('\\');
-        }
-
-        public static string GenerateCondition(Project project, string key) {
-            var view = _projects[project];
-            var pivots = view.PropertyNames;
-
-
-            var options = key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
-                '\\', ' '
-            }, StringSplitOptions.RemoveEmptyEntries).ToList();
-
-            var conditions = new List<string>();
-
-            foreach(var pivot in pivots) {
-                foreach(var option in options) {
-                    dynamic cfg = view.GetProperty(pivot);
-                    IEnumerable<string> choices = cfg.choices;
-                    if(choices.Contains(option)) {
-                        if (((View)cfg).PropertyNames.Contains("key")) {
-                            // this is a standard property, us
-                            conditions.Add("'$({0})' == '{1}'".format((string)cfg.Key, option));
-                        } else {
-                            conditions.Add("'$({0}-{1})' == '{2}'".format((string)pivot, view.ResolveMacrosInContext("${pkgname}"), option));
-                        }
-
-                        options.Remove(option);
-                        break;
-                    }
-                }
-
-            }
-
-            if (options.Any()) {
-                throw new ClrPlusException("Unknown configuration choice: {0}".format(options.FirstOrDefault()));
-            }
-
-            return conditions.Aggregate((current, each) => (string.IsNullOrEmpty(current) ? current : (current + " and ")) + each);
-        }
-    }
-
-    public class Condition {
-        internal string Parameter;
-        internal Project Project;
-
-        private static XDictionary<Project, List<string> > _projects = new XDictionary<Project,List<string>>();
-
-        public static IDictionary<string, string> Create(Project parent) {
-            if (!_projects.ContainsKey(parent)) {
-                _projects.Add(parent, new List<string>());
-            }
-
-            var list = _projects[parent];
-
-            return new DelegateDictionary<string, string>(
-                () => list,
-                key =>  key ,
-                (s, c) => {
-                    if (!list.Contains(s)) {
-                        list.Add(s);
-                    }
-                },
-                list.Remove,
-                list.Clear);
-        }
-
-        public static string NormalizeConfigurationKey(string key) {
-            return key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
-                '\\', ' '
-            }, StringSplitOptions.RemoveEmptyEntries).OrderBy(each => each).Aggregate((c, e) => c + "\\" + e).Trim('\\');
-        }
-    }
+    using Platform;
 
     public static class MsBuildMap {
+        private static XDictionary<Project, ProjectPlus> _projects = new XDictionary<Project, ProjectPlus>();
+
+        public static ProjectPlus Lookup(this Project project) {
+           if (!_projects.ContainsKey(project)) {
+               _projects.Add(project, new ProjectPlus(project));
+           }
+           return _projects[project];
+        }
+        
+        public static bool HasProject(this Project project) {
+            return _projects.ContainsKey(project);
+        }
+
+        public static ProjectTargetElement AddInitTarget(this Project project, string name) {
+            project.Lookup().InitialTargets.Add(name);
+            return LookupTarget(project, name);
+        }
 
         public static DictionaryRoute<Tp, Tk, Tv> XYZ<Tp, Tk, Tv>( DictionaryRoute<Tp, Tk, Tv> aRoute ) {
             DictionaryRoute<Tp, Tk, Tv> route;
@@ -150,27 +53,34 @@ namespace ClrPlus.Scripting.MsBuild {
                     route = (p) => result;
                     return result;
                 };
-
-
-
             return route;
+        }
 
+        public class ProjectPlus {
+            private Project _project;
+            internal View View;
+            internal string Name;
+            internal StringPropertyList InitialTargets;
+
+            internal ProjectPlus(Project project) {
+                InitialTargets = new StringPropertyList(() => project.Xml.InitialTargets, v => project.Xml.InitialTargets = v, target => LookupTarget(project, target, null));
+            }
         }
 
         public static void MapProject(this PropertySheet propertySheet, string location, Project project ) {
+
             propertySheet.Route(
                 location.MapTo(() => project,
-
+                  "InitialTargets".MapTo( (IList)project.Lookup().InitialTargets),
                   "ItemDefinitionGroup".MapTo(() => LookupItemDefinitionGroup(project, ""), ItemDefinitionGroupChildren().ToArray()),
                   "Target".MapTo(new DelegateDictionary<string,ProjectTargetElement>(
                       () => project.Targets.Keys,
                       key => LookupTarget( project, key, "" ),
                       (name, value) => LookupTarget( project, name, "" ),
                       key => project.Targets.Remove(key )
-                      ),"0".MapTo<ProjectTargetElement>( target => target.  ))
-                   ,
-                  
-                  
+                      ),
+                      "CHILDREN".MapChildTo<ProjectTargetElement>( (target,child)  => GetTargetItem(target,child ) )),
+                   
                 /*
                 "PropertyGroup".MapTo(),
                 "Import".MapTo(),
@@ -184,7 +94,7 @@ namespace ClrPlus.Scripting.MsBuild {
                               key => LookupTarget(project, key, condition),
                               (name, value) => LookupTarget(project, name, ""),
                               key => project.Targets.Remove(key)
-                              )),
+                              ), "CHILDREN".MapChildTo<ProjectTargetElement>( (target,child)  => GetTargetItem(target,child ) )),
 
 
 
@@ -195,8 +105,37 @@ namespace ClrPlus.Scripting.MsBuild {
                 );
         }
 
+        public static XmlElement XmlElement(this ProjectElement projectElement) {
+            return projectElement.AccessPrivate().XmlElement;
+        }
+
         public static void MapConfigurations(this PropertySheet propertySheet, string location, Project project) {
             Configurations.Add((propertySheet.View as View).GetProperty(location), project);
+        }
+
+        private static ProjectElement GetTargetItem(ProjectTargetElement target, View view) {
+            // get the member name and data from the view, and create/lookup the item.
+            // return the item.
+            switch (view.MemberName ) {
+                case "PropertyGroup":
+                    break;
+                case "ItemGroup":
+                    break;
+                default:
+                    var tsk = target.AddTask(view.MemberName);
+                    
+                    foreach (var n in view.PropertyNames) {
+                        tsk.SetParameter( n, view.GetProperty(n) );
+                    }
+                    return tsk;
+            } 
+            return null;
+        }
+
+        private static IList GetTaskList(ProjectTargetElement target) {
+            // get the member name and data from the view, and create/lookup the item.
+            // return the item.
+            return null;
         }
 
         private static IEnumerable<ToRoute> ItemDefinitionGroupChildren() {
@@ -299,26 +238,31 @@ namespace ClrPlus.Scripting.MsBuild {
         }
 
 
-        private static ProjectTargetElement LookupTarget(Project p, string name,  string condition) {
+        internal static ProjectTargetElement LookupTarget(this Project p, string name,  string condition = null) {
             if (string.IsNullOrEmpty(condition)) {
                 var result = p.Xml.Targets.FirstOrDefault(each => name == each.Name && string.IsNullOrEmpty(each.Condition));
                 if (result != null) {
                     return result;
                 }
-            } else {
-                var result = p.Xml.Targets.FirstOrDefault(each => name == each.Name && each.Condition == condition);
-                if(result != null) {
-                    return result;
-                }
+                return p.Xml.AddTarget(name);
             }
-                 
 
-            var target = p.Xml.AddTarget(name);
-            
-            if(!string.IsNullOrEmpty(condition)) {
-                target.Label = condition;
-                target.Condition = Configurations.GenerateCondition(p, condition);
+            var modifiedname = "{0}_{1}".format(name, condition).MakeSafeFileName();
+
+            var conditionedResult = p.Xml.Targets.FirstOrDefault(each => modifiedname  == each.Name );
+            if(conditionedResult != null) {
+                return conditionedResult;
             }
+
+            var target = p.Xml.AddTarget(modifiedname );
+            
+            target.Label = condition;
+            target.Condition = Configurations.GenerateCondition(p, condition);
+            target.AfterTargets = name;
+            
+            // ensure a non-conditioned gets created that we can chain to.
+            LookupTarget(p, name, null);
+            
             return target;
         }
 

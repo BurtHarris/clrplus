@@ -95,16 +95,16 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 return _imports ?? Enumerable.Empty<PropertySheet>();
             }
         }
-
        
         internal View CurrentView {
             get {
                 if (Parent == null) {
-                    if (Selector == null) {
+                    if (Selector == null || string.IsNullOrEmpty(Selector.Name)) {
                         // this is the root object, we can return the _view;
                         return Root._view;
                     }
                     // get the child of the root view.
+
                     return Root._view.GetChild(Selector);
                 }
                 return Parent.CurrentView.GetChild(Selector);

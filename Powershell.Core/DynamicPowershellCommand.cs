@@ -60,6 +60,7 @@ namespace ClrPlus.Powershell.Core {
     }
 #endif
 
+
     public class DynamicPowershellResult : AsynchronouslyEnumerableList<object> {
         public readonly AsynchronouslyEnumerableList<ErrorRecord> Errors = new AsynchronouslyEnumerableList<ErrorRecord>();
     }

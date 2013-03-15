@@ -54,21 +54,19 @@ namespace Scratch {
             _sheet.Route("nuget.nuspec".MapTo(() => _fields));
             _sheet.Route("nuget.files".MapTo(() => _files ));
 
-            _sheet.MapConfigurations("configurations",_props);
-            _sheet.MapConfigurations("configurations", _targets);
-
             _sheet.MapProject("nuget.props", _props);
             _sheet.MapProject("nuget.targets", _targets);
 
-            
-            // 
+            _sheet.MapConfigurations("configurations", _props);
+            _sheet.MapConfigurations("configurations", _targets);
 
+            // persist the propertysheet to the msbuild model.
             _sheet.View.CopyToModel();
 
             
-            for(int i = 0; i <= _sheet.View.nuget.targets.Target["AfterBuild"].Count; i++) {
-                Console.WriteLine( _sheet.View.nuget.targets.Target["AfterBuild"][i].Copy.SourceFiles);
-            }
+            //for(int i = 0; i <= _sheet.View.nuget.targets.Target["AfterBuild"].Count; i++) {
+                //Console.WriteLine( _sheet.View.nuget.targets.Target["AfterBuild"][i].Copy.SourceFiles);
+            //}
         }
 
       
@@ -82,7 +80,7 @@ namespace Scratch {
         }
 
         public void SaveProps() {
-            _targets.Save("test.props");
+            _props.Save("test.props");
         }
 
     }

@@ -26,5 +26,9 @@ namespace ClrPlus.Scripting.MsBuild {
 
             ListChanged += (source, args) => setter(this.Reverse().Aggregate((current, each) => current + ";" + each));
         }
+
+         public StringPropertyList(Func<string> getter, Action<string> setter, Action<string> onAdded ) : this( getter,setter) {
+             ItemAdded += (source, args) => onAdded(args.item);
+         }
     }
 }

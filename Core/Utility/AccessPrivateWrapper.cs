@@ -15,6 +15,12 @@ namespace ClrPlus.Core.Utility {
     using System.Linq;
     using System.Reflection;
 
+    public static class PrivateWrapperExensions {
+        public static dynamic AccessPrivate(this object obj) {
+            return new AccessPrivateWrapper(obj);
+        }
+    }
+
     /// <summary>
     ///     A 10 minute wrapper to access private members, havn't tested in detail.
     ///     Use under your own risk - amazedsaint@gmail.com

@@ -54,6 +54,8 @@
         protected class Map : AbstractDictionary<string, View> {
             internal View ParentView;
             protected IDictionary<string, View> _childItems;
+            protected Dictionary<string, Func<View>> _dynamicViewInitializers;
+
             protected internal Queue<ToRoute> Initializers;
             internal GetMacroValueDelegate GetMacroValue;
             private string _memberName;
@@ -105,14 +107,14 @@
 
                 MemberName = memberName;
 
-                if (childRoutes != null) {
+                if (childRoutes != null && childRoutes.Any()) {
                     Initializers = new Queue<ToRoute>(childRoutes);
                 }
             }
 
             #region DictionaryImplementation
 
-            protected virtual IDictionary<string, View> ChildItems {
+            protected internal virtual IDictionary<string, View> ChildItems {
                 get {
                     return _childItems ?? (_childItems = new XDictionary<string, View>());
                 }
@@ -329,6 +331,43 @@
             }
         }
 
+        protected class ChildMap<TParent> : Map, IReplaceable {
+            public ToRoute[] childInitializers;
+            private bool _initialized;
+            private ChildRouteDelegate<TParent> _route;
+
+            internal ChildMap(string memberName, ChildRouteDelegate<TParent> childAccessor, IEnumerable<ToRoute> childRoutes)
+                : base(memberName, childRoutes) {
+                _route = childAccessor;
+                _active = true;
+            }
+
+            internal override Map OnAccess(View thisView) {
+                base.OnAccess(thisView);
+
+                if (!_initialized) {
+                    _initialized = true;
+                    // when this is accessed, we should go thru the parent's #'d children
+                    var itemCount = ParentView.Count;
+                    for (int i = 0; i <= ParentView.Count; i++) {
+                        string s = i.ToString();
+                        var indexedItem = ParentView.GetProperty(s);
+                        var item = indexedItem.map.ChildItems.Values.FirstOrDefault();
+                        if (item != null) {
+                            // create the map, and execute it and merge the view now.
+                            var parentValue = _route(() => (TParent)_parentReferenceValue(), item);
+
+                            var myItem = s.MapTo(() => parentValue)();
+                            myItem._map.Active = true;
+                            MergeChild( ParentView, myItem );
+                        }
+
+                    }
+                }
+                return this;
+            }
+        }
+
         protected class DictionaryMap<TParent, TKey, TVal> : Map, IElements, IHasValueFromBackingStorage  {
             private DictionaryDelegate<TParent, TKey, TVal> _route;
             private List<ToRoute> _childInitializers = new List<ToRoute>();
@@ -407,6 +446,9 @@
                         foreach (var key in Keys) {
                             var childItem = this[key];
                             foreach (var i in childInitializers) {
+                                if (childItem._map.Initializers == null) {
+                                    childItem._map.Initializers = new Queue<ToRoute>();
+                                }
                                 if (!childItem._map.Initializers.Contains(i)) {
                                     childItem._map.Initializers.Enqueue(i);
                                 }
@@ -567,6 +609,9 @@
             }
 
             public void AddValue(string value) {
+                // how do we transform the given value 
+                // into the value that we're trying to add?
+
                 ((IList)ComputedValue).Add(value);
             }
 
@@ -612,7 +657,11 @@
             internal PlaceholderMap(string memberName, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
             }
+
+            
         }
+
+        
 
         protected class NodeMap : PlaceholderMap, IReplaceable {
             internal NodeMap(string memberName, INode node)
