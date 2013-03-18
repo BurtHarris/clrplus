@@ -107,7 +107,12 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
                     if(!response.Error.IsNullOrEmpty()) {
                         foreach(var error in response.Error) {
-                            WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                            if (error.Fatal)
+                                ThrowTerminatingError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                            else
+                                WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                            
+                                
                         }
                     }
 

@@ -18,5 +18,6 @@ namespace ClrPlus.Powershell.Rest.Commands {
         public string ExceptionType { get; set; }
         public string ExceptionMessage { get; set; }
         public ErrorCategory Category { get; set; }
+        public bool Fatal { get; set;}
     }
 }

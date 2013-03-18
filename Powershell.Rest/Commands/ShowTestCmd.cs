@@ -37,6 +37,9 @@ namespace ClrPlus.Powershell.Rest.Commands {
         [Parameter(HelpMessage = "p3")]
         public string[] P3 { get; set; }
 
+        [Parameter(HelpMessage = "fatalfail")]
+        public bool FatalFail { get; set;}
+
         protected override void ProcessRecord() {
             // must use this to support processing record remotely.
             if (Remote) {
@@ -45,6 +48,9 @@ namespace ClrPlus.Powershell.Rest.Commands {
             }
 
             WriteError(new ErrorRecord(new ClrPlusException("testing an error"), "this is the error id", ErrorCategory.ResourceUnavailable, null));
+            if (FatalFail) {
+                ThrowTerminatingError(new ErrorRecord(new ClrPlusException("testing fatal error"), "fatal error", ErrorCategory.InvalidOperation, null ));
+            }
 
             if (Session != null) {
                 WriteObject("You are authenticated as {0}".format(Session.UserAuthName));
