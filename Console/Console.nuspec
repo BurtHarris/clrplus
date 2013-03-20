@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Console</id>
-    <version>1.8.0.61</version>
+    <version>1.8.0.62</version>
     <title>CLRPlus Console Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -20,9 +20,9 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Console</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.61" />
-        <dependency  id="ClrPlus.Platform" version="1.8.0.61" />
-        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.61" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.62" />
+        <dependency  id="ClrPlus.Platform" version="1.8.0.62" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.62" />
     </dependencies>
     
   </metadata>

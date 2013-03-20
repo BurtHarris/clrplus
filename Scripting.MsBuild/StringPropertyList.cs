@@ -12,6 +12,7 @@
 
 namespace ClrPlus.Scripting.MsBuild {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using Core.Collections;
 
@@ -31,4 +32,17 @@ namespace ClrPlus.Scripting.MsBuild {
              ItemAdded += (source, args) => onAdded(args.item);
          }
     }
+
+    public class CustomPropertyList : ObservableList<string> {
+        public CustomPropertyList (Action<CustomPropertyList> onChanged,  Func<IEnumerable<string>> initialItems = null ) {
+            if (initialItems != null) {
+                foreach (var i in initialItems()) {
+                    Add(i);
+                }
+            }
+            ListChanged += (source, args) => onChanged(this);
+        }
+    }
+
+   
 }

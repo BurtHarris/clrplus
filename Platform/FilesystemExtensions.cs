@@ -102,7 +102,7 @@ namespace ClrPlus.Platform {
         /// <summary>
         ///     Apparently, Eric has gone insane? NOTE: subject to cleanup.
         /// </summary>
-        private static readonly Regex InvalidDoubleWcRx = new Regex(@"\\.+\*\*|\*\*[^\\]+\\|\*\*\\\*\*");
+        private static readonly Regex InvalidDoubleWcRx = new Regex(@"\\[^\\]+\*\*|\*\*[^\\]+\\|\*\*\\\*\*");
 
         private static readonly char[] WildcardChars = new[] {
             '*', '?'
@@ -658,8 +658,13 @@ namespace ClrPlus.Platform {
             if (String.IsNullOrEmpty(pathMask)) {
                 return FindFilesSmarterComplex(pathPrefix);
             }
+
             if (InvalidDoubleWcRx.IsMatch(pathMask)) {
                 throw new ArgumentException("The wildcard path {0} is invalid.".format(pathMask));
+            }
+
+            if (pathMask.StartsWith(".\\")) {
+                pathMask = pathMask.Substring(2);
             }
 
             pathPrefix = String.IsNullOrEmpty(pathPrefix) ? Directory.GetCurrentDirectory() : pathPrefix;
@@ -719,8 +724,8 @@ namespace ClrPlus.Platform {
                 : Enumerable.Empty<string>();
         }
 
-        public static IEnumerable<string> FindFilesSmarterComplex(this IEnumerable<string> pathMasks) {
-            return pathMasks.Aggregate(Enumerable.Empty<string>(), (current, p) => current.Union(p.FindFilesSmarterComplex()));
+        public static IEnumerable<string> FindFilesSmarterComplex(this IEnumerable<string> pathMasks, string pathPrefix = null) {
+            return pathMasks.Aggregate(Enumerable.Empty<string>(), (current, p) => current.Union(p.FindFilesSmarterComplex(pathPrefix)));
         }
 
 

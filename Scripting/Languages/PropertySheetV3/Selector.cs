@@ -15,7 +15,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using Core.Exceptions;
     using Core.Extensions;
 
-    [DebuggerDisplay("Selector = {Name}[{Parameter}]")]
     public class Selector {
         public static Selector Empty = new Selector(string.Empty);
 

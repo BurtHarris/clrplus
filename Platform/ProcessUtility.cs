@@ -24,9 +24,7 @@ namespace CoApp.Toolkit.Utility
     using System.Diagnostics;
     using System.Text;
     using System.Threading;
-    using Console;
-    using Extensions;
-    using Win32;
+    using ClrPlus.Windows.Api;
 
     /// <summary>
     /// Wraps a Windows process
@@ -154,11 +152,23 @@ namespace CoApp.Toolkit.Utility
                 currentProcess.WaitForExit(milliseconds);
         }
 
+        private static bool IsConsole {
+            get {
+                try {
+                    return Console.BufferWidth != 0;
+                }
+                catch {
+                }
+                return false;
+            }
+        }
+
+
         /// <summary>
         /// Safely attach to the console of the associated process
         /// </summary>
         public void AttachToConsoleForProcess() {
-            if( !ConsoleExtensions.IsConsole ) {
+            if( !IsConsole ) {
                 Kernel32.AttachConsole(currentProcess.Id);
             }
         }
@@ -189,7 +199,7 @@ namespace CoApp.Toolkit.Utility
             sErr = new StringBuilder();
             sOut = new StringBuilder();
 
-            currentProcess = new Process { StartInfo = { FileName = Executable, Arguments = string.Format(arguments, args), WorkingDirectory = Environment.CurrentDirectory, RedirectStandardError = true, RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false, WindowStyle = ConsoleExtensions.IsConsole ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden } };
+            currentProcess = new Process { StartInfo = { FileName = Executable, Arguments = string.Format(arguments, args), WorkingDirectory = Environment.CurrentDirectory, RedirectStandardError = true, RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false, WindowStyle = IsConsole ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden } };
             
             currentProcess.ErrorDataReceived += CurrentProcess_ErrorDataReceived;
             currentProcess.OutputDataReceived += CurrentProcess_OutputDataReceived;
@@ -213,7 +223,7 @@ namespace CoApp.Toolkit.Utility
             sErr = new StringBuilder();
             sOut = new StringBuilder();
 
-            currentProcess = new Process { StartInfo = { FileName = Executable, Arguments = string.Format(arguments, args), WorkingDirectory = Environment.CurrentDirectory, RedirectStandardError = false, RedirectStandardInput = false, RedirectStandardOutput = false, UseShellExecute = false, WindowStyle = ConsoleExtensions.IsConsole ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden } };
+            currentProcess = new Process { StartInfo = { FileName = Executable, Arguments = string.Format(arguments, args), WorkingDirectory = Environment.CurrentDirectory, RedirectStandardError = false, RedirectStandardInput = false, RedirectStandardOutput = false, UseShellExecute = false, WindowStyle = IsConsole ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden } };
 
             currentProcess.Exited += CurrentProcess_Exited;
 
@@ -233,7 +243,7 @@ namespace CoApp.Toolkit.Utility
             sErr = new StringBuilder();
             sOut = new StringBuilder();
 
-            currentProcess = new Process { StartInfo = { FileName = Executable, Arguments = string.Format(arguments, args), WorkingDirectory = Environment.CurrentDirectory, RedirectStandardError = true, RedirectStandardOutput = true, UseShellExecute = false, WindowStyle = ConsoleExtensions.IsConsole ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden } };
+            currentProcess = new Process { StartInfo = { FileName = Executable, Arguments = string.Format(arguments, args), WorkingDirectory = Environment.CurrentDirectory, RedirectStandardError = true, RedirectStandardOutput = true, UseShellExecute = false, WindowStyle = IsConsole ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden } };
             currentProcess.ErrorDataReceived += CurrentProcess_ErrorDataReceived;
             currentProcess.OutputDataReceived += CurrentProcess_OutputDataReceived;
             currentProcess.Exited += CurrentProcess_Exited;

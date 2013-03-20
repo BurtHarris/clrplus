@@ -332,7 +332,7 @@
         }
 
         protected class ChildMap<TParent> : Map, IReplaceable {
-            public ToRoute[] childInitializers;
+            public IEnumerable<ToRoute> childInitializers;
             private bool _initialized;
             private ChildRouteDelegate<TParent> _route;
 
@@ -371,7 +371,7 @@
         protected class DictionaryMap<TParent, TKey, TVal> : Map, IElements, IHasValueFromBackingStorage  {
             private DictionaryDelegate<TParent, TKey, TVal> _route;
             private List<ToRoute> _childInitializers = new List<ToRoute>();
-            public ToRoute[] childInitializers;
+            public IEnumerable<ToRoute> childInitializers;
             private readonly Func<string, string> _keyExchanger;
 
             private IDictionary<TKey, TVal> Dictionary { get {
@@ -573,7 +573,7 @@
                 get {
                     var result = (IEnumerable)ComputedValue;
                     if (result != null) {
-                        return result.Cast<object>().Aggregate("", (current, i) => current + "," + result);
+                        return result.Cast<object>().Aggregate("", (current, i) => current + "," + result).Trim(',',' ');
                     }
                     return string.Empty;
                 }
@@ -619,7 +619,7 @@
                 get {
                     var result = ((IList)ComputedValue);
                     if (result != null) {
-                        return result.Cast<object>().Aggregate("", (current, i) => current + "," + result);
+                        return result.Cast<object>().Aggregate("", (current, i) => current + "," + result).Trim(',',' ');
                     }
                     return string.Empty;
                 }
@@ -784,8 +784,6 @@
             }
         }
 
-        
-
         protected class ValueMap<TParent> : Map, ICanSetBackingValue, IHasValueFromBackingStorage, IPrefersSingleValue {
             private ValueDelegate<TParent> _route;
 
@@ -805,7 +803,16 @@
             }
 
             public void AddValue(string value) {
-                SetValue(ComputedValue + ", " + value);
+                var v = ComputedValue;
+                
+                if (v != null) {
+                    var val = v.ToString();
+                    if (!string.IsNullOrEmpty(val)) {
+                        SetValue(v + ", " + value);
+                        return;
+                    }
+                }
+                SetValue(value);    
             }
 
             public void SetValue(string value) {

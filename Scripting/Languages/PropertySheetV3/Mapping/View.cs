@@ -65,16 +65,20 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
         }
 
-        public string ResolveMacro(string valueName, IValueContext context = null) {
+        private static string[] Defines = new[] { "define.", "defines." };
+
+        private string ResolveMacro(string valueName, IValueContext context = null) {
             if (Metadata != _empty) {
-                var match = "defines." + valueName;
-                if (Metadata.ContainsKey(match)) {
-                    var define = Metadata[match];
-                    var ctx = define.Context;
-                    define.Context = context ?? this;
-                    var result = define.Value;
-                    define.Context = ctx;
-                    return result;
+                foreach (var i in Defines) {
+                    var match = i + valueName;
+                    if (Metadata.ContainsKey(match)) {
+                        var define = Metadata[match];
+                        var ctx = define.Context;
+                        define.Context = context ?? this;
+                        var result = define.Value;
+                        define.Context = ctx;
+                        return result;
+                    }
                 }
             }
             // return null if there is not a match
@@ -107,10 +111,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return delegates.Count() > 1 ? delegates.Reverse().Select(each => AcceptFirstAnswer(each as GetMacroValueDelegate, innerMacro, originalContext)).FirstOrDefault(each => each != null) : getMacroDelegate(innerMacro, originalContext);
         }
 
-        private string SearchForMacro(string innerMacro, IValueContext originalContext) {
-            return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext) ?? (ParentView != null ? ParentView.SearchForMacro(innerMacro, originalContext) : null);
+        public string GetMacroValue(string innerMacro, IValueContext originalContext = null) {
+            return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext ?? this) ?? (ParentView != null ? ParentView.GetMacroValue(innerMacro, originalContext ?? this) : null);
         }
 
+     
         public string ResolveMacrosInContext(string value, object[] eachItems = null) {
             bool keepGoing;
             if(value == null) {
@@ -135,7 +140,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
                         if(indexOfDot > -1) {
                             var membr = innerMacro.Substring(0, indexOfDot);
-                            var val = SearchForMacro(membr, this);
+                            var val = GetMacroValue(membr, this);
                             if(val != null) {
                                 var obval = val.SimpleEval2(innerMacro.Substring(indexOfDot + 1).Trim());
                                 if(obval != null) {
@@ -144,7 +149,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                             }
                         }
                         else {
-                            replacement = SearchForMacro(innerMacro, this);
+                            replacement = GetMacroValue(innerMacro);
                         }
                     }
 
@@ -320,6 +325,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         }
 
         internal View GetChild(Selector selector) {
+            if (selector == null || string.IsNullOrEmpty(selector.Name)) {
+                return this;
+            }
+
             if (selector.IsCompound) {
                 var name = selector.Prefix.Name;
                 if (map.ContainsKey(name)) {
@@ -341,11 +350,25 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
         }
 
+        public IEnumerable<string> ReplaceableChildren {
+            get {
+                return map.Keys.Where(each => map.ChildItems[each]._map is IReplaceable);
+            }
+        }
+
         public int Count {
             get {
                 return map.Keys.Select(each => each.ToInt32(-1)).Max();
             }
         }
+
+        public bool HasChild(string propertyName) {
+            return map.ContainsKey(propertyName) || (map.Keys.Where(each => each.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase)).Select(i => map[i])).Any();
+        }
+
+        public bool HasChildren { get {
+            return map.ChildItems.Count > 0;
+        }}
 
         public View GetProperty(string propertyName) {
             // this falls back to case insensitive matches if th property didn't exist.
@@ -485,11 +508,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
             return ndx;
         }
+
+        public void AddMacro(string name, string value) {
+            _map.GetMacroValue += (valueName, context) => valueName == name ? value : null;
+        }
     }
 
     internal class View<TParent> : View {
 
-        public View(string memberName, RouteDelegate<TParent> route, params ToRoute[] childRoutes)
+        public View(string memberName, RouteDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new ObjectMap<TParent>(member, route, childRoutes))) {
         }
 
@@ -498,19 +525,19 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             // used for the propertysheet itself.
         }
 
-        internal View(string memberName, ValueDelegate<TParent> route, params ToRoute[] childRoutes)
+        internal View(string memberName, ValueDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new ValueMap<TParent>(member, route, childRoutes))) {
         }
 
-        internal View(string memberName, ListDelegate<TParent> route, params ToRoute[] childRoutes)
+        internal View(string memberName, ListDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new ListMap<TParent>(member, route, childRoutes))) {
         }
 
-        internal View(string memberName, EnumerableDelegate<TParent> route, params ToRoute[] childRoutes)
+        internal View(string memberName, EnumerableDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new EnumerableMap<TParent>(member, route, childRoutes))) {
         }
 
-        public View(string memberName, ChildRouteDelegate<TParent> childAccessor, ToRoute[] childRoutes)
+        public View(string memberName, ChildRouteDelegate<TParent> childAccessor, IEnumerable<ToRoute> childRoutes)
             : base(Unroll( memberName, (member) => new ChildMap<TParent>(member, childAccessor, null) {
                 childInitializers = childRoutes
             })) {
@@ -521,14 +548,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     }
 
     internal class View<TParent, TKey, TVal> : View {
-        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, params ToRoute[] childRoutes)
+        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, null) {
                 childInitializers = childRoutes
             })) {
             // childRoutes are to be used as initializers for the children, not for the dictionary itself.
         }
 
-        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string, string> keyExchanger, params ToRoute[] childRoutes)
+        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string, string> keyExchanger, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, keyExchanger, null) {
                 childInitializers = childRoutes
             })) {

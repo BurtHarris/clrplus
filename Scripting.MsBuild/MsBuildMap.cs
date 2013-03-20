@@ -27,7 +27,7 @@ namespace ClrPlus.Scripting.MsBuild {
     using Platform;
 
     public static class MsBuildMap {
-        private static XDictionary<Project, ProjectPlus> _projects = new XDictionary<Project, ProjectPlus>();
+        internal static XDictionary<Project, ProjectPlus> _projects = new XDictionary<Project, ProjectPlus>();
 
         public static ProjectPlus Lookup(this Project project) {
            if (!_projects.ContainsKey(project)) {
@@ -68,18 +68,21 @@ namespace ClrPlus.Scripting.MsBuild {
         }
 
         public static void MapProject(this PropertySheet propertySheet, string location, Project project ) {
+            propertySheet.Route(location.MapTo(() => project, ProjectRoutes(project).ToArray()));
+        }
 
-            propertySheet.Route(
-                location.MapTo(() => project,
-                  "InitialTargets".MapTo( (IList)project.Lookup().InitialTargets),
-                  "ItemDefinitionGroup".MapTo(() => LookupItemDefinitionGroup(project, ""), ItemDefinitionGroupChildren().ToArray()),
-                  "Target".MapTo(new DelegateDictionary<string,ProjectTargetElement>(
-                      () => project.Targets.Keys,
-                      key => LookupTarget( project, key, "" ),
-                      (name, value) => LookupTarget( project, name, "" ),
-                      key => project.Targets.Remove(key )
-                      ),
-                      "CHILDREN".MapChildTo<ProjectTargetElement>( (target,child)  => GetTargetItem(target,child ) )),
+        internal static IEnumerable<ToRoute>  ProjectRoutes(this Project project) {
+            
+            yield return "InitialTargets".MapTo((IList)project.Lookup().InitialTargets);
+
+            yield return "ItemDefinitionGroup".MapTo(() => LookupItemDefinitionGroup(project, ""), ItemDefinitionGroupChildren );
+            yield return "Target".MapTo(new DelegateDictionary<string, ProjectTargetElement>(
+                () => project.Targets.Keys,
+                key => LookupTarget(project, key, ""),
+                (name, value) => LookupTarget(project, name, ""),
+                key => project.Targets.Remove(key)
+                ),
+                "CHILDREN".MapChildTo<ProjectTargetElement>((target, child) => GetTargetItem(target, child)));
                    
                 /*
                 "PropertyGroup".MapTo(),
@@ -87,22 +90,21 @@ namespace ClrPlus.Scripting.MsBuild {
                 "ImportGroup".MapTo(),
                 "ItemGroup".MapTo(),
                 */
-                    "condition".MapTo(() => Condition.Create(project), key => Configurations.NormalizeConditionKey(project,key) ,
-
-                        "Target".MapTo<string, string, ProjectTargetElement>(condition => new DelegateDictionary<string, ProjectTargetElement>(
-                              () => project.Targets.Keys,
-                              key => LookupTarget(project, key, condition),
-                              (name, value) => LookupTarget(project, name, ""),
-                              key => project.Targets.Remove(key)
-                              ), "CHILDREN".MapChildTo<ProjectTargetElement>( (target,child)  => GetTargetItem(target,child ) )),
+            yield return "condition".MapTo(() => Condition.Create(project), key => Configurations.NormalizeConditionKey(project, key), project.ConditionRoutes());
+            yield return "*".MapTo(() => Condition.Create(project), key => Configurations.NormalizeConditionKey(project, key), project.ConditionRoutes());
 
 
+        }
 
-                        "ItemDefinitionGroup".MapTo<string>(condition => LookupItemDefinitionGroup(project, condition), ItemDefinitionGroupChildren().ToArray())
+        internal static IEnumerable<ToRoute> ConditionRoutes(this Project project) {
+            yield return "ItemDefinitionGroup".MapTo<string>(condition => LookupItemDefinitionGroup(project, condition), ItemDefinitionGroupChildren);
+            yield return "Target".MapTo<string, string, ProjectTargetElement>(condition => new DelegateDictionary<string, ProjectTargetElement>(
+                () => project.Targets.Keys,
+                key => LookupTarget(project, key, condition),
+                (name, value) => LookupTarget(project, name, ""),
+                key => project.Targets.Remove(key)
+                ), "CHILDREN".MapChildTo<ProjectTargetElement>((target, child) => GetTargetItem(target, child)));
 
-                        ))
-
-                );
         }
 
         public static XmlElement XmlElement(this ProjectElement projectElement) {
@@ -113,7 +115,7 @@ namespace ClrPlus.Scripting.MsBuild {
             Configurations.Add((propertySheet.View as View).GetProperty(location), project);
         }
 
-        private static ProjectElement GetTargetItem(ProjectTargetElement target, View view) {
+        internal static ProjectElement GetTargetItem(this ProjectTargetElement target, View view) {
             // get the member name and data from the view, and create/lookup the item.
             // return the item.
             switch (view.MemberName ) {
@@ -138,36 +140,38 @@ namespace ClrPlus.Scripting.MsBuild {
             return null;
         }
 
-        private static IEnumerable<ToRoute> ItemDefinitionGroupChildren() {
-            yield return ItemDefinitionRoute("PostBuildEvent");
-            //Command
-            //Message
+        private static IEnumerable<ToRoute> ItemDefinitionGroupChildren {
+            get {
+                yield return ItemDefinitionRoute("PostBuildEvent");
+                //Command
+                //Message
 
-            yield return ItemDefinitionRoute("Midl");
-            //TypeLibraryName
+                yield return ItemDefinitionRoute("Midl");
+                //TypeLibraryName
 
-            yield return ItemDefinitionRoute("ResourceCompile");
-            //Culture
-            //ResourcOutputFileName
-            //AdditionalIncludeDirectories
-            //PreprocessorDefinitions
+                yield return ItemDefinitionRoute("ResourceCompile");
+                //Culture
+                //ResourcOutputFileName
+                //AdditionalIncludeDirectories
+                //PreprocessorDefinitions
 
-            yield return ItemDefinitionRoute("BcsMake");
-            //SuppressStartupBanner
-            //OutputFile
+                yield return ItemDefinitionRoute("BcsMake");
+                //SuppressStartupBanner
+                //OutputFile
 
-            yield return ItemDefinitionRoute("ClCompile",
-                MetadataListRoute("PreprocessorDefinitions", "%(PreprocessorDefinitions)"),
-                MetadataListRoute("AdditionalIncludeDirectories", "%(AdditionalIncludeDirectories)")
-
-
-                );
-
-            yield return ItemDefinitionRoute("Link",
-                MetadataListRoute("AdditionalDependencies", "%(AdditionalDependencies)")
+                yield return ItemDefinitionRoute("ClCompile",
+                    MetadataListRoute("PreprocessorDefinitions", "%(PreprocessorDefinitions)"),
+                    MetadataListRoute("AdditionalIncludeDirectories", "%(AdditionalIncludeDirectories)")
 
 
-                );
+                    );
+
+                yield return ItemDefinitionRoute("Link",
+                    MetadataListRoute("AdditionalDependencies", "%(AdditionalDependencies)")
+
+
+                    );
+            }
         }
 
         private static ToRoute ItemDefinitionRoute(string name, params ToRoute[] children) {

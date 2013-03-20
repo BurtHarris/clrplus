@@ -25,8 +25,6 @@ namespace ClrPlus.Scripting.MsBuild {
     using Microsoft.Build.Evaluation;
 
     public class Configurations {
-        
-
         public static void Add(View view, Project project) {
             var prjPlus = project.Lookup();
             if (prjPlus.View != null) {
@@ -34,7 +32,7 @@ namespace ClrPlus.Scripting.MsBuild {
             }
             prjPlus.View = view;
 
-            var pkgName = view.ResolveMacrosInContext("${pkgname}");
+            var pkgName = view.GetMacroValue("pkgname");
 
             // add the startup/init tasks  
             var task = project.Xml.AddUsingTask(pkgName + "_Contains", @"$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll", null);
@@ -52,7 +50,6 @@ namespace ClrPlus.Scripting.MsBuild {
            
             var initTarget = project.AddInitTarget(pkgName + "_init");
 
-            
             var pivots = view.PropertyNames;
 
             foreach (var pivot in pivots) {
@@ -74,26 +71,26 @@ namespace ClrPlus.Scripting.MsBuild {
                         tsk.SetParameter("Value", choice);
                         tsk.Condition = @"'$({0})'==''".format(finalPropName);
                         tsk.AddOutputProperty("Result", finalPropName);
-
-
-
                     }
 
                     initTarget.AddPropertyGroup().AddProperty(finalPropName, choices.FirstOrDefault()).Condition = @"'$({0})' == ''".format(finalPropName);
-
-                    
                 }
             }
 
         }
 
-        public static string NormalizeConditionKey(Project project, string key) {
-            if (!project.HasProject()) {
+        internal static string NormalizeConditionKey(Project project, string key) {
+            if(!project.HasProject()) {
                 return key;
             }
 
-            var view = project.Lookup().View;
-            var pivots = view.PropertyNames;
+            return NormalizeConditionKey(key, project.Lookup().View);
+        }
+
+        public static string NormalizeConditionKey(string key, View configurationsView) {
+        
+            
+            var pivots = configurationsView.PropertyNames;
             
             var options = key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
                 '\\', ' '
@@ -104,7 +101,7 @@ namespace ClrPlus.Scripting.MsBuild {
 
             foreach (var pivot in pivots) {
                 foreach(var option in options) {
-                    dynamic cfg = view.GetProperty(pivot);
+                    dynamic cfg = configurationsView.GetProperty(pivot);
                     if (cfg.choices.Values.Contains(option)) {
                         ordered.Add(option);
                         options.Remove(option);
@@ -113,6 +110,7 @@ namespace ClrPlus.Scripting.MsBuild {
                 }
                 
             }
+
             if(options.Any()) {
                 throw new ClrPlusException("Unknown configuration choice: {0}".format(options.FirstOrDefault()));
             }
@@ -141,7 +139,7 @@ namespace ClrPlus.Scripting.MsBuild {
                             // this is a standard property, us
                             conditions.Add("'$({0})' == '{1}'".format((string)cfg.Key, option));
                         } else {
-                            conditions.Add("'$({0}-{1})' == '{2}'".format((string)pivot, view.ResolveMacrosInContext("${pkgname}"), option));
+                            conditions.Add("'$({0}-{1})' == '{2}'".format((string)pivot, view.GetMacroValue("pkgname"), option));
                         }
 
                         options.Remove(option);

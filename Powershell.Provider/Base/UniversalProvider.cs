@@ -10,8 +10,9 @@
 // </license>
 //-----------------------------------------------------------------------
 
-
+#if DEBUG
 #define TRACE_NOT_FINISHED
+#endif 
 // #define TRACE_FINISHED
 
 namespace ClrPlus.Powershell.Provider.Base {

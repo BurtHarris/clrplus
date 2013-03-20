@@ -25,13 +25,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
 
     public class ObjectNode : XDictionary<Selector, INode>, INode, IValueContext {
-        
         internal readonly Lazy<IDictionary<string, string>> Aliases = new Lazy<IDictionary<string, string>>(() => new XDictionary<string, string>());
         private readonly Lazy<IDictionary<string, IValue>> _metadata = new Lazy<IDictionary<string, IValue>>(() => new XDictionary<string, IValue>());
         
         public IDictionary<Selector, ObjectNode> Children;
         public IDictionary<Selector, PropertyNode> Properties;
-        protected List<PropertySheet> _imports;
         
         protected ObjectNode() {
             Properties = new DelegateDictionary<Selector, PropertyNode>(
@@ -73,38 +71,24 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         protected ObjectNode(PropertySheet root) : this() {
             // this is for imported sheets that share the same root.
-            Parent = null;
-            Root = (PropertySheet)root;
+            Parent = root;
             Selector = Selector.Empty;
-            _imports = new List<PropertySheet>();
         }
 
         internal ObjectNode(ObjectNode parent, Selector selector) : this() {
             Parent = parent;
-            Root = (PropertySheet)( parent == null ? this : parent.Root);
             Selector = selector;
         }
 
         public Selector Selector {get; private set;}
-        public PropertySheet Root {get; protected set;}
+        public virtual PropertySheet Root { get {
+            return Parent == null ? this as PropertySheet : Parent.Root;
+        }}
         public ObjectNode Parent {get; internal set;}
-        public string Filename {get; private set;}
-
-        public IEnumerable<PropertySheet> Imports {
-            get {
-                return _imports ?? Enumerable.Empty<PropertySheet>();
-            }
-        }
        
-        internal View CurrentView {
+        public virtual View CurrentView {
             get {
                 if (Parent == null) {
-                    if (Selector == null || string.IsNullOrEmpty(Selector.Name)) {
-                        // this is the root object, we can return the _view;
-                        return Root._view;
-                    }
-                    // get the child of the root view.
-
                     return Root._view.GetChild(Selector);
                 }
                 return Parent.CurrentView.GetChild(Selector);

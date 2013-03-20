@@ -25,66 +25,6 @@ namespace Scratch {
     using Microsoft.Build.Construction;
     using Microsoft.Build.Evaluation;
 
-    public class NuspecFields {
-
-    };
-
-    public class NuspecFiles {
-
-    };
-
-    public class PackageScript  {
-        private NuspecFields _fields = new NuspecFields();
-        private NuspecFiles _files = new NuspecFiles();
-        private Project _targets = new Project();
-        private Project _props = new Project();
-
-        public string Filename { get; set; }
-        protected PropertySheet _sheet;
-
-        public void Save() {
-            _sheet.SaveFile(Filename);
-        }
-
-        public PackageScript(string filename) {
-            
-            _sheet = new PropertySheet(this);
-            _sheet.ParseFile(filename);
-
-            _sheet.Route("nuget.nuspec".MapTo(() => _fields));
-            _sheet.Route("nuget.files".MapTo(() => _files ));
-
-            _sheet.MapProject("nuget.props", _props);
-            _sheet.MapProject("nuget.targets", _targets);
-
-            _sheet.MapConfigurations("configurations", _props);
-            _sheet.MapConfigurations("configurations", _targets);
-
-            // persist the propertysheet to the msbuild model.
-            _sheet.View.CopyToModel();
-
-            
-            //for(int i = 0; i <= _sheet.View.nuget.targets.Target["AfterBuild"].Count; i++) {
-                //Console.WriteLine( _sheet.View.nuget.targets.Target["AfterBuild"][i].Copy.SourceFiles);
-            //}
-        }
-
-      
-
-        public void SaveNuspec() {
-
-        }
-
-        public void SaveTargets() {
-            _targets.Save("test.targets");
-        }
-
-        public void SaveProps() {
-            _props.Save("test.props");
-        }
-
-    }
-
     
 
     internal class Program {
@@ -101,12 +41,14 @@ namespace Scratch {
         private void Start(string[] args) {
             try {
                 Console.WriteLine("Package script" );
-                var script = new PackageScript("test.autopkg");
+                using( var script = new PackageScript("test.autopkg") ){
                 script.SaveProps();
                 script.SaveTargets();
                 script.SaveNuspec();
+            }
 
-                
+
+
             } catch (Exception e) {
                 Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
             }

@@ -117,6 +117,8 @@ namespace ClrPlus.Powershell.Provider.Utility {
                 return _parsedLocationCache[path];
             }
 
+            var endswithslash = path.LastIndexOfAny(Slashes) == path.Length;
+
             var pathToParse = (path ?? string.Empty).UrlDecode();
 
             var match = UriRx.Match(pathToParse);
@@ -133,7 +135,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
                 ParentPath = segments.Length > 3 ? segments.Skip(2).Take(segments.Length - 3).Aggregate((current, each) => current + Slash + each) : string.Empty,
                 Name = segments.Length > 2 ? segments.Last() : string.Empty,
                 StartsWithSlash = pathToParse.IndexOfAny(Slashes) == 0,
-                EndsWithSlash = pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
+                EndsWithSlash = endswithslash, // pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
                 Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
                 OriginalPath = path,
             });
@@ -147,6 +149,8 @@ namespace ClrPlus.Powershell.Provider.Utility {
             if (_parsedLocationCache.ContainsKey(path)) {
                 return _parsedLocationCache[path];
             }
+
+            var endswithslash = path.LastIndexOfAny(Slashes) == path.Length;
 
             var pathToParse = (path ?? string.Empty).UrlDecode();
 
@@ -164,7 +168,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
                 ParentPath = segments.Length > 2 ? segments.Skip(1).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
                 Name = segments.Length > 1 ? segments.Last() : string.Empty,
                 StartsWithSlash = pathToParse.IndexOfAny(Slashes) == 0,
-                EndsWithSlash = pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
+                EndsWithSlash = endswithslash, //pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
                 Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
                 OriginalPath = path,
             });
@@ -174,6 +178,9 @@ namespace ClrPlus.Powershell.Provider.Utility {
             if (_parsedLocationCache.ContainsKey(path)) {
                 return _parsedLocationCache[path];
             }
+
+            var endswithslash = path.LastIndexOfAny(Slashes) == path.Length;
+
             var uri = new Uri((path ?? string.Empty).UrlDecode());
 
             var pathToParse = uri.AbsoluteUri;
@@ -193,7 +200,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
                     SubPath = segments.Length > 2 ? segments.Skip(2).Aggregate((current, each) => current + Slash + each) : string.Empty,
                     ParentPath = segments.Length > 3 ? segments.Skip(2).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
                     Name = segments.Length > 2 ? segments.Last() : string.Empty,
-                    StartsWithSlash = pathToParse.IndexOfAny(Slashes) == 0,
+                    StartsWithSlash = endswithslash, // pathToParse.IndexOfAny(Slashes) == 0,
                     EndsWithSlash = pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
                     Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
                     IsUnc = true,
@@ -206,7 +213,7 @@ namespace ClrPlus.Powershell.Provider.Utility {
                     ParentPath = segments.Length > 2 ? segments.Skip(1).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
                     Name = segments.Length > 1 ? segments.Last() : string.Empty,
                     StartsWithSlash = pathToParse.IndexOfAny(Slashes) == 0,
-                    EndsWithSlash = pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
+                    EndsWithSlash = endswithslash, //  pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
                     Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
                     IsUnc = false,
                     OriginalPath = uri.AbsoluteUri,

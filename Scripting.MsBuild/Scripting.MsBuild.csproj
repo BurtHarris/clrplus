@@ -19,6 +19,7 @@
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,6 +32,10 @@
     <Reference Include="Microsoft.Build" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\v1.0\System.Management.Automation.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -39,9 +44,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
+    <Compile Include="BuildScript.cs" />
     <Compile Include="Condition.cs" />
     <Compile Include="Configurations.cs" />
     <Compile Include="MsBuildMap.cs" />
+    <Compile Include="PackageScript.cs" />
     <Compile Include="StringPropertyList.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -52,6 +59,10 @@
     <ProjectReference Include="..\Platform\Platform.csproj">
       <Project>{BD607D7F-AD3F-4819-B1E5-F6A01D3CDE1C}</Project>
       <Name>Platform</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Powershell.Core\Powershell.Core.csproj">
+      <Project>{DF38AA27-E211-4A3C-A3AB-ADD32347A25A}</Project>
+      <Name>Powershell.Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\Scripting\Scripting.csproj">
       <Project>{1F5667A0-2FCE-43F8-9814-0EB1F6C9D8DC}</Project>

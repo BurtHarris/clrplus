@@ -1,8 +1,4 @@
-﻿@import template.autopkg;
-
-#defines {
-	pkgname = zlib;
-}
+﻿@import basic.autopkg;
 
 configurations {
 	Platform {
@@ -10,10 +6,10 @@ configurations {
 		choices: { Win32, x64, ARM };
 	};
 
-	Toolset { 
-		key : "PlatformToolset"; // ie, applies when Condition="$(PlatformToolset) == 'v110'
-		choices: { v110, v100 };
-	};
+		Toolset { 
+			key : "PlatformToolset"; // ie, applies when Condition="$(PlatformToolset) == 'v110'
+			choices: { v110, v100 };
+		};
 
 	Linkage {
 		// the first choice is the default
@@ -22,52 +18,58 @@ configurations {
 	}
 };
 
-
-
 nuget {
 	// the nuspec file metadata. Gets created/updated on build
 	nuspec {
-		id : zlib;
+		id = zlib;
 		version : 1.2.5.48;
 		title: ZLib compression library;
 		authors: Garrett Serack;
 		owners: Garrett Serack;
 		licenseUrl: "http://opensource.org/licenses/Apache-2.0";
-		projectUrl: "http://perpetual-motion.com/ClrPlus</projectUrl>";
-		iconUrl: "http://coapp.org/images/logo-small.png</iconUrl>";
+		projectUrl: "http://perpetual-motion.com/ClrPlus";
+		iconUrl: "http://coapp.org/images/logo-small.png";
 		requireLicenseAcceptance:false;
 		summary:A zlib library;
 		description: "A native zlib library";
 		releaseNotes: this is a test build.;
 		copyright: Copyright 2013;
-		tags: { zlib };
+		tags: { zlib, native,  };
+
+		// Dependencies are specified as a list 
+		// each item is a string of <package name 
+		dependencies : {
+			openssl/1.2.3,
+			bzip/2.3.4,
+		};
+	
 	};
 
 	// the files that go into the content folders
 	// (inserted into the nuspec file)
 	files {
-		include: { .\include\*.h; };
+		include: { .\output\include\*.h };
 
-		docs: {  docs\**; };
+		docs: {  .\output\docs\**\* };
     
-		condition[Win32,v110,dynamic] { 
-			lib: { .\output\win32\release\lib\*.lib };
+		[Win32,v110,dynamic] { 
+			lib: { .\output\lib\x86\*.lib };
 		}
 
-		condition[x64,v110,dynamic] {
-			lib: { .\output\x64\release\lib\*.lib };
+		[x64,v110,dynamic] {
+			lib: { .\output\lib\x64\*.lib };
 		}
 		
-		condition[Win32,v110,dynamic] {
-			bin: { .\output\win32\release\bin\zlib1.dll; };
+		[Win32,v110,dynamic] {
+			bin: { .\output\bin\x86\zlib1.dll };
 		}
 
-		condition[Win32,v110,stdcall] {
-			bin: { .\output\win32\release\bin\zlibwapi.dll; };
+		[Win32,v110,stdcall] {
+			bin: { .\output\bin\x86\zlibwapi.dll };
 		}
 
-		condition[x64,v110,dynamic] {
-			bin: { .\output\win32\release\bin\zlib1.dll; };
+		[x64,v110,dynamic] {
+			bin: { .\output\bin\x64\zlib1.dll };
 		}
 
 	};
