@@ -19,6 +19,7 @@
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -59,6 +60,7 @@
     <Compile Include="LegacySymlink.cs" />
     <Compile Include="ModernSymlink.cs" />
     <Compile Include="NativeWindowWithEvent.cs" />
+    <Compile Include="ProcessUtility.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Rehash.cs" />
     <Compile Include="ReparsePoint.cs" />

@@ -21,6 +21,7 @@
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -49,6 +50,7 @@
     <Compile Include="Collections\InternalDictionary.cs" />
     <Compile Include="Collections\CacheEnumerable.cs" />
     <Compile Include="Collections\IOrderedDictionary.cs" />
+    <Compile Include="Collections\ObservableList.cs" />
     <Compile Include="Collections\OrderedDictionary.cs" />
     <Compile Include="Collections\VirtualEnumerator.cs" />
     <Compile Include="Collections\XDictionary.cs" />

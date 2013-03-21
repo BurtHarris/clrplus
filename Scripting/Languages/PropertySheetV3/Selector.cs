@@ -15,13 +15,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using Core.Exceptions;
     using Core.Extensions;
 
-    [DebuggerDisplay("Selector = {Name}[{Parameter}]")]
     public class Selector {
         public static Selector Empty = new Selector(string.Empty);
 
-        public string Name {get; private set;}
-        public string Parameter {get; private set;}
-
+        public readonly string Name;
+        public readonly string Parameter;
+        private readonly int _hashCode;
+        
         public Selector(string selector) :this(ParseName(selector), ParseParameter(selector)) {
         }
 
@@ -53,6 +53,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         public Selector(string name, string parameter) {
             Name = name;
             Parameter = parameter;
+            _hashCode = this.CreateHashCode(Name, Parameter);
         }
 
         public bool HasParameter { get {
@@ -80,7 +81,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         public override int GetHashCode() {
-            return this.CreateHashCode(Name, Parameter);
+            return _hashCode;
         }
 
         public override bool Equals(object obj) {

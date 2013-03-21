@@ -159,22 +159,20 @@ namespace ClrPlus.Powershell.Azure.Provider {
                         }
                     }
                    catch {
-                        blobRef = CloudContainer.GetBlockBlobReference(Path.SubPath);
 
-                       if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
-                           return blobRef;
-                       }
+                     
                    }
-
-                    
-                       
-                    
 
                     // well, we know it's not a file, container, or account. 
                     // it could be a directory (but the only way to really know that is to see if there is any files that have this as a parent path)
                     var dirRef = CloudContainer.GetDirectoryReference(Path.SubPath);
                     if (dirRef.ListBlobs().Any()) {
                         return dirRef;
+                    }
+
+                    blobRef = CloudContainer.GetBlockBlobReference(Path.SubPath);
+                    if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                        return blobRef;
                     }
 
                     // it really didn't match anything, we'll return the reference to the blob in case we want to write to it.
@@ -191,6 +189,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
                     throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
                 return;
             }
+
             if (IsDirectory && recurse) {
                 foreach (var d in GetDirectories(true)) {
                     d.Delete(true);
@@ -198,6 +197,15 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
                 foreach (var d in GetFiles(false)) {
                     d.Delete(false);
+                }
+            }
+
+            if (IsContainer) {
+                if (recurse || (!GetDirectories(false).Any() && !GetFiles(false).Any())) {
+                    var result = CloudContainer.DeleteIfExists();
+                    if(!result)
+                        throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
+                    
                 }
             }
         }
@@ -320,11 +328,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
                 return cbd == null
                     ? Enumerable.Empty<ILocation>()
-                    : ListSubdirectories(cbd).Select(each => new AzureLocation(_driveInfo, new Path {
-                        HostAndPort = Path.HostAndPort,
-                        Container = Path.Container,
-                        SubPath = Path.SubPath + '\\' + Path.ParseUrl(each.Uri).Name,
-                    }, each));
+                    : ListSubdirectories(cbd).Select(each => {
+                        return new AzureLocation(_driveInfo, new Path {
+                            HostAndPort = Path.HostAndPort,
+                            Container = Path.Container,
+                            SubPath = Path.SubPath + '\\' + Path.ParseUrl(each.Uri).Name,
+                        }, each);
+                    });
             }
 
             return Enumerable.Empty<AzureLocation>();
@@ -339,8 +349,11 @@ namespace ClrPlus.Powershell.Azure.Provider {
         }
 
         public static IEnumerable<CloudBlobDirectory> ListSubdirectories(CloudBlobDirectory cloudBlobDirectory) {
-            var l = cloudBlobDirectory.Uri.AbsolutePath.Length;
-            return (from blob in cloudBlobDirectory.ListBlobs().Select(each => each.Uri.AbsolutePath.Substring(l + 1))
+            var p = cloudBlobDirectory.Uri.AbsolutePath;
+            var l = p.EndsWith("/") ? cloudBlobDirectory.Uri.AbsolutePath.Length : cloudBlobDirectory.Uri.AbsolutePath.Length + 1;
+             
+            
+            return (from blob in cloudBlobDirectory.ListBlobs().Select(each => each.Uri.AbsolutePath.Substring(l))
                 let i = blob.IndexOf('/')
                 where i > -1
                 select blob.Substring(0, i)).Distinct().Select(cloudBlobDirectory.GetSubdirectoryReference);

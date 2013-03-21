@@ -16,6 +16,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     public interface IValue {
         string Value {get;}
         IEnumerable<string> Values { get; }
-        ObjectNode Context {get;}
+        IValueContext Context {get;set;}
+    }
+
+    public interface IValueContext {
+        string ResolveMacrosInContext(string value, object[] items);
+        IEnumerable<string> TryGetRValueInContext(string property);
     }
 }

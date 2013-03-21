@@ -80,15 +80,13 @@ namespace ClrPlus.Powershell.Core {
                     
                 }
             }
-            
         }
 
         private void TestIfInNestedPipeline() {
-            
-                    var pipeline = Runspace.CreatePipeline();
-                    //we're running a short command to verify that we're not in a nested pipeline
-                    pipeline.Commands.Add("get-alias");
-                    pipeline.Invoke();
+            var pipeline = Runspace.CreatePipeline();
+            //we're running a short command to verify that we're not in a nested pipeline
+            pipeline.Commands.Add("get-alias");
+            pipeline.Invoke();
         }
 
         public DynamicPowershell() {
@@ -174,7 +172,7 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        public AsynchronouslyEnumerableList<object> Invoke(string functionName, IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string, object> defaults, IDictionary<string, object> forced, out AsynchronouslyEnumerableList<ErrorRecord> errors) {
+        public DynamicPowershellResult Invoke(string functionName, IEnumerable<PersistablePropertyInformation> elements, object objectContainingParameters, IDictionary<string, object> defaults, IDictionary<string, object> forced, out AsynchronouslyEnumerableList<ErrorRecord> errors) {
             Wait();
 
             // command

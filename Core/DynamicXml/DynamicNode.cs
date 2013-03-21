@@ -128,6 +128,14 @@ namespace ClrPlus.Core.DynamicXml {
         public override bool TrySetMember(SetMemberBinder binder, object value) {
             var setNode = _element.Element(ActualXName(binder.Name));
 
+            if (value == null) {
+                // delete the node? 
+                if (setNode != null) {
+                    setNode.Remove();
+                }
+                return true;
+            }
+
             if (setNode != null) {
                 setNode.SetValue(value);
             } else {

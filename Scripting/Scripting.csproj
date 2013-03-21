@@ -19,6 +19,7 @@
     <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -64,6 +65,7 @@
     <Compile Include="Languages\PropertySheetV3\ErrorCode.cs" />
     <Compile Include="Languages\PropertySheetV3\InternalParserException.cs" />
     <Compile Include="Languages\PropertySheetV3\INode.cs" />
+    <Compile Include="Languages\PropertySheetV3\Mapping\Maps.cs" />
     <Compile Include="Languages\PropertySheetV3\ParseException.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertyNode.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertySheet.cs" />
@@ -75,9 +77,9 @@
     <Compile Include="Languages\PropertySheetV3\RValue\Iterator.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue\Scalar.cs" />
     <Compile Include="Languages\PropertySheetV3\Selector.cs" />
-    <Compile Include="Languages\PropertySheetV3\View\DynamicView.cs" />
-    <Compile Include="Languages\PropertySheetV3\View\Reference.cs" />
-    <Compile Include="Languages\PropertySheetV3\View\Property.cs" />
+    <Compile Include="Languages\PropertySheetV3\Mapping\Accessor.cs" />
+    <Compile Include="Languages\PropertySheetV3\Mapping\View.cs" />
+    <Compile Include="Languages\PropertySheetV3\Mapping\RoutingExtensions.cs" />
     <Compile Include="Languages\PropertySheet\ActualPropertyValue.cs" />
     <Compile Include="Languages\PropertySheet\Indexer.cs" />
     <Compile Include="Languages\PropertySheet\IPropertyValue.cs" />
@@ -125,6 +127,7 @@
       <Name>Platform</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -35,7 +35,7 @@ namespace ClrPlus.Powershell.Core {
         public const string Export = "Export";
         public const string Find = "Find";
         public const string Format = "Format";
-        public const string Get = "Get ";
+        public const string Get = "Get";
         public const string Grant = "Grant";
         public const string Group = "Group";
         public const string Hide = "Hide";
@@ -50,12 +50,12 @@ namespace ClrPlus.Powershell.Core {
         public const string Merge = "Merge";
         public const string Mount = "Mount";
         public const string Move = "Move";
-        public const string New = "New ";
+        public const string New = "New";
         public const string Open = "Open";
         public const string Optimize = "Optimize";
-        public const string Out = "Out ";
+        public const string Out = "Out";
         public const string Ping = "Ping";
-        public const string Pop = "Pop ";
+        public const string Pop = "Pop";
         public const string Protect = "Protect";
         public const string Publish = "Publish";
         public const string Push = "Push";
@@ -78,7 +78,7 @@ namespace ClrPlus.Powershell.Core {
         public const string Search = "Search";
         public const string Select = "Select";
         public const string Send = "Send";
-        public const string Set = "Set ";
+        public const string Set = "Set";
         public const string Show = "Show";
         public const string Skip = "Skip";
         public const string Split = "Split";

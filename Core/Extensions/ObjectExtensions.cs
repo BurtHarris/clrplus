@@ -14,6 +14,7 @@ namespace ClrPlus.Core.Extensions {
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.RegularExpressions;
 
     public static class ObjectExtensions {
         private static int[] tenPrimes = {
@@ -77,6 +78,8 @@ namespace ClrPlus.Core.Extensions {
             return item.Equals(default(T)) ? (onNullOrDefault != null ? onNullOrDefault() : default(U)) : action(item);
         }
 
+      
+
         public static object SimpleEval(this object instance, string simpleCode) {
             var cmd = simpleCode.Split('.');
             var subString = cmd[0];
@@ -102,6 +105,8 @@ namespace ClrPlus.Core.Extensions {
 
                     typeArray.Add(paramType);
                 }
+                
+
                 var info = typeArray == null ? t.GetMethod(paramString[0]) : t.GetMethod(paramString[0], typeArray.ToArray());
                 var pInfo = info.GetParameters();
                 var paramList = new List<object>();

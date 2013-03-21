@@ -158,6 +158,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             TokenType.Equal
         };
 
+        public static readonly TokenTypes ColonOrEqual = new[] {
+            TokenType.Colon, TokenType.Equal
+        };
+
         public static readonly TokenTypes Comments = new[] {
             TokenType.LineComment, TokenType.MultilineComment
         };
@@ -232,11 +236,32 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         /// <exception cref="ParseException">Duplicate [ ] parameter not permitted.</exception>
         /// <exception cref="ParseException">Reached terminator '{0}' -- expected selector declaration</exception>
         /// <exception cref="ParseException">Invalid token in selector declaration after < >  or [ ] --found '{0}'</exception>
-        private Selector ParseSelector(TokenTypes terminators, string selectorName = null, string instruction = null, string parameter = null) {
+        private Selector ParseSelector(TokenTypes terminators, string selectorName = null, string parameter = null) {
             switch (NextAfter(WhiteSpaceOrComments)) {
+                case TokenType.Colon:
+                    if (selectorName == null && parameter == null) {
+                        if (NextType != TokenType.Colon) {
+                            throw Fail(ErrorCode.TokenNotExpected, "Single colon not permitted before selector name");
+                        }
+                        return ParseSelector(terminators, "::");
+                    }
+
+                    if (terminators.Contains(Type)) {
+                        if (string.IsNullOrEmpty(selectorName) && string.IsNullOrEmpty(parameter)) {
+                           throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
+                        }
+                        return new Selector(selectorName ?? "*", parameter);
+                    }
+                    break;
+                    
+
                 case TokenType.Identifier:
                 case TokenType.Dot:
-                    if (instruction != null || parameter != null) {
+                    if ( parameter != null ) {
+                        if (selectorName == null) {
+                            Rewind();
+                            return new Selector("*", parameter);
+                        }
                         throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration after < >  or [ ] --found '{0}'");
                     }
                     return ParseSelector(terminators, (selectorName ?? "") + Token.Data);
@@ -245,12 +270,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     if (parameter != null) {
                         throw Fail(ErrorCode.TokenNotExpected, "Duplicate [ ] parameter not permitted.");
                     }
-                    return ParseSelector(terminators, selectorName, instruction, Token.Data);
+                    return ParseSelector(terminators, selectorName, Token.Data);
 
                 default:
                     if (terminators.Contains(Type)) {
                         if (string.IsNullOrEmpty(selectorName)) {
-                            throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
+                            if (string.IsNullOrEmpty(parameter)) {
+                                throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
+                            }
+                            return new Selector("*", parameter);
                         }
                         return new Selector(selectorName, parameter);
                     }
@@ -295,13 +323,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var identifier = Data;
                     switch (NextAfter(WhiteSpaceOrComments)) {
                         case TokenType.Equal:
-                            metadataContainer.Metadata.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
+                            metadataContainer.Metadata.Value.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
                             //context.AddMetadata(identifier, ParseRValue(context, Semicolon));
                             return Continue;
 
                         case TokenType.Colon:
                             // should we really support this?
-                            metadataContainer.Metadata.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
+                            metadataContainer.Metadata.Value.AddOrSet(identifier, ParseRValue(context, Semicolon, null));
                             //context.AddMetadata(identifier, ParseRValue(context, Semicolon));
                             return Continue;
 
@@ -310,7 +338,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
                             if (metadata != null && metadata.Count > 0) {
                                 foreach (var key in metadata.Keys) {
-                                    metadataContainer.Metadata.AddOrSet(identifier, metadata[key]);
+                                    metadataContainer.Metadata.Value.AddOrSet(identifier+"."+key, metadata[key]);
                                 }
                                 //context.AddMetadata(identifier, metadata);
                             }
@@ -328,7 +356,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var identifier = Data;
                     switch (NextAfter(WhiteSpaceOrComments)) {
                         case TokenType.Equal:
-                            context.AddAlias(identifier, ParseSelector(Semicolon));
+                            context.Aliases.Value.Add(identifier, ParseSelector(Semicolon));
                             return Continue;
                     }
                     throw Fail(ErrorCode.TokenNotExpected, "Expected '=' in alias declaration, found {0}");
@@ -351,7 +379,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
             Rewind();
 
-            var selector = ParseSelector(Equal);
+            var selector = ParseSelector(ColonOrEqual);
 
             // should be at the terminator still!
             switch (Type) {
@@ -369,8 +397,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         /// <exception cref="ParseException">Token '{0}' not expected in object declaration</exception>
-        private Tailcall ParseItemsInDictionary(ObjectNode context, Continuation onComplete = null) {
-            switch (NextAfter(WhiteSpaceCommentsOrSemicolons, onComplete != null)) {
+        private Tailcall ParseItemsInDictionary(ObjectNode context, Continuation onComplete = null, bool justOneItem = false) {
+
+            switch(NextAfter(justOneItem ? WhiteSpaceOrComments : WhiteSpaceCommentsOrSemicolons, onComplete != null)) {
                 case TokenType.Identifier:
                     if (Data == "@alias") {
                         ParseAlias(context);
@@ -394,30 +423,41 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             Rewind();
 
             var selector = ParseSelector(MemberTerminator);
-
-            // should be at the terminator still!
+            if (selector.Name.StartsWith(".")) {
+                selector = new Selector( context.IndexValue  + selector.Name, selector.Parameter  );
+            }
 
             switch (Type) {
+                case TokenType.Dot:
+                case TokenType.Identifier: {
+                    // if we're pointing to an identifier or a dot, we're about to take whatever is next, and include it in a dictionary as a way of syntatic sugar.
+                    return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete), true);
+                }
+                    
+
                 case TokenType.OpenBrace: {
+                    if (justOneItem) {
+                        return ParseItemsInDictionary(context.Children[selector], (onComplete ?? Continue));
+                    }
                     return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete));
                 }
 
                 case TokenType.Colon: {
                     var p = context.Properties[selector];
                     p.SetCollection(ParseRValue(context, SemicolonCommaOrCloseBrace, p));
-                    return ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
                 }
 
                 case TokenType.PlusEquals: {
                     var p = context.Properties[selector];
                     p.AddToCollection(ParseRValue(context, Semicolon, p));
-                    return ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
                 }
 
                 case TokenType.Equal: {
                     var p = context.Properties[selector];
                     p.SetValue(ParseRValue(context, SemicolonCommaOrCloseBrace, p));
-                    return ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
                 }
             }
             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected in object declaration");
@@ -462,7 +502,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var result = new Instruction(context, Data);
 
                     if (NextAfter(WhiteSpaceOrComments) == TokenType.Lambda) {
-                        // aha. Found a lambda expression.
+                        // aha. Found a iterator expression.
                         return ExpectingForeachExpression(context, terminators, new Iterator(context, result));
                     }
 
@@ -521,7 +561,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
 
             Rewind();
-            return ParseCollection(context, outerTerminators, metadataContainer, (collection ?? new Collection(context)).Add(ParseRValue(context, CommaOrCloseBrace, metadataContainer)));
+            return ParseCollection(context, outerTerminators, metadataContainer, (collection ?? new Collection(context)).Add(ParseRValue(context, SemicolonCommaOrCloseBrace, metadataContainer)));
         }
 
         /// <exception cref="ParseException">Unrecognized token '{0}' in matrix foreach</exception>

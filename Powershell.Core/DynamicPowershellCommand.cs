@@ -60,11 +60,21 @@ namespace ClrPlus.Powershell.Core {
     }
 #endif
 
+
+    public class DynamicPowershellResult : AsynchronouslyEnumerableList<object> {
+        public readonly AsynchronouslyEnumerableList<ErrorRecord> Errors = new AsynchronouslyEnumerableList<ErrorRecord>();
+    }
+
     internal class DynamicPowershellCommand : IDisposable {
         internal Command Command;
         internal Pipeline CommandPipeline;
-        internal AsynchronouslyEnumerableList<object> Result = new AsynchronouslyEnumerableList<object>();
-        internal AsynchronouslyEnumerableList<ErrorRecord> ResultErrors = new AsynchronouslyEnumerableList<ErrorRecord>();
+        internal DynamicPowershellResult Result = new DynamicPowershellResult();
+
+        internal AsynchronouslyEnumerableList<ErrorRecord> ResultErrors {
+            get {
+                return Result.Errors;
+            }
+        }
 
         internal DynamicPowershellCommand(Pipeline pipeline) {
             CommandPipeline = pipeline;
@@ -137,7 +147,7 @@ namespace ClrPlus.Powershell.Core {
             }
         }
 
-        internal AsynchronouslyEnumerableList<object> InvokeAsyncIfPossible(out AsynchronouslyEnumerableList<ErrorRecord> errors) {
+        internal DynamicPowershellResult InvokeAsyncIfPossible(out AsynchronouslyEnumerableList<ErrorRecord> errors) {
             CommandPipeline.Commands.Add(Command);
             CommandPipeline.Input.Close();
 

@@ -19,7 +19,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     public class Scalar : IValue {
         
         public static Scalar Empty = new Scalar(null, string.Empty);
-        public ObjectNode Context {get; private set;}
+        public IValueContext Context {
+            get;
+            set;
+        }
         private readonly string _content;
 
         public Scalar(ObjectNode context, IEnumerable<Token> singleExpression) {
@@ -48,7 +51,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
                 if (Context == null) {
                     return _content;
                 }
-                return Context.ResolveMacrosInContext(_content);
+                return Context.ResolveMacrosInContext(_content,null);
             }
         }
 

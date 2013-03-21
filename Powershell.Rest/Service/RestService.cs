@@ -365,7 +365,6 @@ namespace ClrPlus.Powershell.Core.Service {
 #if DEBUG
             LogManager.LogFactory = new DebugLogFactory();
 #endif 
-
             using (var ps = RunspacePool.Dynamic()) {
                 foreach (var restCommand in _activeCommands) {
                     PSObject command = ps.LookupCommand(restCommand.Name);

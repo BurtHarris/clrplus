@@ -5,4 +5,4 @@ import-module ".\ClrPlus.Powershell.Rest.dll"
 Import-Module ".\ClrPlus.Powershell.Provider.dll"
 Import-Module ".\ClrPlus.Powershell.Azure.dll"
 
-start-restservice -config .\test.props
+# start-restservice -config .\test.props

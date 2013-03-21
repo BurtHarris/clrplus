@@ -17,7 +17,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
 
     public class Instruction : IValue {
         public readonly string InstructionText;
-        public ObjectNode Context {get; private set;}
+        public IValueContext Context {get; set;}
 
         public Instruction(ObjectNode context, string instructionText) {
             InstructionText = instructionText;
