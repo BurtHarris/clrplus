@@ -63,6 +63,7 @@ namespace ClrPlus.Powershell.Core {
 
     public class DynamicPowershellResult : AsynchronouslyEnumerableList<object> {
         public readonly AsynchronouslyEnumerableList<ErrorRecord> Errors = new AsynchronouslyEnumerableList<ErrorRecord>();
+        public bool LastIsTerminatingError { get; set;}
     }
 
     internal class DynamicPowershellCommand : IDisposable {
@@ -128,7 +129,6 @@ namespace ClrPlus.Powershell.Core {
                         } else {
                             if (arg.ActualType.IsIEnumerable() && !(arg.ActualType.IsPrimitive || arg.ActualType == typeof (string))) {
                                 var col = ((IEnumerable<object>)(val));
-                                var sz = col.Count();
 
                                 var def = defaults[key];
                                 if (def.GetType().IsIEnumerable()) {
@@ -176,10 +176,12 @@ namespace ClrPlus.Powershell.Core {
                             var record = (item as PSObject).ImmediateBaseObject;
                             if (record is ErrorRecord) {
                                 ResultErrors.Add(record as ErrorRecord);
-                                ;
                             }
                         }
                     }
+                    
+                    if (CommandPipeline.PipelineStateInfo.State == PipelineState.Failed)
+                        ResultErrors.Add(new ErrorRecord(CommandPipeline.PipelineStateInfo.Reason, "", ErrorCategory.InvalidArgument, null));
                 }
             };
 
@@ -191,9 +193,32 @@ namespace ClrPlus.Powershell.Core {
                     case PipelineState.Completed:
                         // case PipelineState.Disconnected:
                     case PipelineState.Failed:
+                        while (!CommandPipeline.Output.EndOfPipeline) {
+                            Thread.Sleep(1);
+                        }
+                        while (!CommandPipeline.Error.EndOfPipeline) {
+                            Thread.Sleep(1);
+                        }
+                        lock (ResultErrors) {
+                            ResultErrors.Completed();
+                        }
+
+                        lock (Result) {
+                            Result.Completed();
+                            // the last error was a terminating error
+                            Result.LastIsTerminatingError = true;
+                            Dispose();
+                        }
+                        break;
+                        
                     case PipelineState.Stopped:
 
                         while (!CommandPipeline.Output.EndOfPipeline) {
+                            Thread.Sleep(1);
+                        }
+
+                        while (!CommandPipeline.Error.EndOfPipeline)
+                        {
                             Thread.Sleep(1);
                         }
 
