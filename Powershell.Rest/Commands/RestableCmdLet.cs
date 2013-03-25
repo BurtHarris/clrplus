@@ -106,8 +106,13 @@ namespace ClrPlus.Powershell.Rest.Commands {
                     }
 
                     if(!response.Error.IsNullOrEmpty()) {
-                        foreach(var error in response.Error) {
-                            WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                        foreach(var error in response.Error.TakeAllBut(1)) {
+                            
+                            
+                            
+                                WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                            
+                                
                         }
                     }
 
@@ -115,6 +120,11 @@ namespace ClrPlus.Powershell.Rest.Commands {
                         foreach(var ob in response.Output) {
                             WriteObject(ob);
                         }
+                    }
+
+                    if (response.LastIsTerminatingError) {
+                        var error = response.Error.Last();
+                        ThrowTerminatingError(new ErrorRecord(new Exception("{0} - {1}".format(error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
                     }
 
 
@@ -153,10 +163,12 @@ namespace ClrPlus.Powershell.Rest.Commands {
                     result.Warnings = new string[] {
                         "WARNING: USER PASSWORD SHOULD BE CHANGED.\r\n"
                     };
-                    result.Output = dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters, out errors).ToArray();
-                } else {
-                    result.Output = dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters, out errors).ToArray();
+                    
                 }
+                var dynamicResult = dps.Invoke(restCommand.Name, _persistableElements, cmdlet, restCommand.DefaultParameters, restCommand.ForcedParameters, out errors);
+                result.Output = dynamicResult.ToArray();
+                result.LastIsTerminatingError = dynamicResult.LastIsTerminatingError;
+
             }
            
             if (errors != null && errors.Any()) {

@@ -41,7 +41,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
             return result;
         }
 
-        private CancellationTokenSource cancellationToken = new CancellationTokenSource();
+        private readonly CancellationTokenSource _cancellationToken = new CancellationTokenSource();
         
 
         protected override void BeginProcessing() {
@@ -110,8 +110,9 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
             var s = new Stopwatch();
             s.Start();
-            foreach (var operation in copyOperations) {
-                //WriteProgress(CreateProgressRecord(1, "Copy", "Copying item {0} of {1}".format(i, copyOperations.Length), 100 * (double)i/copyOperations.Length));
+            for  (var i = 0; i < copyOperations.Length;  i++) {
+                var operation = copyOperations[i];
+                WriteProgress(CreateProgressRecord(1, "Copy", "Copying item {0} of {1}".format(i, copyOperations.Length), 100 * (double)i/copyOperations.Length));
 
                 //Console.WriteLine("COPY '{0}' to '{1}'", operation.Source.AbsolutePath, operation.Destination.AbsolutePath);
                 if (!force) {
@@ -130,10 +131,10 @@ namespace ClrPlus.Powershell.Provider.Commands {
                       
                         inputStream.BytesRead += (sender, args) => {};
                         CopyOperation operation1 = operation;
-                        outputStream.BytesWritten += (sender, args) => WriteProgress(CreateProgressRecord(2, "Copy",
-                            "Copying '{0}' to '{1}'".format(operation1.Source.AbsolutePath, operation1.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength));
+                        outputStream.BytesWritten += (sender, args) =>  WriteProgress(CreateProgressRecord(2, "Copy",
+                            "Copying '{0}' to '{1}'".format(operation1.Source.AbsolutePath, operation1.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength, 1));
                             
-                        Task t = inputStream.CopyToAsync(outputStream, cancellationToken.Token, false);
+                        Task t = inputStream.CopyToAsync(outputStream, _cancellationToken.Token, false);
                         try {
                             t.RunSynchronously();
                         } catch (TaskCanceledException e) {
@@ -143,8 +144,12 @@ namespace ClrPlus.Powershell.Provider.Commands {
                     }
                 }
 
-                WriteVerbose("Copy from {0} to {1}".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath));
+                WriteProgress(CreateCompletedProgressRecord(2, "Copy",
+                            "Copying '{0}' to '{1}'".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath), 1));
+
+               // WriteVerbose("Copy from {0} to {1}".format(operation.Source.AbsolutePath, operation.Destination.AbsolutePath));
             }
+            WriteProgress(CreateCompletedProgressRecord(1, "Copy", "Copy finished"));
             s.Stop();
             WriteVerbose("Completed in {0}".format(s.Elapsed));
            
@@ -191,6 +196,13 @@ namespace ClrPlus.Powershell.Provider.Commands {
 
         }
 
+        private ProgressRecord CreateCompletedProgressRecord(int activityId, string activity, string statusDescription, int parentActivityId = 0) {
+            return new ProgressRecord(activityId, activity, statusDescription) {
+                                                              RecordType = ProgressRecordType.Completed,
+                                                              ParentActivityId = parentActivityId
+                                                          };
+        }
+
         internal virtual IEnumerable<CopyOperation> ResolveSourceLocations(SourceSet[] sourceSet, ILocation destinationLocation) {
             bool copyContainer = this.Container;
 
@@ -229,7 +241,7 @@ namespace ClrPlus.Powershell.Provider.Commands {
         protected override void StopProcessing() {
           
             base.StopProcessing();
-            cancellationToken.Cancel();
+            _cancellationToken.Cancel();
             
         }
     }

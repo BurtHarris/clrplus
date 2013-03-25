@@ -15,5 +15,6 @@ namespace ClrPlus.Powershell.Rest.Commands {
         public string[] Warnings { get; set; }
         public object[] Output {get; set;}
         public RemoteError[] Error { get; set; }
+        public bool LastIsTerminatingError { get; set;}
     }
 }
