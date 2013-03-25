@@ -111,11 +111,18 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return delegates.Count() > 1 ? delegates.Reverse().Select(each => AcceptFirstAnswer(each as GetMacroValueDelegate, innerMacro, originalContext)).FirstOrDefault(each => each != null) : getMacroDelegate(innerMacro, originalContext);
         }
 
-        public string GetMacroValue(string innerMacro, IValueContext originalContext = null) {
-            return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext ?? this) ?? (ParentView != null ? ParentView.GetMacroValue(innerMacro, originalContext ?? this) : null);
+        private string LookupMacroValue(string innerMacro, IValueContext originalContext = null) {
+            return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext ?? this) ?? (ParentView != null ? ParentView.LookupMacroValue(innerMacro, originalContext ?? this) : null);
         }
 
+        public string GetMacroValue(string innerMacro) {
+            return ResolveMacrosInContext(LookupMacroValue(innerMacro));
+        }
      
+        public string GetMetadataValue(string metadataName,  bool checkParent = true) {
+            return Metadata.ContainsKey(metadataName) ? Metadata[metadataName].Value : (ParentView == null || checkParent == false) ? null : ParentView.GetMetadataValue(metadataName);
+        }
+
         public string ResolveMacrosInContext(string value, object[] eachItems = null) {
             bool keepGoing;
             if(value == null) {
@@ -140,7 +147,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
                         if(indexOfDot > -1) {
                             var membr = innerMacro.Substring(0, indexOfDot);
-                            var val = GetMacroValue(membr, this);
+                            var val = LookupMacroValue(membr, this);
                             if(val != null) {
                                 var obval = val.SimpleEval2(innerMacro.Substring(indexOfDot + 1).Trim());
                                 if(obval != null) {
@@ -149,7 +156,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                             }
                         }
                         else {
-                            replacement = GetMacroValue(innerMacro);
+                            replacement = LookupMacroValue(innerMacro);
                         }
                     }
 
@@ -204,6 +211,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 return p.Values;
             }
             return null;
+        }
+
+        public string ResolveAlias(Selector selector) {
+            var resolved = ResolveAlias(selector.Name);
+            if (resolved != selector.Name) {
+                return new Selector(resolved, selector.Parameter);
+            }
+            return selector;
         }
 
         public string ResolveAlias(string aliasName) {
@@ -324,9 +339,21 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             : this(Unroll(selector, node), node) {
         }
 
+        private View RootView {
+            get {
+                return ParentView == null ? this : ParentView.RootView;
+            }
+        }
+
         internal View GetChild(Selector selector) {
-            if (selector == null || string.IsNullOrEmpty(selector.Name)) {
+            if(selector == null || string.IsNullOrEmpty(selector.Name)) {
                 return this;
+            }
+
+            selector = ResolveAlias(selector.Name);
+
+            if (selector.IsGlobal) {
+                return RootView.GetChild(selector.DeGlobaled);
             }
 
             if (selector.IsCompound) {
@@ -344,10 +371,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return GetProperty(selector.Name);
         }
 
-        public IEnumerable<string> PropertyNames {
-            get {
-                return map.Keys;
-            }
+        public IEnumerable<string> GetChildPropertyNames() {
+            return map.Keys;
         }
 
         public IEnumerable<string> ReplaceableChildren {
@@ -372,6 +397,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
         public View GetProperty(string propertyName) {
             // this falls back to case insensitive matches if th property didn't exist.
+            if (propertyName.Contains('.')) {
+                return GetChild(propertyName); // let that unroll the path.to.property
+            }
+            propertyName = ResolveAlias(propertyName);
+            if (propertyName.StartsWith("::")) {
+                return RootView.GetChild(propertyName.Trim(':'));
+            }
             return map.ContainsKey(propertyName) ? map[propertyName] : (map.Keys.Where(each => each.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase)).Select(i => map[i])).FirstOrDefault();
         }
 

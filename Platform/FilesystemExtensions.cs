@@ -27,6 +27,7 @@ namespace ClrPlus.Platform {
     using System.Security.Cryptography;
     using System.Text;
     using System.Text.RegularExpressions;
+    using Core.Collections;
     using Core.Exceptions;
     using Core.Extensions;
     using Microsoft.Win32;
@@ -1160,6 +1161,25 @@ namespace ClrPlus.Platform {
                 return newPaths.Select(each => each.Aggregate((current, value) => current + "\\" + value));
             }
             return allPaths.Select(Path.GetFileName);
+        }
+
+        public static IDictionary<string,string> GetMinimalPathsToDictionary(this IEnumerable<string> paths) {
+            var allPaths = paths.ToArray();
+
+            if(allPaths.Any() && allPaths.Length > 1) {
+                var newPaths = allPaths.Select(each => each.GetFullPath()).Select(each => each.Split('\\')).ToCacheEnumerable();
+                var first = newPaths.FirstOrDefault();
+                var a = 0;
+                while(newPaths.All(each => each[a] == first[a])) {
+                    a++;
+                }
+                
+                return newPaths.Select((each, i) => new {
+                    orig = allPaths[i],
+                    path = each.Skip(a).Aggregate((current, value) => current + "\\" + value),
+                }).ToDictionary(each => each.orig, each => each.path);
+            }
+            return allPaths.ToDictionary(Path.GetFileName,Path.GetFileName);
         }
     }
 }

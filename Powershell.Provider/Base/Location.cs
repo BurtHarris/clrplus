@@ -43,6 +43,12 @@ namespace ClrPlus.Powershell.Provider.Base {
         public abstract IContentWriter GetContentWriter();
         public abstract void ClearContent();
 
+        public abstract ILocation NewItem(string type, object newItemValue);
+
+        public abstract ILocation Rename(string newName);
+        public abstract ILocation Move(ILocation newLocation);
+        public abstract IEnumerable<ILocation> Copy(ILocation newLocation, bool recurse);
+
         public abstract Stream Open(FileMode mode);
 
         public abstract ILocation GetChildLocation(string relativePath);

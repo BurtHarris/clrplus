@@ -48,29 +48,28 @@ nuget {
 	// the files that go into the content folders
 	// (inserted into the nuspec file)
 	files {
-		include: { .\output\include\*.h };
+		include:  .\output\include\*.h ;
 
-		docs: {  .\output\docs\**\* };
+		docs:   .\output\docs\**\* ;
     
-		[Win32,v110,dynamic] { 
-			lib: { .\output\lib\x86\*.lib };
-		}
-
-		[x64,v110,dynamic] {
-			lib: { .\output\lib\x64\*.lib };
-		}
+		[Win32,v110,dynamic] 
+		lib:  .\output\lib\x86\*.lib ;
 		
-		[Win32,v110,dynamic] {
-			bin: { .\output\bin\x86\zlib1.dll };
-		}
+		[x64,v110,dynamic] 
+		lib:  .\output\lib\x64\*.lib ;
+		
+		
+		[Win32,v110,dynamic] 
+		bin: .\output\bin\x86\zlib1.dll ;
+		
 
-		[Win32,v110,stdcall] {
-			bin: { .\output\bin\x86\zlibwapi.dll };
-		}
+		[Win32,v110,stdcall] 
+		bin: { .\output\bin\x86\zlibwapi.dll };
+		
 
-		[x64,v110,dynamic] {
+		[x64,v110,dynamic] 
 			bin: { .\output\bin\x64\zlib1.dll };
-		}
+		
 
 	};
 
@@ -83,47 +82,7 @@ nuget {
 
 	// the VC++ .targets file that gets generated and inserted into the ${d_content} folder
 	targets {
-		// every configuration needs to reference the include directories.
-		Includes += ${pkg_root}${d_include};
-
-		condition[Win32,v110,dynamic] { 
-			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
-		};
-
-		condition[x64,v110,dynamic] {
-			Libraries += ${pkg_root}${d_lib}\zlib1.lib;
-		}
-
-		condition[v110,Win32,static] {
-			Target[AfterBuild] {
-				.Copy {
-					SourceFiles = ${pkg_root}${d_bin}\*;
-					DestinationFolder = $(TargetDir);
-					SkipUnchangedFiles=true;
-				}
-			}
-
-			Libraries += ${pkg_root}${d_lib}\zlibstat.lib;
-		};
-
-		condition[Win32,v110,stdcall] {
-			Libraries += ${pkg_root}${d_lib}\zlibwapi.lib;
-		};
-
-		condition[x64,v110,static] {
-			Libraries += ${pkg_root}${d_lib}\zlibstat.lib;
-		};
-
-        // todo: the copy commands to copy the dlls into the build folder.
-
-		Target[AfterBuild] {
-			.Copy {
-				SourceFiles = ${pkg_root}${d_bin}\*;
-				DestinationFolder = $(TargetDir);
-				SkipUnchangedFiles=true;
-			}
-		};
-
+		// automatic from there.
 	};
 }
 

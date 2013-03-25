@@ -63,6 +63,27 @@ namespace ClrPlus.Powershell.Provider.Filesystem {
             throw new NotImplementedException();
         }
 
+        public ILocation NewItem(string type, object newItemValue) {
+            throw new NotImplementedException();
+        }
+
+        public ILocation Rename(string newName) {
+            throw new NotImplementedException();
+        }
+
+        public ILocation Move(ILocation newLocation) {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<ILocation> Copy(ILocation newLocation, bool recurse) {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<ILocation> Copy(string newPath, bool recurse) {
+            throw new NotImplementedException();
+        }
+
+
         public void Close() {
             if (_stream != null) {
                 _stream.Close();

@@ -66,6 +66,18 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
+        public bool IsGlobal {
+            get {
+                return Name.StartsWith("::");
+            }
+        }
+
+        public Selector DeGlobaled {
+            get {
+                return IsGlobal ? new Selector(Name.TrimStart(':'), Parameter) : this;
+            }
+        }
+
         public Selector Prefix {
             get {
                 var p = Name.IndexOf('.');

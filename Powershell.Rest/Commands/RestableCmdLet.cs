@@ -110,7 +110,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
                             
                             
                             
-                                WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
+                            WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
                             
                                 
                         }

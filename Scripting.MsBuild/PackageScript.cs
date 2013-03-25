@@ -47,11 +47,11 @@ namespace ClrPlus.Scripting.MsBuild {
 
     public class PackageScript : IDisposable {
         private const string RequiredTemplate = @"
+
 #defines { condition = """"; }
 
 nuget {
- 
-	// built-in defines 
+ 	// built-in defines 
 	#defines { 
 		d_content   = \content\native,
 		d_tools     = \tools\native,
@@ -59,7 +59,7 @@ nuget {
         
 		d_include   = ${d_root}\include\${condition},
 		d_docs      = ${d_root}\docs\${condition},
-		d_bin       = ${d_root}\bin\${condition},
+		d_bin       = ${d_root}\bin\${condition},  
 		d_lib       = ${d_root}\lib\${condition},
 		d_exes		= ${d_tools}\${condition},
 
@@ -68,19 +68,29 @@ nuget {
 	
     targets {
         @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
+        @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
         @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
     }
     
     props {
         @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
         @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
+        @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
     }
 
 	files {
-		include: { #destination : ${d_include}; };
-		docs: {  #destination : ${d_docs}; };
-		lib: { #destination : ${d_lib}; };
-		bin: { #destination : ${d_bin}; };
+        lib: { 
+            #flatten : true;
+            #destination : ${d_lib}; 
+        };
+        include: { 
+            #destination : ${d_include}; };
+		docs: {  
+            #destination : ${d_docs}; 
+        };
+		bin: { 
+            #destination : ${d_bin}; 
+        };
 	};
 }";
 
@@ -124,9 +134,7 @@ nuget {
        
             // parse the script
             _sheet.ParseFile(filename);
-
             _sheet.ImportText(RequiredTemplate, "required");
-
 
             // ensure we have at least the package ID
             pkgName = _sheet.View.nuget.nuspec.id;
@@ -167,22 +175,28 @@ nuget {
             // persist the propertysheet to the msbuild model.
             _sheet.View.CopyToModel();
 
+            // generate automatic rules for lib/bin/include
+            var implictRules = _sheet.CurrentView.GetMetadataValue("options.implicit-rules").IsNegative();
+
             // process files
-            ProcessFiles(_sheet.View.nuget.files, autopkgFolder);
+            ProcessFiles(_sheet.View.nuget.files, autopkgFolder, implictRules, null);
         }
 
-        private void ProcessFiles(View files, string fileRoot) {
-            foreach (var containerName in files.PropertyNames) {
+        private void ProcessFiles(View files, string fileRoot, bool implictRules, string appliedCondition) {
+            appliedCondition = Configurations.NormalizeConditionKey((appliedCondition ?? ""), _sheet.View.configurations);
+
+            foreach(var containerName in files.GetChildPropertyNames()) {
                 View container = files.GetProperty(containerName);
-                if (containerName == "condition") {
-                    foreach (var condition in container.PropertyNames) {
-                        ProcessFiles(container.GetElement(condition), fileRoot);
+                if (containerName == "condition" || containerName == "*" ) {
+                    foreach(var condition in container.GetChildPropertyNames()) {
+                        ProcessFiles(container.GetElement(condition), fileRoot, implictRules, condition);
                     }
                     continue;
                 }
                 
                 // get the destination directory
-                var dest = container.Metadata.Keys.IsNullOrEmpty() || !container.Metadata.ContainsKey("destination") ? files.GetMacroValue("d_" + containerName) : container.Metadata["destination"].Value;
+                var destinationDirectory = container.GetMetadataValue("destination", false);
+                var dest = string.IsNullOrEmpty(destinationDirectory) ? files.GetMacroValue("d_" + containerName) : destinationDirectory;
 
                 // locate all the files in the collection.  
                 var filemasks = container.Values;
@@ -194,16 +208,41 @@ nuget {
                     if (!fileset.Any()) {
                         Console.WriteLine("WARNING: file selection '{0}' failed to find any files ",mask);
                     }
-
                     foundFiles = foundFiles.Union(fileset);
                 }
-                
-                foreach (var src in foundFiles) {
-                    var d = Path.Combine(dest, Path.GetFileName(src.GetFullPath()));
-                    //Console.WriteLine("COPY  {0} => {1}", src, d);
+
+                if(implictRules && containerName == "include") {
+                    // add this folder to the appropriate target    
+                    _targets.LookupItemDefinitionGroup(appliedCondition).LookupItemDefinitionElement("ClCompile").LookupMetadataList("AdditionalIncludeDirectories").AddUnique((files.GetMacroValue("pkg_root") + dest).Replace("${condition}", appliedCondition).Replace("\\\\", "\\"));
+                }
+
+                var flatten = container.GetMetadataValue("flatten", false).IsPositive();
+
+                var relativePaths = foundFiles.GetMinimalPathsToDictionary();
+
+                foreach (var src in relativePaths.Keys) {
+                    string target = Path.Combine(dest, flatten ? Path.GetFileName(relativePaths[src]) : relativePaths[src]).Replace("${condition}", appliedCondition).Replace("\\\\", "\\");
+                    
                     var file = _nuspec.files.Add("file");
-                    file.Attributes.src = src.GetFullPath();
-                    file.Attributes.target = d;
+                    file.Attributes.src = src.GetFullPath().Replace("\\\\", "\\");
+                    file.Attributes.target = target;
+
+                    if (implictRules) {
+                        switch (containerName) {
+                            case "bin":
+                                // add a per-file copy rule to the appropriate target
+                                var tsk = _targets.LookupTarget("AfterBuild", appliedCondition).AddTask("Copy");
+                                tsk.SetParameter("SourceFiles", (files.GetMacroValue("pkg_root") + target).Replace("\\\\", "\\"));
+                                tsk.SetParameter("DestinationFolder", "$(TargetDir)");
+                                tsk.SetParameter("SkipUnchangedFiles","true");
+                                break;
+
+                            case "lib":
+                                // add a Libraries += rule to the appropriate target
+                                _targets.LookupItemDefinitionGroup(appliedCondition).LookupItemDefinitionElement("Link").LookupMetadataList("AdditionalDependencies").AddUnique((files.GetMacroValue("pkg_root") + target).Replace("${condition}", appliedCondition).Replace("\\\\", "\\"));
+                                break;
+                        }
+                    }
                 }
                 
                 // Console.WriteLine("SET : {0}, => {1}", containerName, dest);
@@ -228,7 +267,7 @@ nuget {
             yield return "projectUrl".MapTo(() => (string)_nuspec.metadata.projectUrl, v => _nuspec.metadata.projectUrl = v.SafeToString());
             yield return "iconUrl".MapTo(() => (string)_nuspec.metadata.iconUrl, v => _nuspec.metadata.iconUrl = v.SafeToString());
 
-            yield return "requireLicenseAcceptance".MapTo(() => ((string) _nuspec.metadata.requireLicenseAcceptance).IsTrue() ? "true" : "false" , v => _nuspec.metadata.requireLicenseAcceptance = v.SafeToString().IsTrue().ToString().ToLower());
+            yield return "requireLicenseAcceptance".MapTo(() => ((string) _nuspec.metadata.requireLicenseAcceptance).IsPositive() ? "true" : "false" , v => _nuspec.metadata.requireLicenseAcceptance = v.SafeToString().IsTrue().ToString().ToLower());
 
             yield return "dependencies".MapTo( new CustomPropertyList( (list) => {
                 // when the list changes, set the value of the correct xml elements
@@ -261,7 +300,7 @@ nuget {
             if (_targets.Xml.Children.Count > 0) {
                 var file = _nuspec.files.Add("file");
                 file.Attributes.src = autopkgFolder.RelativePathTo(targetsPath);
-                file.Attributes.target = @"\build\native\test.targets" ;
+                file.Attributes.target = @"\build\native\" + pkgName + ".targets";
 
                 _targets.Save(targetsPath);    
             }
@@ -272,7 +311,7 @@ nuget {
             if (_props.Xml.Children.Count > 0) {
                 var file = _nuspec.files.Add("file");
                 file.Attributes.src = autopkgFolder.RelativePathTo(propsPath);
-                file.Attributes.target = @"\build\native\test.props";
+                file.Attributes.target = @"\build\native\" + pkgName + ".props";
                 _props.Save(propsPath);
             }
         }

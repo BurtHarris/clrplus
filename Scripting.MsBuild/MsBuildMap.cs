@@ -28,6 +28,7 @@ namespace ClrPlus.Scripting.MsBuild {
 
     public static class MsBuildMap {
         internal static XDictionary<Project, ProjectPlus> _projects = new XDictionary<Project, ProjectPlus>();
+        internal static XDictionary<object,StringPropertyList>  _stringPropertyList = new XDictionary<object, StringPropertyList>();
 
         public static ProjectPlus Lookup(this Project project) {
            if (!_projects.ContainsKey(project)) {
@@ -61,10 +62,12 @@ namespace ClrPlus.Scripting.MsBuild {
             internal View View;
             internal string Name;
             internal StringPropertyList InitialTargets;
-
+            
             internal ProjectPlus(Project project) {
                 InitialTargets = new StringPropertyList(() => project.Xml.InitialTargets, v => project.Xml.InitialTargets = v, target => LookupTarget(project, target, null));
             }
+
+
         }
 
         public static void MapProject(this PropertySheet propertySheet, string location, Project project ) {
@@ -125,8 +128,8 @@ namespace ClrPlus.Scripting.MsBuild {
                     break;
                 default:
                     var tsk = target.AddTask(view.MemberName);
-                    
-                    foreach (var n in view.PropertyNames) {
+
+                    foreach(var n in view.GetChildPropertyNames()) {
                         tsk.SetParameter( n, view.GetProperty(n) );
                     }
                     return tsk;
@@ -163,7 +166,6 @@ namespace ClrPlus.Scripting.MsBuild {
                     MetadataListRoute("PreprocessorDefinitions", "%(PreprocessorDefinitions)"),
                     MetadataListRoute("AdditionalIncludeDirectories", "%(AdditionalIncludeDirectories)")
 
-
                     );
 
                 yield return ItemDefinitionRoute("Link",
@@ -175,19 +177,11 @@ namespace ClrPlus.Scripting.MsBuild {
         }
 
         private static ToRoute ItemDefinitionRoute(string name, params ToRoute[] children) {
-            return name.MapTo<ProjectItemDefinitionGroupElement>(idg => {
-                foreach(var i in idg.Children) {
-                    var pide = (i as ProjectItemDefinitionElement);
-                    if(pide != null) {
-                        if(pide.ItemType == name) {
-                            return pide;
-                        }
-                    }
-                }
+            return name.MapTo<ProjectItemDefinitionGroupElement>(pidge => pidge.LookupItemDefinitionElement(name), children);
+        }
 
-                var c = idg.AddItemDefinition(name);
-                return c;
-            }, children);
+        internal static ProjectItemDefinitionElement LookupItemDefinitionElement(this ProjectItemDefinitionGroupElement pidge, string itemType) {
+            return pidge.Children.OfType<ProjectItemDefinitionElement>().FirstOrDefault( each => each.ItemType == itemType) ?? pidge.AddItemDefinition(itemType);
         }
 
         private static ToRoute MetadataRoute(string metadataName, string defaultValue = null) {
@@ -204,19 +198,19 @@ namespace ClrPlus.Scripting.MsBuild {
         }
 
         private static ToRoute MetadataListRoute(string metadataName, string defaultValue = null) {
-            return metadataName.MapTo<ProjectItemDefinitionElement>(pide => {
-                foreach(var m in pide.Metadata) {
-                    var metadata = m;
-                    if(metadata.Name == metadataName) {
-                        return (IList)new StringPropertyList(() => metadata.Value, v => metadata.Value = v);
-                    }
-                }
-                var n = pide.AddMetadata(metadataName, defaultValue ?? "");
-                return (IList)new StringPropertyList(() => n.Value, v => n.Value = v);
-            });
+            return metadataName.MapTo<ProjectItemDefinitionElement>(pide => pide.LookupMetadataList(metadataName, defaultValue));
         }
 
-        private static ProjectItemDefinitionGroupElement LookupItemDefinitionGroup(Project p, string condition) {
+        internal static StringPropertyList LookupMetadataList(this ProjectItemDefinitionElement pide, string metadataName, string defaultValue = null) {
+            foreach (var m in pide.Metadata.Where(metadata => metadata.Name == metadataName)) {
+                var metadata = m;
+                return _stringPropertyList.GetOrAdd(metadata, () => _stringPropertyList.AddOrSet(metadata, new StringPropertyList(() => metadata.Value, v => metadata.Value = v)));
+            }
+            var n = pide.AddMetadata(metadataName, defaultValue ?? "");
+            return _stringPropertyList.GetOrAdd(n, () => _stringPropertyList.AddOrSet(n, new StringPropertyList(() => n.Value, v => n.Value = v)));
+        }
+
+        internal static ProjectItemDefinitionGroupElement LookupItemDefinitionGroup(this Project p, string condition) {
             // look it up or create it.
             if(string.IsNullOrEmpty(condition)) {
                 var result = p.Xml.ItemDefinitionGroups.FirstOrDefault(each => string.IsNullOrEmpty(each.Label));
@@ -258,14 +252,15 @@ namespace ClrPlus.Scripting.MsBuild {
                 return conditionedResult;
             }
 
+            // ensure a non-conditioned gets created that we can chain to.
+            LookupTarget(p, name, null);
+
             var target = p.Xml.AddTarget(modifiedname );
             
             target.Label = condition;
             target.Condition = Configurations.GenerateCondition(p, condition);
             target.AfterTargets = name;
             
-            // ensure a non-conditioned gets created that we can chain to.
-            LookupTarget(p, name, null);
             
             return target;
         }

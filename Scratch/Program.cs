@@ -41,11 +41,11 @@ namespace Scratch {
         private void Start(string[] args) {
             try {
                 Console.WriteLine("Package script" );
-                using( var script = new PackageScript("test.autopkg") ){
+                using( var script = new PackageScript("zlib.autopkg") ){
                 script.SaveProps();
                 script.SaveTargets();
                 script.SaveNuspec();
-            }
+                }
 
 
 

@@ -46,17 +46,17 @@ namespace ClrPlus.Scripting.MsBuild {
             var body = task.AddUsingTaskBody(string.Empty, string.Empty);
 
             // thank you.
-            body.XmlElement().Append("Code").InnerText = @"Result = (Text ?? """").Split(';').Contains(Library) ) ? Value : String.Empty;";
+            body.XmlElement().Append("Code").InnerText = @"Result = ((Text ?? """").Split(';').Contains(Library) ) ? Value : String.Empty;";
            
             var initTarget = project.AddInitTarget(pkgName + "_init");
 
-            var pivots = view.PropertyNames;
+            var pivots = view.GetChildPropertyNames();
 
             foreach (var pivot in pivots) {
                 dynamic cfg = view.GetProperty(pivot);
                 IEnumerable<string> choices = cfg.choices;
 
-                if (!((View)cfg).PropertyNames.Contains("key")) {
+                if(!((View)cfg).GetChildPropertyNames().Contains("key")) {
                     // add init steps for this.
                     var finalPropName = "{0}-{1}".format(pivot, pkgName);
 
@@ -65,7 +65,7 @@ namespace ClrPlus.Scripting.MsBuild {
                         var choicePropName = "{0}-{1}".format(pivot, choice);
 
 
-                        var tsk = initTarget.AddTask("Contains");
+                        var tsk = initTarget.AddTask("pkgName_Contains");
                         tsk.SetParameter("Text", choicePropName);
                         tsk.SetParameter("Library", pkgName);
                         tsk.SetParameter("Value", choice);
@@ -73,7 +73,7 @@ namespace ClrPlus.Scripting.MsBuild {
                         tsk.AddOutputProperty("Result", finalPropName);
                     }
 
-                    initTarget.AddPropertyGroup().AddProperty(finalPropName, choices.FirstOrDefault()).Condition = @"'$({0})' == ''".format(finalPropName);
+                    project.Xml.AddPropertyGroup().AddProperty(finalPropName, choices.FirstOrDefault()).Condition = @"'$({0})' == ''".format(finalPropName);
                 }
             }
 
@@ -87,18 +87,32 @@ namespace ClrPlus.Scripting.MsBuild {
             return NormalizeConditionKey(key, project.Lookup().View);
         }
 
+        private static IEnumerable<string> NormalizeWork( View view, IEnumerable<string> options, bool fix = false) {
+            foreach(var p in view.GetChildPropertyNames()) {
+                var pivot = p;
+                foreach (var option in from option in options let cfg = view.GetProperty(pivot) where ((dynamic)cfg).choices.Values.Contains(option) select option) {
+                    yield return option;
+                    
+                    break;
+                }
+            }
+        }
+
         public static string NormalizeConditionKey(string key, View configurationsView) {
-        
-            
-            var pivots = configurationsView.PropertyNames;
-            
-            var options = key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
+            if (string.IsNullOrEmpty(key)) {
+                return string.Empty;
+            }
+
+            var pivots = configurationsView.GetChildPropertyNames().ToArray();
+
+            var opts = key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
                 '\\', ' '
-            }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            
+            }, StringSplitOptions.RemoveEmptyEntries);
+
+            var options = opts.ToList();
+         
             var ordered = new List<string>();
-
-
+            
             foreach (var pivot in pivots) {
                 foreach(var option in options) {
                     dynamic cfg = configurationsView.GetProperty(pivot);
@@ -108,11 +122,66 @@ namespace ClrPlus.Scripting.MsBuild {
                         break;
                     }
                 }
-                
             }
+           
 
             if(options.Any()) {
-                throw new ClrPlusException("Unknown configuration choice: {0}".format(options.FirstOrDefault()));
+                // went thru one pass,and we had some that didn't resolve.
+                // try again, this time cheat if we have to 
+                var unfound = options;
+
+                options = opts.ToList();
+                foreach (var opt in unfound) {
+                    switch (opt.ToLower()) {
+                        case "x86":
+                        case "win32":
+                        case "ia32":
+                        case "386":
+                            options.Remove(opt);
+                            options.Add("Win32");
+                            break;
+
+                        case "x64":
+                        case "amd64":
+                        case "em64t":
+                        case "intel64":
+                        case "x86-64":
+                        case "x86_64":
+                            options.Remove(opt);
+                            options.Add("x64");
+                            break;
+
+                        case "woa":
+                        case "arm":
+                            options.Remove(opt);
+                            options.Add("ARM");
+                            break;
+
+                        case "ia64":
+                            options.Remove(opt);
+                            options.Add("ia64");
+                            break;
+                    }
+                }
+
+                ordered = new List<string>();
+
+                foreach(var pivot in pivots) {
+                    foreach(var option in options) {
+                        dynamic cfg = configurationsView.GetProperty(pivot);
+                        IEnumerable<string> choices = cfg.choices.Values;
+                        if(choices.ContainsIgnoreCase(option)) {
+                            ordered.Add(option);
+                            options.Remove(option);
+                            break;
+                        }
+                    }
+                }
+
+                if (options.Any()) {
+                    // STILL?! bail.
+                    throw new ClrPlusException("Unknown configuration choice: {0}".format(options.FirstOrDefault()));
+                }
             }
 
 
@@ -121,8 +190,7 @@ namespace ClrPlus.Scripting.MsBuild {
 
         public static string GenerateCondition(Project project, string key) {
             var view = project.Lookup().View;
-            var pivots = view.PropertyNames;
-
+            var pivots = view.GetChildPropertyNames();
 
             var options = key.Replace(",", "\\").Replace("&", "\\").Split(new char[] {
                 '\\', ' '
@@ -135,7 +203,7 @@ namespace ClrPlus.Scripting.MsBuild {
                     dynamic cfg = view.GetProperty(pivot);
                     IEnumerable<string> choices = cfg.choices;
                     if(choices.Contains(option)) {
-                        if (((View)cfg).PropertyNames.Contains("key")) {
+                        if(((View)cfg).GetChildPropertyNames().Contains("key")) {
                             // this is a standard property, us
                             conditions.Add("'$({0})' == '{1}'".format((string)cfg.Key, option));
                         } else {

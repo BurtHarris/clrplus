@@ -101,6 +101,7 @@ namespace ClrPlus.Scripting.MsBuild {
                 yield return "generate".MapTo<ProjectTargetElement>(tgt => tgt.GenerateFiles());
                 yield return "requires".MapTo<ProjectTargetElement>(tgt => tgt.RequiresPackages());
                 yield return "condition".MapTo<ProjectTargetElement>(tgt => tgt.Condition());
+                yield return "*".MapTo<ProjectTargetElement>(tgt => tgt.Condition());
                 yield return "CHILDREN".MapChildTo<ProjectTargetElement>((tgt, child) => tgt.GetTargetItem(child));// .tasks 
             }
         }

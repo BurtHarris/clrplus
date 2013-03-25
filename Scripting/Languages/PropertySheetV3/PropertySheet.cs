@@ -91,10 +91,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             new PropertySheetParser(PropertySheetTokenizer.Tokenize(File.ReadAllText(_fullPath), TokenizerVersion.V3), this, _fullPath).Parse();
             _view = new View<object>(this, _backingObjectAccessor);
             if (Root._view != null) {
-                Root._view.AddChildRoute(Routes);
                 foreach(var i in Imports) {
                     AddRoutesForImport(i);
                 }
+                Root._view.AddChildRoute(Routes);
             }
         }
 
@@ -104,10 +104,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             new PropertySheetParser(PropertySheetTokenizer.Tokenize(propertySheetText, TokenizerVersion.V3), this, originalFilename).Parse();
             _view = new View<object>(this, _backingObjectAccessor);
             if(Root._view != null) {
-                Root._view.AddChildRoute(Routes);
                 foreach(var i in Imports) {
                     AddRoutesForImport(i);
                 }
+                Root._view.AddChildRoute(Routes);
             }
         }
 
