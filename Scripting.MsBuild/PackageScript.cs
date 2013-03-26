@@ -83,14 +83,9 @@ nuget {
             #flatten : true;
             #destination : ${d_lib}; 
         };
-        include: { 
-            #destination : ${d_include}; };
-		docs: {  
-            #destination : ${d_docs}; 
-        };
-		bin: { 
-            #destination : ${d_bin}; 
-        };
+        include: { #destination : ${d_include}; };
+		docs: { #destination : ${d_docs}; };
+		bin: {  #destination : ${d_bin};  };
 	};
 }";
 
@@ -103,7 +98,6 @@ nuget {
         private string nuspecPath;
         private string propsPath;
         private string targetsPath;
-
 
         public string Filename { get; set; }
         protected PropertySheet _sheet;
@@ -167,16 +161,16 @@ nuget {
                 _sheet.MapConfigurations("configurations", _props);
             }
 
-            if (hasTargets) {
+            // if (hasTargets) {
                 _sheet.MapProject("nuget.targets", _targets);
                 _sheet.MapConfigurations("configurations", _targets);
-            }
+            // }
 
             // persist the propertysheet to the msbuild model.
             _sheet.View.CopyToModel();
 
             // generate automatic rules for lib/bin/include
-            var implictRules = _sheet.CurrentView.GetMetadataValue("options.implicit-rules").IsNegative();
+            var implictRules = !_sheet.CurrentView.GetMetadataValue("options.implicit-rules").IsNegative();
 
             // process files
             ProcessFiles(_sheet.View.nuget.files, autopkgFolder, implictRules, null);
@@ -244,8 +238,6 @@ nuget {
                         }
                     }
                 }
-                
-                // Console.WriteLine("SET : {0}, => {1}", containerName, dest);
             }
         }
 

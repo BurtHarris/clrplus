@@ -1179,7 +1179,7 @@ namespace ClrPlus.Platform {
                     path = each.Skip(a).Aggregate((current, value) => current + "\\" + value),
                 }).ToDictionary(each => each.orig, each => each.path);
             }
-            return allPaths.ToDictionary(Path.GetFileName,Path.GetFileName);
+            return allPaths.ToDictionary(each => each ,Path.GetFileName);
         }
     }
 }

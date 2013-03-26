@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Platform</id>
-    <version>1.8.0.63</version>
+    <version>1.8.0.64</version>
     <title>CLRPlus Platform Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,8 +19,8 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.63" />
-        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.63" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.64" />
+        <dependency  id="ClrPlus.Windows.Api" version="1.8.0.64" />
     </dependencies>
     
   </metadata>

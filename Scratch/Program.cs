@@ -40,8 +40,9 @@ namespace Scratch {
 
         private void Start(string[] args) {
             try {
+                Environment.CurrentDirectory = @"c:\tmp\openssl\openssl\copkg";
                 Console.WriteLine("Package script" );
-                using( var script = new PackageScript("zlib.autopkg") ){
+                using( var script = new PackageScript("openssl.autopkg") ){
                 script.SaveProps();
                 script.SaveTargets();
                 script.SaveNuspec();

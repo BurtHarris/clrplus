@@ -14,6 +14,7 @@ namespace ClrPlus.Scripting.MsBuild {
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.RegularExpressions;
     using System.Xml;
     using Core.Collections;
     using Core.DynamicXml;
@@ -101,6 +102,15 @@ namespace ClrPlus.Scripting.MsBuild {
         public static string NormalizeConditionKey(string key, View configurationsView) {
             if (string.IsNullOrEmpty(key)) {
                 return string.Empty;
+            }
+
+            var x = new Regex(@"\s*(!*)\s*(\w*)\s*([|,&\\/]*)\s*");
+
+            foreach (Match match in x.Matches(key)) {
+                var bang = match.Groups[1].Value == "!";
+                var name = match.Groups[2].Value;
+                var oper = match.Groups[3].Value;
+
             }
 
             var pivots = configurationsView.GetChildPropertyNames().ToArray();
