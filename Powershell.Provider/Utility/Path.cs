@@ -181,9 +181,9 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
             var endswithslash = path.LastIndexOfAny(Slashes) == path.Length;
 
-            var uri = new Uri((path ?? string.Empty).UrlDecode());
+            var uri = new Uri((path ?? string.Empty).UrlDecode(), UriKind.RelativeOrAbsolute);
 
-            var pathToParse = uri.AbsoluteUri.UrlDecode();
+            var pathToParse = uri.IsAbsoluteUri ? uri.AbsoluteUri.UrlDecode() : uri.OriginalString;
 
             var match = UriRx.Match(pathToParse);
             if (match.Success) {
@@ -192,31 +192,45 @@ namespace ClrPlus.Powershell.Provider.Utility {
 
             var segments = pathToParse.Split(Slashes, StringSplitOptions.RemoveEmptyEntries);
 
-            return uri.IsUnc
-                ? _parsedLocationCache.AddOrSet(path, new Path {
-                    HostName = segments.Length > 0 ? segments[0] : string.Empty,
-                    Share = segments.Length > 1 ? segments[1] : string.Empty,
-                    Parts = segments.Length > 2 ? segments.Skip(2).ToArray() : new string[0],
-                    SubPath = segments.Length > 2 ? segments.Skip(2).Aggregate((current, each) => current + Slash + each) : string.Empty,
-                    ParentPath = segments.Length > 3 ? segments.Skip(2).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
-                    Name = segments.Length > 2 ? segments.Last() : string.Empty,
-                    StartsWithSlash = endswithslash, // pathToParse.IndexOfAny(Slashes) == 0,
-                    EndsWithSlash = pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
-                    Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
-                    IsUnc = true,
-                })
+            return uri.IsAbsoluteUri 
+                ? uri.IsUnc
+                    ? _parsedLocationCache.AddOrSet(path, new Path {
+                        HostName = segments.Length > 0 ? segments[0] : string.Empty,
+                        Share = segments.Length > 1 ? segments[1] : string.Empty,
+                        Parts = segments.Length > 2 ? segments.Skip(2).ToArray() : new string[0],
+                        SubPath = segments.Length > 2 ? segments.Skip(2).Aggregate((current, each) => current + Slash + each) : string.Empty,
+                        ParentPath = segments.Length > 3 ? segments.Skip(2).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
+                        Name = segments.Length > 2 ? segments.Last() : string.Empty,
+                        StartsWithSlash = endswithslash, // pathToParse.IndexOfAny(Slashes) == 0,
+                        EndsWithSlash = pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
+                        Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
+                        IsUnc = true,
+                    })
+                    : _parsedLocationCache.AddOrSet(path, new Path {
+                        Drive = segments.Length > 0 ? segments[0] : string.Empty,
+                        Share = string.Empty,
+                        Parts = segments.Length > 1 ? segments.Skip(1).ToArray() : new string[0],
+                        SubPath = segments.Length > 1 ? segments.Skip(1).Aggregate((current, each) => current + Slash + each) : string.Empty,
+                        ParentPath = segments.Length > 2 ? segments.Skip(1).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
+                        Name = segments.Length > 1 ? segments.Last() : string.Empty,
+                        StartsWithSlash = pathToParse.IndexOfAny(Slashes) == 0,
+                        EndsWithSlash = endswithslash, //  pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
+                        Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
+                        IsUnc = false,
+                        OriginalPath = uri.AbsoluteUri.UrlDecode(),
+                    })
                 : _parsedLocationCache.AddOrSet(path, new Path {
-                    Drive = segments.Length > 0 ? segments[0] : string.Empty,
+                    Drive = string.Empty,
                     Share = string.Empty,
-                    Parts = segments.Length > 1 ? segments.Skip(1).ToArray() : new string[0],
-                    SubPath = segments.Length > 1 ? segments.Skip(1).Aggregate((current, each) => current + Slash + each) : string.Empty,
-                    ParentPath = segments.Length > 2 ? segments.Skip(1).Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
-                    Name = segments.Length > 1 ? segments.Last() : string.Empty,
+                    Parts = segments.Length > 0 ? segments.ToArray() : new string[0],
+                    SubPath = segments.Length > 0 ? segments.Aggregate((current, each) => current + Slash + each) : string.Empty,
+                    ParentPath = segments.Length > 1 ? segments.Take(segments.Length - 2).Aggregate((current, each) => current + Slash + each) : string.Empty,
+                    Name = segments.Length > 0 ? segments.Last() : string.Empty,
                     StartsWithSlash = pathToParse.IndexOfAny(Slashes) == 0,
                     EndsWithSlash = endswithslash, //  pathToParse.LastIndexOfAny(Slashes) == pathToParse.Length,
                     Scheme = match.Success ? match.Groups[1].Value.ToLower() : string.Empty,
                     IsUnc = false,
-                    OriginalPath = uri.AbsoluteUri,
+                    OriginalPath = uri.OriginalString,
                 });
         }
 
