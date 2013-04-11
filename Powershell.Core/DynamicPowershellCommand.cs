@@ -205,8 +205,9 @@ namespace ClrPlus.Powershell.Core {
 
                         lock (Result) {
                             Result.Completed();
-                            // the last error was a terminating error
-                            Result.LastIsTerminatingError = true;
+                            if (CommandPipeline.PipelineStateInfo.State == PipelineState.Failed)
+                                // the last error was a terminating error
+                                Result.LastIsTerminatingError = true;
                             Dispose();
                         }
                         break;
