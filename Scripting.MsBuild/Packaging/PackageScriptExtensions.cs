@@ -10,16 +10,23 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
-    using System.Collections.Generic;
-    using Mapping;
-    using RValue;
+    using Core.Extensions;
 
-    public interface INode {
-        Lazy<IDictionary<string, IValue>> Metadata {get;}
-        IEnumerable<string> GetSourceText(int indent);
+    internal static class PackageScriptExtensions {
+        internal static string SafeToString(this object value, string defaultValue = null) {
+            if (value == null) {
+                return defaultValue;
+            }
+
+            var v = value.ToString();
+            return v;
+        }
+
+        internal static Uri SafeToUri(this object value) {
+            var v = SafeToString(value);
+            return v == null ? null : v.ToUri();
+        }
     }
-
-   
 }

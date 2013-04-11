@@ -13,22 +13,17 @@
 namespace ClrPlus.Scripting.MsBuild {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using Core.Collections;
     using Microsoft.Build.Evaluation;
-
+    using Packaging;
+#if false
     public class Condition {
         internal string Parameter;
-        internal Project Project;
+        internal ProjectPlus Project;
 
-        private static XDictionary<Project, List<string>> _projects = new XDictionary<Project,List<string>>();
+        public static IDictionary<string, string> Create(ProjectPlus parent) {
 
-        public static IDictionary<string, string> Create(Project parent) {
-            if (!_projects.ContainsKey(parent)) {
-                _projects.Add(parent, new List<string>());
-            }
-
-            var list = _projects[parent];
+            var list = parent.Conditions;
 
             return new DelegateDictionary<string, string>(
                 () => list,
@@ -47,5 +42,7 @@ namespace ClrPlus.Scripting.MsBuild {
                 '\\', ' '
             }, StringSplitOptions.RemoveEmptyEntries).OrderBy(each => each).Aggregate((c, e) => c + "\\" + e).Trim('\\');
         }
+ 
     }
+#endif
 }

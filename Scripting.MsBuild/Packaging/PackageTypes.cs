@@ -10,16 +10,15 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
-    using System.Collections.Generic;
-    using Mapping;
-    using RValue;
 
-    public interface INode {
-        Lazy<IDictionary<string, IValue>> Metadata {get;}
-        IEnumerable<string> GetSourceText(int indent);
+    [Flags]
+    public enum PackageTypes {
+        None = 0,
+        NuGet = 1,
+        CoApp = 2,
+
+        All = CoApp | NuGet
     }
-
-   
 }

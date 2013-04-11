@@ -978,5 +978,13 @@ namespace ClrPlus.Core.Extensions {
             }
             return text.IndexOfAny(chs) > -1;
         }
+
+        public static string WhenNullOrEmpty(this string original, string whenEmpty) {
+            return string.IsNullOrEmpty(original) ? whenEmpty : original;
+        }
+
+        public static bool Is(this string str) {
+            return !string.IsNullOrEmpty(str);
+        }
     }
 }

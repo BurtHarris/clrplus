@@ -21,6 +21,7 @@ namespace ClrPlus.Scripting.MsBuild {
     using Languages.PropertySheetV3.RValue;
     using Microsoft.Build.Construction;
     using Microsoft.Build.Evaluation;
+    using Packaging;
 
     internal static class ProjectTargetElementExtensions {
         
@@ -66,19 +67,19 @@ namespace ClrPlus.Scripting.MsBuild {
 
     public class BuildScript : IDisposable {
         public string Filename { get; set; }
-        protected PropertySheet _sheet;
-        internal IDictionary<string, IValue> productInformation; 
-        private Project _project = new Project();
+        protected RootPropertySheet _sheet;
+        internal IDictionary<string, IValue> productInformation;
+        private ProjectPlus _project = null; // = new ProjectPlus();
         
         public BuildScript(string filename) {
-            _sheet = new PropertySheet(_project);
+            _sheet = new RootPropertySheet(_project);
             _sheet.ParseFile(filename);
 
             foreach(var target in _sheet.CurrentView.ReplaceableChildren ) {
                 target.MapTo(_project.LookupTarget(target),PtkRoutes); 
             }
 
-            _sheet.Route(_project.ProjectRoutes());
+            _sheet.AddChildRoutes(_project.MemberRoutes);
 
             // convert #product-info into a dictionary.
             productInformation = _sheet.Metadata.Value.Keys.Where(each => each.StartsWith("product-info")).ToXDictionary(each => each.Substring(12), each => _sheet.Metadata.Value[each]);

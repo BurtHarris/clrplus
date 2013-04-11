@@ -94,9 +94,11 @@ namespace ClrPlus.Core.Tasks {
             return task;
         }
 
+        private static Task _rootTask = new TaskCompletionSource<int>().Task;
+
         internal static Task CurrentExecutingTask {
             get {
-                return _currentTaskProperty.GetValue(null, null) as Task;
+                return (_currentTaskProperty.GetValue(null, null) as Task);// ?? _rootTask;
             }
         }
 

@@ -23,6 +23,7 @@ namespace ClrPlus.Core.Extensions {
     using System;
     using System.Diagnostics;
     using System.IO;
+    using System.Linq;
     using System.Reflection;
     using Exceptions;
 
@@ -107,7 +108,7 @@ namespace ClrPlus.Core.Extensions {
         }
 
         public static string ExtractFileResourceToPath(this Assembly assembly, string name, string filePath) {
-            var s = assembly.GetManifestResourceStream(name);
+            var s = assembly.GetManifestResourceStream(assembly.ResolveManifestResource(name));
             if (s != null) {
                 var buf = new byte[s.Length];
 
@@ -119,6 +120,16 @@ namespace ClrPlus.Core.Extensions {
                 return filePath;
             }
             throw new ClrPlusException("Resource '{0}' not found in assembly.".format(name));
+        }
+
+        public static string ExtractFileResource(this Assembly assembly, string name) {
+            using(var s = new StreamReader(assembly.GetManifestResourceStream(assembly.ResolveManifestResource(name)))) {
+                return s.ReadToEnd();
+            }
+        }
+
+        public static string ResolveManifestResource(this Assembly assembly, string name) {
+          return assembly.GetManifestResourceNames().FirstOrDefault(each => each.EndsWith(name, StringComparison.CurrentCultureIgnoreCase));
         }
 
 #if TODO 

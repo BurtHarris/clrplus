@@ -1,0 +1,126 @@
+// Implicity loaded template script for Autopackage
+// This file is automatically imported into Autopackage to set the defaults 
+
+#defines { 
+    ElementId = "";
+    condition = ${ElementId};
+}
+
+configurations {
+	Toolset { 
+		key : "PlatformToolset"; 
+		choices: { v110, v100, v90, v80, v71, v70, v60, gcc };  
+	};
+    
+	Platform {
+		key : "Platform"; 
+		choices: { Win32, x64, ARM, AnyCPU };
+        Win32.aliases : { x86, win32, ia32, 386 };
+        x64.aliases : { x64, amd64, em64t, intel64, x86-64, x86_64 };
+        ARM.aliases : { arm, woa };
+        AnyCPU.aliases : { anycpu, any };
+	};
+
+	Configuration {
+		key : "Configuration"; 
+		choices: { Release, Debug };
+	};
+
+	Linkage { 
+		choices : { dynamic, static, ltcg, sxs };
+		description = "Which version of the .lib file to link to this library";
+
+		ltcg.description = "Link Time Compiler Generation";
+		dynamic.description = "Dynamic Library (DLL)";
+		static.description = "Static";
+		sxs.description = "Side-by-Side";
+	};
+
+    // Only really applicable to x86
+	CallingConvention {
+		choices : { cdecl, stdcall, fastcall, thiscall, clrcall };
+		description = "Calling convention model to use (for x86 only)";
+		cdecl.description = "cdecl";
+		stdcall.description = "stdcall (Uncommon)";
+		fastcall.description = "fastcall (Rare)";
+		thiscall.description = "thiscall (Rare)";
+		clrcall.description = "clrcall (Rare)";
+
+		stdcall.restricted-to = "Win32";
+		fastcall.restricted-to = "Win32";
+		thiscall.restricted-to = "Win32";
+		clrcall.restricted-to = "Win32";
+	};
+}
+
+nuget {
+ 	// built-in defines 
+	#defines { 
+    
+        framework      = native,
+    
+		content_root   = \content\${framework},
+		tools_root     = \tools\${framework},
+		lib_root       = \lib\${framework},
+        build_root     = \build\${framework},
+        
+		d_include   = ${build_root}\include\${condition},
+		d_docs      = ${build_root}\docs\${condition},
+		d_bin       = ${build_root}\bin\${condition},  
+		d_lib       = ${build_root}\lib\${condition},
+
+		// since the generated msbuild props/targets files are always in a directory two 
+		// deep from the package root.
+		pkg_root    = $(MSBuildThisFileDirectory)..\..\,
+	};
+	
+    // #options { 
+    //    implict-redist = true; 
+    //    implict-rules = true;
+    // }
+   
+    // one of the pivots for the targets/props []  parameter.
+    #output-packages {
+        default : ${pkgname};
+        redist : ${pkgname}.redist;
+    }
+
+	files {
+		bin += {  
+            #output-package = redist;
+			#auto-copy : true;
+            #destination : ${d_bin};  
+        };
+
+        lib += { 
+            // #output-package = default;
+			#auto-link : true;
+            #flatten = true;
+            #destination = ${d_lib}; 
+        };
+
+        include += { 
+            // #output-package = default;
+			#auto-include : true;
+            #destination : ${d_include}; 
+        };
+
+		docs += { 
+            // #output-package = default;
+            #destination : ${d_docs};   
+        };
+	};
+    
+    
+    targets {
+        @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
+        @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
+        @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
+    }
+    
+    props {
+        @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
+        @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
+        @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
+    }
+}

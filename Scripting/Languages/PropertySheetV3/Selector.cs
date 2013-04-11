@@ -14,15 +14,17 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.Diagnostics;
     using Core.Exceptions;
     using Core.Extensions;
+    using Languages.PropertySheet;
 
     public class Selector {
-        public static Selector Empty = new Selector(string.Empty);
+        public static Selector Empty = new Selector(string.Empty, SourceLocation.Unknown);
+        public readonly SourceLocation SourceLocation;
 
         public readonly string Name;
         public readonly string Parameter;
         private readonly int _hashCode;
         
-        public Selector(string selector) :this(ParseName(selector), ParseParameter(selector)) {
+        public Selector(string selector,SourceLocation sourceLocation) :this(ParseName(selector), ParseParameter(selector),sourceLocation) {
         }
 
         private static string ParseParameter(string selector) {
@@ -50,9 +52,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return p > -1 ? ParseName(selector.Substring(0, p)) : selector;
         }
 
-        public Selector(string name, string parameter) {
+        public Selector(string name, string parameter, SourceLocation sourceLocation) {
             Name = name;
             Parameter = parameter;
+            SourceLocation = sourceLocation;
             _hashCode = this.CreateHashCode(Name, Parameter);
         }
 
@@ -74,21 +77,21 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         public Selector DeGlobaled {
             get {
-                return IsGlobal ? new Selector(Name.TrimStart(':'), Parameter) : this;
+                return IsGlobal ? new Selector(Name.TrimStart(':'), Parameter,SourceLocation) : this;
             }
         }
 
         public Selector Prefix {
             get {
                 var p = Name.IndexOf('.');
-                return p > 0 ? new Selector (Name.Substring(0, p)): this;
+                return p > 0 ? new Selector (Name.Substring(0, p),SourceLocation): this;
             }
         }
 
         public Selector Suffix {
             get {
                 var p = Name.IndexOf('.');
-                return p <= 0 ? this : new Selector(Name.Substring(p + 1),Parameter);
+                return p <= 0 ? this : new Selector(Name.Substring(p + 1),Parameter,SourceLocation);
             }
         }
 
@@ -106,7 +109,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         public static implicit operator Selector(string s) {
-            return new Selector(s);
+            return new Selector(s,SourceLocation.Unknown);
         }
 
         public static implicit operator string(Selector s) {

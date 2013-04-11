@@ -63,6 +63,17 @@ namespace ClrPlus.Core.Extensions {
             return objects.Skip(10).Aggregate(hashCodesWithPrimes, (result, obj) => result + (obj == null ? 0 : obj.GetHashCode()));
         }
 
+        public static string CreateHashForObjects(this Object input, params object[] objects) {
+            if(objects.Length == 0) {
+                return "".MD5Hash();
+            }
+
+            return objects.Select(each => {
+                each = (each ?? "null");
+                return (each.ToString() + each.GetHashCode()).MD5Hash();
+            }).Aggregate((current, each) => current + each).MD5Hash();
+        }
+
         public static T With<T>(this T item, Action<T> action, Action onNullOrDefault = null) {
             if (item == null || item.Equals(default(T))) {
                 if (onNullOrDefault != null) {

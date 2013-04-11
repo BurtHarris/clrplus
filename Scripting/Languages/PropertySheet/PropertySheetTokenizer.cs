@@ -58,7 +58,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
             return Tokenize(string.IsNullOrEmpty(text) ? new char[0] : text.ToCharArray(), TokenizerVersion.V2);
         }
 
-        public new static List<Token> Tokenize(string text, TokenizerVersion version) {
+        public static List<Token> Tokenize(string text, TokenizerVersion version) {
             return Tokenize(string.IsNullOrEmpty(text) ? new char[0] : text.ToCharArray(), version);
         }
 
@@ -72,7 +72,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         /// <param name="text">The CPS source code to tokenize (as an array of characters)</param>
         /// <param name="version">Version of the tokenizer to use.</param>
         /// <returns>A List of tokens</returns>
-        public new static List<Token> Tokenize(char[] text, TokenizerVersion version) {
+        public static List<Token> Tokenize(char[] text, TokenizerVersion version) {
 
             var tokenizer = new PropertySheetTokenizer(text, version);
             tokenizer.Tokenize();

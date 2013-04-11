@@ -17,6 +17,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.Linq;
     using Core.Collections;
     using Core.Extensions;
+    using Languages.PropertySheet;
     using RValue;
     using Utility;
     using Tokens = System.Collections.Generic.IEnumerable<Utility.Token>;
@@ -236,21 +237,23 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         /// <exception cref="ParseException">Duplicate [ ] parameter not permitted.</exception>
         /// <exception cref="ParseException">Reached terminator '{0}' -- expected selector declaration</exception>
         /// <exception cref="ParseException">Invalid token in selector declaration after < >  or [ ] --found '{0}'</exception>
-        private Selector ParseSelector(TokenTypes terminators, string selectorName = null, string parameter = null) {
-            switch (NextAfter(WhiteSpaceOrComments)) {
+        private Selector ParseSelector(TokenTypes terminators, SourceLocation sourceLocation = null, string selectorName = null, string parameter = null) {
+            NextAfter(WhiteSpaceOrComments);
+            sourceLocation = sourceLocation ?? new SourceLocation(Token, Filename);
+            switch (Token.Type) {
                 case TokenType.Colon:
                     if (selectorName == null && parameter == null) {
                         if (NextType != TokenType.Colon) {
                             throw Fail(ErrorCode.TokenNotExpected, "Single colon not permitted before selector name");
                         }
-                        return ParseSelector(terminators, "::");
+                        return ParseSelector(terminators,sourceLocation, "::");
                     }
 
                     if (terminators.Contains(Type)) {
                         if (string.IsNullOrEmpty(selectorName) && string.IsNullOrEmpty(parameter)) {
                            throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
                         }
-                        return new Selector(selectorName ?? "*", parameter);
+                        return new Selector(selectorName ?? "*", parameter, sourceLocation);
                     }
                     break;
                     
@@ -260,17 +263,17 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     if ( parameter != null ) {
                         if (selectorName == null) {
                             Rewind();
-                            return new Selector("*", parameter);
+                            return new Selector("*", parameter,sourceLocation);
                         }
                         throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration after < >  or [ ] --found '{0}'");
                     }
-                    return ParseSelector(terminators, (selectorName ?? "") + Token.Data);
+                    return ParseSelector(terminators,sourceLocation, (selectorName ?? "") + Token.Data);
 
                 case TokenType.SelectorParameter:
                     if (parameter != null) {
                         throw Fail(ErrorCode.TokenNotExpected, "Duplicate [ ] parameter not permitted.");
                     }
-                    return ParseSelector(terminators, selectorName, Token.Data);
+                    return ParseSelector(terminators, sourceLocation, selectorName, Token.Data);
 
                 default:
                     if (terminators.Contains(Type)) {
@@ -278,9 +281,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                             if (string.IsNullOrEmpty(parameter)) {
                                 throw Fail(ErrorCode.InvalidSelectorDeclaration, "Reached terminator '{0}' -- expected selector declaration");
                             }
-                            return new Selector("*", parameter);
+                            return new Selector("*", parameter, sourceLocation);
                         }
-                        return new Selector(selectorName, parameter);
+                        return new Selector(selectorName, parameter, sourceLocation);
                     }
                     break; // fall thru to end fail.
             }
@@ -424,7 +427,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
             var selector = ParseSelector(MemberTerminator);
             if (selector.Name.StartsWith(".")) {
-                selector = new Selector( context.IndexValue  + selector.Name, selector.Parameter  );
+                selector = new Selector( context.IndexValue  + selector.Name, selector.Parameter , selector.SourceLocation );
             }
 
             switch (Type) {
@@ -499,7 +502,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     return ParseCollection(context, terminators, metadataContainer);
 
                 case TokenType.EmbeddedInstruction:
-                    var result = new Instruction(context, Data);
+                    var result = new Instruction(context, Data, new SourceLocation(Token,Filename));
 
                     if (NextAfter(WhiteSpaceOrComments) == TokenType.Lambda) {
                         // aha. Found a iterator expression.
@@ -519,14 +522,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         private IValue ParseRValueLiterally(ObjectNode context, TokenTypes terminators, Tokens tokens = null) {
             if (NextType == TokenType.Lambda) {
                 // aha. Found a lambda expression.
-                return ExpectingForeachExpression(context, terminators, new Iterator(context, new Scalar(context, tokens)));
+                return ExpectingForeachExpression(context, terminators, new Iterator(context, new Scalar(context, tokens,Filename)));
             }
 
             if (terminators.Contains(Type)) {
                 if (tokens.IsNullOrEmpty()) {
                     throw Fail(ErrorCode.MissingRValue, "RValue missing, found '{0}' terminator.");
                 }
-                return new Scalar(context, tokens);
+                return new Scalar(context, tokens,Filename);
             }
             return ParseRValueLiterally(context, terminators, tokens.ConcatHappily(Token));
         }
@@ -566,7 +569,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         /// <exception cref="ParseException">Unrecognized token '{0}' in matrix foreach</exception>
         private IValue ParseMatrixForEach(ObjectNode context, TokenTypes terminators, Iterator rvalue = null) {
-            rvalue = rvalue ?? new Iterator(context);
+            rvalue = rvalue ?? new Iterator(context,new SourceLocation(Token,Filename));
             rvalue.Add(ParseRValue(context, CommaOrCloseParenthesis, null));
 
             switch (Type) {

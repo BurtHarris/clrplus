@@ -10,16 +10,13 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
+namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
-    using System.Collections.Generic;
-    using Mapping;
-    using RValue;
+    using System.IO;
 
-    public interface INode {
-        Lazy<IDictionary<string, IValue>> Metadata {get;}
-        IEnumerable<string> GetSourceText(int indent);
+    public interface IProjectOwner : IDisposable {
+        Pivots Pivots {get;}
+        string ProjectName {get;}
+        string Directory {get;}
     }
-
-   
 }

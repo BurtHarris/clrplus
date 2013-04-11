@@ -51,7 +51,7 @@
         protected interface IPrefersComputedValue {
         }
 
-        protected class Map : AbstractDictionary<string, View> {
+        protected internal class Map : AbstractDictionary<string, View> {
             internal View ParentView;
             protected IDictionary<string, View> _childItems;
             protected Dictionary<string, Func<View>> _dynamicViewInitializers;
@@ -213,7 +213,7 @@
 
                                 var resolvedName = thisView.ResolveAlias(childView._map.MemberName);
                                 if (resolvedName.StartsWith("::")) {
-                                    RootMap.AddChild(() => Unroll(resolvedName.Substring(2), childView));
+                                    RootMap.AddChildRoute(() => Unroll(resolvedName.Substring(2), childView));
                                 } else {
                                     MergeChild(thisView, Unroll(resolvedName, childView));                                    
                                 }
@@ -224,7 +224,7 @@
                 return this;
             }
 
-            internal virtual Map AddChild(ToRoute route) {
+            internal virtual Map AddChildRoute(ToRoute route) {
                 if (route != null) {
                     lock (this) {
                         if (Initializers == null) {
@@ -236,7 +236,7 @@
                 return this;
             }
 
-            internal virtual Map AddChildren(IEnumerable<ToRoute> routes) {
+            internal virtual Map AddChildRoutes(IEnumerable<ToRoute> routes) {
                 if (routes != null) {
                     lock (this) {
                         if (Initializers == null) {
@@ -259,7 +259,16 @@
             protected virtual void CopyElementsTo(Map childMap) {
             }
 
-            protected virtual void MergeChild(View thisView, View childView) {
+            protected internal virtual void MergeChild(View thisView, View childView) {
+                /*
+                Console.WriteLine("Merging [{0}] <- [{1}]",Identity, childView._map.Identity);
+
+                if (Identity == "ROOT.nuget.files.*" && childView._map.Identity == "x64,v100,dynamic") {
+                    Console.WriteLine("SUSPECT FOUND");
+                }
+                */
+
+
                 if (childView._map is ElementMap) {
                     MergeElement(childView);
                     return;
@@ -296,18 +305,21 @@
                     currentView._metadata.Value.AddRange(childView._metadata.Value);
                 }
 
+                currentView.SourceLocations = currentView.SourceLocations.Union(childView.SourceLocations);
+
                 // if the child view map is replaceable, then simply steal it's child routes 
                 if (childView._map is IReplaceable) {
                     currentView._map.Active = childView._map.Active || currentView._map.Active;
-                    currentView._map.AddChildren(childView._map.Initializers);
+                    currentView._map.AddChildRoutes(childView._map.Initializers);
                     currentView._map.GetMacroValue += childView._map.GetMacroValue;
                     return;
                 }
 
                 // if this current view map is replaceable, then let's go the other way.
                 if (currentView._map is IReplaceable) {
+                    
                     childView._map.Active = childView._map.Active || currentView._map.Active;
-                    currentView._map.AddChildren(childView._map.Initializers);
+                    currentView._map.AddChildRoutes(childView._map.Initializers);
                     childView._map.Initializers = currentView._map.Initializers;
                     childView._map._parentReferenceValue = currentView._map._parentReferenceValue;
                     childView._map.GetMacroValue += currentView._map.GetMacroValue;
@@ -317,12 +329,18 @@
                         childView._map.Add(key, currentView._map[key]);
                     }
 
-
                     // handle any Elements
                     currentView._map.CopyElementsTo(childView._map);
 
                     // set the new map as ours.
                     currentView._map = childView._map;
+                    return;
+                }
+
+                if (currentView._map is ValueMap<object> && childView._map is ValueMap<object> ) {
+                    currentView._map.Active = childView._map.Active || currentView._map.Active;
+                    currentView._map.AddChildRoutes(childView._map.Initializers);
+                    currentView._map.GetMacroValue += childView._map.GetMacroValue;
                     return;
                 }
 
@@ -371,7 +389,7 @@
         protected class DictionaryMap<TParent, TKey, TVal> : Map, IElements, IHasValueFromBackingStorage  {
             private DictionaryDelegate<TParent, TKey, TVal> _route;
             private List<ToRoute> _childInitializers = new List<ToRoute>();
-            public IEnumerable<ToRoute> childInitializers;
+            public CacheEnumerable<ToRoute> childInitializers;
             private readonly Func<string, string> _keyExchanger;
 
             private IDictionary<TKey, TVal> Dictionary { get {
@@ -442,6 +460,7 @@
                     }
 
                     // now, run the childinitializers over each child.
+                    /*
                     if (childInitializers != null) {
                         foreach (var key in Keys) {
                             var childItem = this[key];
@@ -455,17 +474,43 @@
                             }
                         }
                     }
+                     * */
                 }
                 return this;
             }
 
             public override void Add(string key, View value) {
                 // we should see if this ever gets called on a node that hasn't been initialized by OnAccess...
-
+                InitializeChildItem(value);
+                
                 base.Add(_keyExchanger(key), value);
             }
 
-         
+            private HashSet<Map> ici = new HashSet<Map>();
+            private void InitializeChildItem(View value) {
+                if (!ici.Contains(value._map)) {
+                    ici.Add(value._map);
+
+                    if(childInitializers != null) {
+                        foreach(var i in childInitializers) {
+                            if(value._map.Initializers == null) {
+                                value._map.Initializers = new Queue<ToRoute>();
+                            }
+                            if(!value._map.Initializers.Contains(i)) {
+                                value._map.Initializers.Enqueue(i);
+                            }
+                        }
+
+                    }
+
+                }
+            }
+
+            protected internal override void MergeChild(View thisView, View childView) {
+                base.MergeChild(thisView, childView);
+                InitializeChildItem(childView);
+            }
+
             public override View this[string key] {
                 get {
                     key = _keyExchanger(key);
@@ -478,13 +523,18 @@
                             var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
                             var childMap = new ValueMap<object>(key, (p) => accessor, null);
 
-                            childMap.GetMacroValue += (name,context) => name == "__ELEMENT_ID__" || name == MemberName ? key : null;
+                            childMap.GetMacroValue += (name, context) => {
+                                return name == "ElementId" || name == MemberName ? key : null;
+                            };
                             MergeChild(ParentView, new View(childMap));
                         }
                     }
+                    InitializeChildItem(ChildItems[key]);
                     return ChildItems[key];
                 }
                 set {
+
+                    InitializeChildItem(value);
                     key = _keyExchanger(key);
 
                     base[key] = value;
@@ -530,10 +580,12 @@
 
                     var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
 
-                    var childMap = new ValueMap<object>(item.Parameter, (p) => accessor, item.Initializers);
+                    var childMap = new ValueMap<object>(_key.ToString(), (p) => accessor, item.Initializers);
 
 
-                    childMap.GetMacroValue += (name, context) => name == "__ELEMENT_ID__" || name == MemberName ? _key.ToString() : null;
+                    childMap.GetMacroValue += (name, context) => {
+                        return name == "ElementId" || name == MemberName ? _key.ToString() : null;
+                    };
 
                     MergeChild(ParentView, new View(childMap) {
                         _propertyNode = childView._propertyNode
@@ -611,7 +663,7 @@
             public void AddValue(string value) {
                 // how do we transform the given value 
                 // into the value that we're trying to add?
-
+                //value = ParentView.ResolveMacrosInContext(value);
                 ((IList)ComputedValue).Add(value);
             }
 
@@ -677,8 +729,9 @@
                 : base(memberName, childRoutes) {
 
                 // when this map is activated, add our children to it.
-                AddChild(() => {
-                    AddChildren(MemberRoutes);
+                AddChildRoute(() => {
+                    
+                    AddChildRoutes(MemberRoutes);
                     return null;
                 });
                 _route = route;
@@ -697,7 +750,19 @@
                     if (result != null) {
                         var type = result.GetType();
 
-                        foreach (var each in type.GetPersistableElements()) {
+                        // allows a member object to add a field/property called "MemberRoutes" and have it define child routes too.
+                        var customMemberRoutesProperty = type.GetReadableElements().FirstOrDefault(ppi => ppi.Name == "MemberRoutes");
+                        if (customMemberRoutesProperty != null) {
+                            var customRoutes = customMemberRoutesProperty.GetValue(result,null) as IEnumerable<ToRoute>;
+                            if (customRoutes != null) {
+                                foreach (var i in customRoutes) {
+                                    yield return i;
+                                }
+                            }
+                        }
+
+                        foreach (var each in type.GetPersistableElements().Where( each => each.Name != "MemberRoutes ")) {
+                            
                             var ppi = each;
 
                             switch (ppi.ActualType.GetPersistableInfo().PersistableCategory) {
@@ -787,6 +852,10 @@
         protected class ValueMap<TParent> : Map, ICanSetBackingValue, IHasValueFromBackingStorage, IPrefersSingleValue {
             private ValueDelegate<TParent> _route;
 
+            internal bool RoutesMatch(ValueMap<TParent> otherMap ) {
+                return (otherMap._route == _route);
+            }
+
             internal ValueMap(string memberName, ValueDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
                 _route = route;
@@ -816,6 +885,7 @@
             }
 
             public void SetValue(string value) {
+                //value = ParentView.ResolveMacrosInContext(value);
                 _route(() => (TParent)_parentReferenceValue()).Value = value;
             }
 

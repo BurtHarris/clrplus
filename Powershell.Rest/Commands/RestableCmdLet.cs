@@ -20,6 +20,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
     using System.Text.RegularExpressions;
     using ClrPlus.Core.Collections;
     using ClrPlus.Core.Extensions;
+    using ClrPlus.Core.Tasks;
     using ClrPlus.Core.Utility;
     using ClrPlus.Powershell.Core.Service;
     using Core;
@@ -85,6 +86,55 @@ namespace ClrPlus.Powershell.Rest.Commands {
             }.Union(excludes).ToArray();
         }
 
+        [Parameter(HelpMessage = "Suppress output of all warnings")]
+        public SwitchParameter NoWarnings { get; set; }
+
+        [Parameter(HelpMessage = "Suppress output of all non-essential messages")]
+        public SwitchParameter Quiet { get; set; }
+
+        protected LocalEventSource LocalEventSource {
+            get {
+                var local = CurrentTask.Local;
+
+                local.Events += new Error((code, message, objects) => {
+                    Host.UI.WriteErrorLine("{0}:{1}".format(code, message.format(objects)));
+                    return true;
+                });
+
+                if (!NoWarnings && !Quiet) {
+                    local.Events += new Warning((code, message, objects) => {
+                        WriteWarning("{0}:{1}".format(code, message.format(objects)));
+                        return false;
+                    });
+                }
+
+                local.Events += new Debug((code, message, objects) => {
+                    WriteDebug("{0}:{1}".format(code, message.format(objects)));
+                    return false;
+                });
+
+                local.Events += new Trace((code, message, objects) => {
+                    WriteVerbose("{0}:{1}".format(code, message.format(objects)));
+                    return false;
+                });
+
+                local.Events += new Progress((code, progress, message, objects) => {
+                    WriteProgress(new ProgressRecord(0, code, message.format(objects)) {
+                        PercentComplete = progress
+                    });
+                    return false;
+                });
+
+                if (!Quiet) {
+                    local.Events += new Message((code, message, objects) => {
+                        Host.UI.WriteLine("{0}:{1}".format(code, message.format(objects)));
+                        return false;
+                    });
+                }
+                return local;
+            }
+        }
+
         protected virtual void ProcessRecordViaRest() {
             var client = new JsonServiceClient(ServiceUrl);
             
@@ -107,12 +157,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
                     if(!response.Error.IsNullOrEmpty()) {
                         foreach(var error in response.Error.TakeAllBut(1)) {
-                            
-                            
-                            
                             WriteError(new ErrorRecord(new Exception("{0} - {1}".format( error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
-                            
-                                
                         }
                     }
 
@@ -126,8 +171,6 @@ namespace ClrPlus.Powershell.Rest.Commands {
                         var error = response.Error.Last();
                         ThrowTerminatingError(new ErrorRecord(new Exception("{0} - {1}".format(error.ExceptionType, error.ExceptionMessage)), error.Message, error.Category, null));
                     }
-
-
                 }
 
             } catch (WebServiceException wse) {

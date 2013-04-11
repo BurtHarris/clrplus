@@ -11,9 +11,49 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.Languages.PropertySheet {
+    using Core.Extensions;
+    using Utility;
+
     public class SourceLocation {
-        public int Row;
-        public int Column;
+        public static SourceLocation Unknown = new SourceLocation {
+            Row = 0,
+            Column = 0,
+            SourceFile = null
+        };
+
+        public static SourceLocation[] Unknowns = new [] { Unknown};
+
         public string SourceFile;
+        private Token _sourceToken;
+
+        public SourceLocation() {
+        }
+
+        public SourceLocation(Token t, string sourceFile = null) {
+            _sourceToken = t;
+            SourceFile = sourceFile;
+        }
+
+        public int Row {
+            get {
+                return _sourceToken.Row;
+            }
+            set {
+                _sourceToken.Row = value;
+            }
+        }
+
+        public int Column {
+            get {
+                return _sourceToken.Column;
+            }
+            set {
+                _sourceToken.Column = value;
+            }
+        }
+
+        public override string ToString() {
+            return "{0}({1},{2})".format(SourceFile, Row, Column);
+        }
     }
 }

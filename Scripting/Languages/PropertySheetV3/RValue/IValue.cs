@@ -12,11 +12,14 @@
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     using System.Collections.Generic;
+    using Languages.PropertySheet;
 
     public interface IValue {
-        string Value {get;}
-        IEnumerable<string> Values { get; }
+        string GetValue(IValueContext currentContext);
+        IEnumerable<string> GetValues(IValueContext currentContext);
         IValueContext Context {get;set;}
+        IEnumerable<string> SourceText {get;}
+        IEnumerable<SourceLocation> SourceLocations {get;}
     }
 
     public interface IValueContext {

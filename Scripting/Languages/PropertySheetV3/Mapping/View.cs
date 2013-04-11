@@ -18,6 +18,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     using System.Text.RegularExpressions;
     using Core.Collections;
     using Core.Extensions;
+    using Languages.PropertySheet;
     using RValue;
     using Utility;
 
@@ -28,6 +29,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         protected static string[] _emptyStringArray = new string[0];
         private static readonly Regex _macro = new Regex(@"(\$\{(.*?)\})");
         private Action _resolveValue;
+        public IEnumerable<SourceLocation> SourceLocations = new SourceLocation[0];
+
         private PropertyNode _propertyNode;
 
         private readonly Lazy<List<IDictionary<string, IValue>>> _metadata = new Lazy<List<IDictionary<string, IValue>>>(() => new List<IDictionary<string, IValue>>());
@@ -44,7 +47,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
         }
 
-        protected View ParentView {
+        public View ParentView {
             get {
                 return _map.ParentView;
             }
@@ -67,16 +70,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
         private static string[] Defines = new[] { "define.", "defines." };
 
-        private string ResolveMacro(string valueName, IValueContext context = null) {
+        private string ResolveMacro(string valueName, IValueContext context ) {
             if (Metadata != _empty) {
                 foreach (var i in Defines) {
                     var match = i + valueName;
                     if (Metadata.ContainsKey(match)) {
                         var define = Metadata[match];
-                        var ctx = define.Context;
-                        define.Context = context ?? this;
-                        var result = define.Value;
-                        define.Context = ctx;
+                        
+                        var result = define.GetValue(context??this);
+                        
                         return result;
                     }
                 }
@@ -85,7 +87,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return null;
         }
 
-        public IDictionary<string, IValue> Metadata {
+        internal IDictionary<string, IValue> Metadata {
             get {
                 if (_metadataValue == null) {
                     if (_metadata.IsValueCreated) {
@@ -111,16 +113,24 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return delegates.Count() > 1 ? delegates.Reverse().Select(each => AcceptFirstAnswer(each as GetMacroValueDelegate, innerMacro, originalContext)).FirstOrDefault(each => each != null) : getMacroDelegate(innerMacro, originalContext);
         }
 
-        private string LookupMacroValue(string innerMacro, IValueContext originalContext = null) {
+        private string LookupMacroValue(string innerMacro, IValueContext originalContext) {
             return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext ?? this) ?? (ParentView != null ? ParentView.LookupMacroValue(innerMacro, originalContext ?? this) : null);
         }
 
         public string GetMacroValue(string innerMacro) {
-            return ResolveMacrosInContext(LookupMacroValue(innerMacro));
+            return ResolveMacrosInContext(LookupMacroValue(innerMacro,this));
         }
      
         public string GetMetadataValue(string metadataName,  bool checkParent = true) {
-            return Metadata.ContainsKey(metadataName) ? Metadata[metadataName].Value : (ParentView == null || checkParent == false) ? null : ParentView.GetMetadataValue(metadataName);
+            return Metadata.ContainsKey(metadataName) ? Metadata[metadataName].GetValue(this) : (ParentView == null || checkParent == false) ? null : ParentView.GetMetadataValue(metadataName);
+        }
+
+        public IEnumerable<string> GetMetadataKeys(string prefix = null) {
+            return string.IsNullOrEmpty(prefix) ? Metadata.Keys : Metadata.Keys.Where( each => each.StartsWith(prefix));
+        }
+
+        public IDictionary<string, string> GetMetadataItems(string prefix) {
+            return GetMetadataKeys(prefix).ToXDictionary(each => each.Substring(prefix.Length), each => GetMetadataValue(each));
         }
 
         public string ResolveMacrosInContext(string value, object[] eachItems = null) {
@@ -156,7 +166,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                             }
                         }
                         else {
-                            replacement = LookupMacroValue(innerMacro);
+                          
+                            replacement = LookupMacroValue(innerMacro,this);
                         }
                     }
 
@@ -216,7 +227,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         public string ResolveAlias(Selector selector) {
             var resolved = ResolveAlias(selector.Name);
             if (resolved != selector.Name) {
-                return new Selector(resolved, selector.Parameter);
+                return new Selector(resolved, selector.Parameter, selector.SourceLocation);
             }
             return selector;
         }
@@ -243,11 +254,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 // is there a property, and can it take a value?
                 if (HasProperty && _map is ICanSetBackingValues) {
                     // prefer those who can take a collection
-                    AggregatePropertyNode.SetResults(map as ICanSetBackingValues);
+                    AggregatePropertyNode.SetResults(map as ICanSetBackingValues, this);
                 } else {
                     // but single values are good too.
                     if (HasProperty && _map is ICanSetBackingValue) {
-                        AggregatePropertyNode.SetResult(map as ICanSetBackingValue);
+                        AggregatePropertyNode.SetResult(map as ICanSetBackingValue, this);
                     }
                 }
                 _map.Active = true;
@@ -256,25 +267,32 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             };
         }
 
-        protected View(Map instance, INode node)
-            : this(instance) {
-            if (node is PropertyNode) {
+        internal void InitializeAtRootLevel(INode node) {
+            if(node is PropertyNode) {
                 AggregatePropertyNode.AddRange(node as PropertyNode);
             }
-            if (node is ObjectNode) {
+            if(node is ObjectNode) {
                 _aliases.Value.Add((node as ObjectNode).Aliases.Value);
             }
-            if (node.Metadata.IsValueCreated) {
+            if(node.Metadata.IsValueCreated) {
                 _metadata.Value.Add(node.Metadata.Value);
             }
-            if (node is PropertySheet) {
-                foreach (var i in (node as PropertySheet).AllImportedSheets) {
-                    if (i.Metadata.IsValueCreated) {
+            if(node is RootPropertySheet) {
+                /*
+                foreach(var i in (node as RootPropertySheet).Imports) {
+                    if(i.Metadata.IsValueCreated) {
                         _metadata.Value.Add(i.Metadata.Value);
                     }
                     _aliases.Value.Add(i.Aliases.Value);
                 }
+                 */
             }
+            _map.Active = true;
+        }
+
+        protected View(Map instance, INode node)
+            : this(instance) {
+            InitializeAtRootLevel(node);
         }
 
         protected static View Unroll(string memberName, View view) {
@@ -337,6 +355,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
         internal View(Selector selector, INode node)
             : this(Unroll(selector, node), node) {
+            SourceLocations = selector.SourceLocation.SingleItemAsEnumerable();
         }
 
         private View RootView {
@@ -419,7 +438,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             get {
                 if (!(_map is IHasValueFromBackingStorage)) {
                     // if we can't get the value, the propertynode is the only choice.
-                    return HasProperty ? AggregatePropertyNode.Values : new string[0];
+                    return HasProperty ? AggregatePropertyNode.GetValues(this) : new string[0];
                 }
                 _resolveValue(); // push the value to the backing object if neccesary first
                 return (map as IHasValueFromBackingStorage).Values;
@@ -430,15 +449,18 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             get {
                 if (!(_map is IHasValueFromBackingStorage)) {
                     // if we can't get the value, the propertynode is the only choice.
-                    return HasProperty ? AggregatePropertyNode.Value : string.Empty;
+                    return HasProperty ? AggregatePropertyNode.GetValue(this) : string.Empty;
                 }
                 _resolveValue(); // push the value to the backing object if neccesary first
                 return (map as IHasValueFromBackingStorage).Value;
             }
         }
 
-        internal void AddChildRoute(IEnumerable<ToRoute> routes) {
-            _map.AddChildren(routes);
+        public void AddChildRoutes(IEnumerable<ToRoute> routes) {
+            _map.AddChildRoutes(routes);
+        }
+        public void AddChildRoutes(params ToRoute[] routes) {
+            _map.AddChildRoutes(routes);
         }
 
         public override bool TryGetIndex(GetIndexBinder binder, object[] indexes, out object result) {
@@ -469,9 +491,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result) {
-            // returns a child reference or the value of a child if it is a property
-            var child = GetProperty(binder.Name);
-
+            // returns a child reference 
+            /*
+             * var child = 
             if (child == null) {
                 // result = null;
                 // return false;
@@ -479,8 +501,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 result = string.Empty;
                 return true;
             }
-
-            result = child;
+            */
+            result = GetProperty(binder.Name);
             return true;
         }
 
@@ -552,8 +574,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             : base(Unroll(memberName, (member) => new ObjectMap<TParent>(member, route, childRoutes))) {
         }
 
-        internal View(PropertySheet rootNode, Route<TParent> backingObjectAccessor)
-            : base(new ObjectMap<TParent>("ROOT", p => backingObjectAccessor, null), rootNode) {
+        internal View(RootPropertySheet rootNode, Route<TParent> backingObjectAccessor)
+            : base(new ObjectMap<TParent>("ROOT", p => backingObjectAccessor, null)) {
             // used for the propertysheet itself.
         }
 
@@ -582,14 +604,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     internal class View<TParent, TKey, TVal> : View {
         public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, null) {
-                childInitializers = childRoutes
+                childInitializers = childRoutes.ToCacheEnumerable()
             })) {
             // childRoutes are to be used as initializers for the children, not for the dictionary itself.
         }
 
         public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string, string> keyExchanger, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, keyExchanger, null) {
-                childInitializers = childRoutes
+                childInitializers = childRoutes.ToCacheEnumerable()
             })) {
             // childRoutes are to be used as initializers for the children, not for the dictionary itself.
         }

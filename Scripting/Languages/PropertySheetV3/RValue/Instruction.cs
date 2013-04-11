@@ -14,34 +14,45 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     using System.Collections.Generic;
     using System.Linq;
     using Core.Extensions;
+    using Languages.PropertySheet;
 
     public class Instruction : IValue {
+        private readonly SourceLocation[] _sourceLocations = SourceLocation.Unknowns;
         public readonly string InstructionText;
         public IValueContext Context {get; set;}
 
-        public Instruction(ObjectNode context, string instructionText) {
+        public Instruction(ObjectNode context, string instructionText, params SourceLocation[] sourceLocations) {
             InstructionText = instructionText;
             Context = context;
+            _sourceLocations = sourceLocations;
         }
 
-        public string Value {
-            get {
-                return "Instruction as single value";
-            }
+        public string GetValue(IValueContext currentContext) {
+            return "Instruction as single value";
         }
 
-        public IEnumerable<string> Values {
-            get {
-                return "Instruction as a set of values".SingleItemAsEnumerable();
-            }
+        public IEnumerable<string> GetValues(IValueContext currentContext) {
+            return "Instruction as a set of values".SingleItemAsEnumerable();
         }
 
         public static implicit operator string(Instruction rvalue) {
-            return rvalue.Value;
+            return rvalue.GetValue(rvalue.Context);
         }
 
         public static implicit operator string[](Instruction rvalue) {
-            return rvalue.Values.ToArray();
+            return rvalue.GetValues(rvalue.Context).ToArray();
+        }
+
+        public IEnumerable<string> SourceText {
+            get {
+                yield return "";
+            }
+        }
+
+        public IEnumerable<SourceLocation> SourceLocations {
+            get {
+                return _sourceLocations;
+            }
         }
     }
 }

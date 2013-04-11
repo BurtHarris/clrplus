@@ -177,7 +177,6 @@ namespace ClrPlus.Powershell.Core.Service {
                     if (_configFile.IndexOf("/") > -1 || _configFile.IndexOf("\\") > -1) {
                         return PropertySheet.Load(_configFile);
                     }
-
                     _propertySheet = PropertySheet.Parse(@"@import @""{0}"";".format(ConfigFile), "default");
                 }
                 return _propertySheet;

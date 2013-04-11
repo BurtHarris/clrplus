@@ -57,6 +57,12 @@ namespace ClrPlus.Core.DynamicXml {
             xmlns = _element.Name.Namespace;
         }
 
+        public DynamicNode(string elementName,string defaultNamespace ) {
+            XNamespace ns = defaultNamespace;
+            _element = new XElement(ns + elementName);
+            xmlns = _element.Name.Namespace;
+        }
+
         /// <summary>
         ///     Returns the number of descendent nodes
         /// </summary>
@@ -117,6 +123,10 @@ namespace ClrPlus.Core.DynamicXml {
 
         private XName ActualXName(string elementName) {
             return xmlns == null ? elementName : xmlns + elementName;
+        }
+
+        public void Save(string path) {
+            Element.Save(path);
         }
 
         /// <summary>
