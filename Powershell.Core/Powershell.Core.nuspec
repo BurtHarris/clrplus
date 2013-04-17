@@ -25,7 +25,9 @@
         <dependency  id="ClrPlus.Scripting" version="1.8.0.62" />
         <dependency  id="ServiceStack" version="3.9.32" />
     </dependencies>
-    
+    <frameworkAssemblies>
+	  <frameworkAssembly assemblyName="System.Management.Automation"/>
+    </frameworkAssemblies>
   </metadata>
   <files>
     <file src="..\output\v40\AnyCPU\Release\bin\ClrPlus.Powershell.Core.dll" target="lib\net40" /> 
