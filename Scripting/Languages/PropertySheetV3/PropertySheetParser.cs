@@ -151,8 +151,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             TokenType.OpenBrace
         };
 
+        public static readonly TokenTypes OpenBraceInstructionOrColonEquals = new[] {
+            TokenType.OpenBrace, TokenType.EmbeddedInstruction, TokenType.ColonEquals, 
+        };
+
         public static readonly TokenTypes MemberTerminator = new[] {
-            TokenType.OpenBrace, TokenType.Colon, TokenType.PlusEquals, TokenType.Equal
+            TokenType.OpenBrace, TokenType.Colon, TokenType.PlusEquals, TokenType.Equal, TokenType.ColonEquals, 
         };
 
         public static readonly TokenTypes Equal = new[] {
@@ -206,10 +210,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                             return Global(ParseAlias(_propertySheet));
                     }
 
-                    Rewind();
-                    return Global(ParseItemsInDictionary(_propertySheet.Children[ParseSelector(OpenBrace)]));
+                    Rewind(); // wasn't an import or alias, let the ParseSelector have a go at it.
 
-                case TokenType.Colon:
+                    // old way : just parsed a dictionary. New way, it checks to see what kind of dictionary first.
+                    // return Global(ParseItemsInDictionary(_propertySheet.Children[ParseSelector(OpenBrace)]));
+                    
+                    return Global(ParseItemAsDictionary(_propertySheet.Children[ParseSelector(OpenBraceInstructionOrColonEquals)]));
+
+                case TokenType.Colon:  
                     // not permitted at global level
                     throw Fail(ErrorCode.TokenNotExpected, "Collections must be nested in an object -- expected one of '.' , '#', '@alias' or identifier");
 
@@ -222,7 +230,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     throw Fail(ErrorCode.TokenNotExpected, "Collection modifiers must be nested in an object -- expected one of '.' , '#', '@alias' or identifier");
 
                 case TokenType.Semicolon:
-                    // Console.WriteLine("found ;");
                     return Global(onComplete);
             }
             throw Fail(ErrorCode.TokenNotExpected, "Unexpected Token '{0}' -- expected one of '.' , '#', '@alias' or identifier");
@@ -399,6 +406,45 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected in metadata kvpair declaration");
         }
 
+        private Tailcall ParseItemAsDictionary(ObjectNode context) {
+            bool justOneItem = context.Selector.Name == "" || context.Selector.Name == "*";
+
+        
+            switch (Type) {
+                case TokenType.OpenBrace:
+                    return ParseItemsInDictionary(context);
+                    
+                case TokenType.EmbeddedInstruction:
+                    context.SetNodeValue( new Instruction(context, Token.Data, new SourceLocation(Token,Filename)));
+                    if (NextAfter(WhiteSpaceOrComments) == TokenType.Semicolon) {
+                        return Continue();
+                    }
+                    throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Instruction. Looking for ';'");
+                    
+                case TokenType.ColonEquals:
+                    // expecting one of:
+                    //      - an object declaration { }
+                    //      - an instruction 
+                    //      - an RValue to be used as the value source for an object.
+                    switch (NextAfter(WhiteSpaceOrComments)) {
+                        case TokenType.OpenBrace:
+                            return ParseItemsInDictionary(context);
+
+                        case TokenType.EmbeddedInstruction:
+                            context.SetNodeValue(new Instruction(context, Token.Data, new SourceLocation(Token, Filename)));
+                            if (NextAfter(WhiteSpaceOrComments) == TokenType.Semicolon) {
+                                return Continue();
+                            }
+                            throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Instruction. Looking for ';'");
+                    }
+                    // hmm. didn't seem to be one of the first two types. Try to grab it as an RValue then.
+                    Rewind();
+                    context.SetNodeValue(ParseRValue(context, Semicolon, context));
+                    return Continue();
+            }
+            throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Identifier. Looking for '{' , ':=' or Instruction.");
+        }
+
         /// <exception cref="ParseException">Token '{0}' not expected in object declaration</exception>
         private Tailcall ParseItemsInDictionary(ObjectNode context, Continuation onComplete = null, bool justOneItem = false) {
 
@@ -437,7 +483,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete), true);
                 }
                     
-
                 case TokenType.OpenBrace: {
                     if (justOneItem) {
                         return ParseItemsInDictionary(context.Children[selector], (onComplete ?? Continue));
@@ -456,6 +501,44 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     p.AddToCollection(ParseRValue(context, Semicolon, p));
                     return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
                 }
+
+                // same as the part in ParseItemAsDictionary()
+                case TokenType.EmbeddedInstruction:
+                    var n = context.Children[selector];
+                    n.SetNodeValue(new Instruction(n, Token.Data, new SourceLocation(Token, Filename)));
+                    if (NextAfter(WhiteSpaceOrComments) == TokenType.Semicolon) {
+                        return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                    }
+                    
+                    throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Instruction. Looking for ';'");
+
+                // same as the part in ParseItemAsDictionary()
+                case TokenType.ColonEquals:
+                    // expecting one of:
+                    //      - an object declaration { }
+                    //      - an instruction 
+                    //      - an RValue to be used as the value source for an object.
+                    switch (NextAfter(WhiteSpaceOrComments)) {
+                        case TokenType.OpenBrace:
+                            if (justOneItem) {
+                                return ParseItemsInDictionary(context.Children[selector], (onComplete ?? Continue));
+                            }
+                            return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete));
+
+                        case TokenType.EmbeddedInstruction:
+                            var no = context.Children[selector];
+                            no.SetNodeValue(new Instruction(no, Token.Data, new SourceLocation(Token, Filename)));
+                            if (NextAfter(WhiteSpaceOrComments) == TokenType.Semicolon) {
+                                return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                            }
+
+                            throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Instruction. Looking for ';'");
+                    }
+                    // hmm. didn't seem to be one of the first two types. Try to grab it as an RValue then.
+                    Rewind();
+                    context.SetNodeValue(ParseRValue(context, Semicolon, context));
+
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
 
                 case TokenType.Equal: {
                     var p = context.Properties[selector];
@@ -531,7 +614,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 }
                 return new Scalar(context, tokens,Filename);
             }
-            return ParseRValueLiterally(context, terminators, tokens.ConcatHappily(Token));
+            
+            return ParseRValueLiterally(context, terminators, tokens.ConcatHappily(Token.Type == TokenType.SelectorParameter ? new Token() {
+                Column = Token.Column,
+                Row = Token.Row,
+                Data = StringExtensions.format("[{0}]",  Token.Data),
+                Type = TokenType.StringLiteral,
+            }  : Token));
         }
 
         /// <exception cref="ParseException"></exception>
@@ -545,13 +634,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 // token now should be the outerTerminator.
                 if (outerTerminators.Contains(Type)) {
                     Rewind();
-                    return collection;
+                    return collection  ?? new Collection(context);
                 }
                 // not terminated, but something else after the close brace? bad.
                 throw Fail(ErrorCode.TokenNotExpected, "Expected foreach ('=>') or expression a terminator , found '{0}'");
             }
             // check for empty collection first.
-            if (NextAfter(WhiteSpaceOrComments) == TokenType.CloseBrace) {
+            if (NextAfter(WhiteSpaceCommentsOrSemicolons) == TokenType.CloseBrace) {
                 return collection ?? new Collection(context);
             }
 
@@ -559,6 +648,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 if (Type == TokenType.Pound) {
                     // metadata entry
                     ParseMetadataItem(context, metadataContainer);
+                    // NextAfter(WhiteSpaceCommentsOrSemicolons);
+                    var q = Next;
                     return ParseCollection(context, outerTerminators, metadataContainer, collection);
                 }
             }

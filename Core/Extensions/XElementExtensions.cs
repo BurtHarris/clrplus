@@ -10,7 +10,7 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Windows.PeBinary.Utility {
+namespace ClrPlus.Core.Extensions {
     using System.Collections.Generic;
     using System.Linq;
     using System.Xml.Linq;
@@ -44,6 +44,13 @@ namespace ClrPlus.Windows.PeBinary.Utility {
 
             var attr = element.Attributes().FirstOrDefault(each => each.Name == attributeName);
             return attr != null ? attr.Value : null;
+        }
+
+        public static string LocalName(this XElement element) {
+            if(element == null) {
+                return null;
+            }
+            return element.Name.LocalName;
         }
     }
 }

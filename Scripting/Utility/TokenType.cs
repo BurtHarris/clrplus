@@ -97,6 +97,7 @@ namespace ClrPlus.Scripting.Utility {
         SelectorParameter,
         EmbeddedInstruction,
         MacroExpression,
+        ColonEquals,
 
         WhiteSpace,
 

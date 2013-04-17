@@ -15,6 +15,7 @@ namespace ClrPlus.Windows.PeBinary.Utility {
     using System.Collections.Generic;
     using System.Linq;
     using System.Xml.Linq;
+    using Core.Extensions;
 
     public class AssemblyFile : ManifestElement {
         private const string FileTag = "{urn:schemas-microsoft-com:asm.v1}file";

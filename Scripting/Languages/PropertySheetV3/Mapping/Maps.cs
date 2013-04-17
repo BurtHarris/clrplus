@@ -3,9 +3,11 @@
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
     using Core.Collections;
     using Core.Exceptions;
     using Core.Extensions;
+    using Core.Tasks;
 
     public interface IHasSingleValue {
         string GetSingleValue();
@@ -53,6 +55,7 @@
 
         protected internal class Map : AbstractDictionary<string, View> {
             internal View ParentView;
+            protected internal View _thisView;
             protected IDictionary<string, View> _childItems;
             protected Dictionary<string, Func<View>> _dynamicViewInitializers;
 
@@ -101,7 +104,7 @@
 
             protected Map(string memberName, IEnumerable<ToRoute> childRoutes) {
                 _parentReferenceValue = () => {
-                  Console.WriteLine("Accessing unset value--is this a parent object?  {0}", this.MemberName);
+                  Event<Error>.Raise("View.Map","Accessing unset value--is this a parent object?  {0}", MemberName);
                   return null;
                 };
 
@@ -125,7 +128,14 @@
                     if (_childItems == null) {
                         throw new ClrPlusException("Element '{0}' does not exist in map".format(key));
                     }
-                    return _childItems[key];
+                    var result = _childItems[key];
+                    if (result._map is IReplaceable && _thisView.FallbackRoute != null) {
+                        // if the map is replaceable, and we have a fallback route, let's apply that.
+                        var view = _thisView.FallbackRoute();
+                        view._map.MemberName = key;
+                        MergeChild(_thisView, view);
+                    }
+                    return result;
                 }
                 set {
                     value.map._parentReferenceValue = () => ComputedValue;
@@ -175,14 +185,11 @@
 
             protected internal virtual object ComputedValue {
                 get {
-//                    Console.WriteLine("NO VALUE: {0}", GetType().Name);
                     return null;
                 }
             }
 
             internal virtual void CopyToModel() {
-                //Console.WriteLine("COPYTOMODEL: {0}", Identity);
-                
                 if (_childItems != null) {
                     foreach (var i in _childItems.Values) {
                         if (i._map.Active) {
@@ -202,9 +209,17 @@
                 if (Initializers != null) {
                     lock (this) {
                         while (Initializers.Count > 0) {
-                            
-                            var childView = Initializers.Dequeue()();
+
+                            var childRoute = Initializers.Dequeue();
+                            var childView = childRoute();
+
                             if (childView != null) {
+                                if(childView.MemberName == "") {
+                                    // this is a fallback map, used to match anything.
+                                    thisView.FallbackRoute = childRoute;
+                                    continue;
+                                }
+
 
                                 if (childView._map is ElementMap) {
                                     MergeElement(childView);
@@ -260,15 +275,6 @@
             }
 
             protected internal virtual void MergeChild(View thisView, View childView) {
-                /*
-                Console.WriteLine("Merging [{0}] <- [{1}]",Identity, childView._map.Identity);
-
-                if (Identity == "ROOT.nuget.files.*" && childView._map.Identity == "x64,v100,dynamic") {
-                    Console.WriteLine("SUSPECT FOUND");
-                }
-                */
-
-
                 if (childView._map is ElementMap) {
                     MergeElement(childView);
                     return;
@@ -278,7 +284,6 @@
 
                 // ensure this child's parent is set correctly.
                 childView.ParentView = thisView;
-                
 
                 if (!ChildItems.Keys.Contains(name)) {
                     // we're first -- add it to the view, and get out.
@@ -349,12 +354,25 @@
             }
         }
 
-        protected class ChildMap<TParent> : Map, IReplaceable {
+        protected class ReplaceableMap : Map, IReplaceable {
+            internal ReplaceableMap(string memberName, IEnumerable<ToRoute> childRoutes)
+                : base(memberName, childRoutes) {
+
+            }
+
+            internal override Map OnAccess(View thisView) {
+                // if this gets accessed, then we should give the parent's FallbackAccessor 
+                // an opportunity to get/set the value
+                return base.OnAccess(thisView);
+            }
+        }
+
+        protected class IndexedChildMap<TParent> : ReplaceableMap {
             public IEnumerable<ToRoute> childInitializers;
             private bool _initialized;
-            private ChildRouteDelegate<TParent> _route;
+            private IndexedChildRouteDelegate<TParent> _route;
 
-            internal ChildMap(string memberName, ChildRouteDelegate<TParent> childAccessor, IEnumerable<ToRoute> childRoutes)
+            internal IndexedChildMap(string memberName, IndexedChildRouteDelegate<TParent> childAccessor, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
                 _route = childAccessor;
                 _active = true;
@@ -367,6 +385,7 @@
                     _initialized = true;
                     // when this is accessed, we should go thru the parent's #'d children
                     var itemCount = ParentView.Count;
+
                     for (int i = 0; i <= ParentView.Count; i++) {
                         string s = i.ToString();
                         var indexedItem = ParentView.GetProperty(s);
@@ -518,8 +537,9 @@
                     // if the view we have 
                     if (!ChildItems.ContainsKey(key)) {
                         var _key = (TKey)(object)key;
+                       //  var x = Dictionary[_key];
 
-                        if (Dictionary.ContainsKey(_key)) {
+                        // if (Dictionary.ContainsKey(_key)) {
                             var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
                             var childMap = new ValueMap<object>(key, (p) => accessor, null);
 
@@ -527,7 +547,7 @@
                                 return name == "ElementId" || name == MemberName ? key : null;
                             };
                             MergeChild(ParentView, new View(childMap));
-                        }
+                        // }
                     }
                     InitializeChildItem(ChildItems[key]);
                     return ChildItems[key];
@@ -597,7 +617,7 @@
             }
         }
 
-        protected class ElementMap : Map, IReplaceable {
+        protected class ElementMap : ReplaceableMap {
             protected internal string Parameter;
 
             internal ElementMap(string memberName, string parameter, INode node)
@@ -688,7 +708,7 @@
             }
         }
 
-        protected class PlaceholderMap : Map, IReplaceable {
+        protected class PlaceholderMap : ReplaceableMap {
             private List<View> _elements;
 
             protected internal override void MergeElement(View childView) {
@@ -715,7 +735,7 @@
 
         
 
-        protected class NodeMap : PlaceholderMap, IReplaceable {
+        protected class NodeMap : PlaceholderMap {
             internal NodeMap(string memberName, INode node)
                 : base(memberName, node is ObjectNode ? (node as ObjectNode).Routes : null) {
                 _active = true;
@@ -762,7 +782,6 @@
                         }
 
                         foreach (var each in type.GetPersistableElements().Where( each => each.Name != "MemberRoutes ")) {
-                            
                             var ppi = each;
 
                             switch (ppi.ActualType.GetPersistableInfo().PersistableCategory) {
@@ -821,6 +840,21 @@
                                     break;
                             }
                         }
+
+                        // then check to see if the object has a function "IEnumerable<ToRoute> GetMemeberRoutes(View view)" and call it
+                        var fn = type.GetMethod("GetMemberRoutes", new [] {typeof (View)});
+
+                        if (fn != null) {
+                            var moreRoutes =  fn.Invoke(result, new object[] {
+                                _thisView
+                            }) as IEnumerable<ToRoute>;
+                            if (moreRoutes != null) {
+                                foreach(var i in moreRoutes) {
+                                    yield return i;
+                                }
+                            }
+                        }
+
                     }
                 }
             }

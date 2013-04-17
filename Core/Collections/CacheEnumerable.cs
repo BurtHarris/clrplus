@@ -37,7 +37,7 @@ namespace ClrPlus.Core.Collections {
         private List<T> _list;
 
         public CacheEnumerable(IEnumerable<T> source) {
-            _source = source;
+            _source = source ?? new T[0];
         }
 
         public CacheEnumerable(IEnumerator<T> sourceIterator) {

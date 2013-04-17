@@ -1,0 +1,91 @@
+﻿// Implicity loaded template script for ptk
+
+commands { 
+	choices: { build, clean };  
+};
+
+configurations {
+	Toolset { 
+        key : "PlatformToolset"; 
+        choices: { v110, v100, v90, v80, v71, v70, v60, gcc };  
+    };
+    
+    Platform {
+        key : "Platform"; 
+        choices: { Win32, x64, ARM, AnyCPU };
+        Win32.aliases : { x86, win32, ia32, 386 };
+        x64.aliases : { x64, amd64, em64t, intel64, x86-64, x86_64 };
+        ARM.aliases : { arm, woa };
+        AnyCPU.aliases : { anycpu, any };
+    };
+
+    Configuration {
+        key : "Configuration"; 
+        choices: { Release, Debug };
+    };
+
+    Linkage { 
+        choices : { dynamic, static, ltcg, sxs };
+        description = "Which version of the .lib file to link to this library";
+
+        ltcg.description = "Link Time Compiler Generation";
+        dynamic.description = "Dynamic Library (DLL)";
+        static.description = "Static";
+        sxs.description = "Side-by-Side";
+    };
+
+    // Only really applicable to x86
+    CallingConvention {
+        choices : { cdecl, stdcall, fastcall, thiscall, clrcall };
+        description = "Calling convention model to use (for x86 only)";
+        cdecl.description = "cdecl";
+        stdcall.description = "stdcall (Uncommon)";
+        fastcall.description = "fastcall (Rare)";
+        thiscall.description = "thiscall (Rare)";
+        clrcall.description = "clrcall (Rare)";
+
+        stdcall.restricted-to = "Win32";
+        fastcall.restricted-to = "Win32";
+        thiscall.restricted-to = "Win32";
+        clrcall.restricted-to = "Win32";
+    };
+};
+
+[Release | Debug] 
+toolinfo[Configuration] {
+	// Very explict way of setting environment variables and msbuild properties
+	[Release] {
+		Environment {
+			TARGET_CONFIGURATION = Release;
+		}
+		
+		Properties {
+			Configuration = Release;
+		}
+	}
+	
+	[Debug] {
+		Environment {
+			TARGET_CONFIGURATION = Debug;
+		}
+		
+		Properties {
+			Configuration = Debug;
+		}
+	}
+}
+
+
+[dynamic | static | ltcg | sxs]
+toolinfo[Linkage] {
+	// automatically assume that Linkage = parameter?
+	Properties { 
+		Linkage = ${Linkage}; // is this how to do it?
+	}
+}
+
+toolinfo[CallingConvention] {
+	Properties {
+		CallingConvention = ${CallingConvention};
+	}
+}

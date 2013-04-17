@@ -28,6 +28,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
     using Microsoft.Build.Evaluation;
     using Platform;
     using Powershell.Core;
+    using Utility;
 
     internal class NugetPackage : IProjectOwner {
         private readonly Dictionary<string, string> _files = new Dictionary<string, string>();
@@ -96,7 +97,11 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }
 
         public void AddFile(string sourcePath, string destinationPath) {
-            _files.Add(sourcePath, destinationPath);
+            if (_files.ContainsKey(destinationPath)) {
+                Event<Error>.Raise("AP100", "Duplicate file '{0}' added to NuGet package from source '{1}'", destinationPath, sourcePath);
+            }
+
+            _files.Add(destinationPath, sourcePath);
         }
 
         public bool IsDefault {
@@ -111,7 +116,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             switch (PkgRole) {
                 case "default":
                     // only the default package gets to map to the propertysheet directly.
-                    results = results.Concat(MapNuspec());
+                    results = results.Concat(MapNugetNode());
                     break;
                 case "redist":
                     break;
@@ -121,26 +126,30 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             return results;
         }
 
-        private IEnumerable<ToRoute> MapNuspec() {
-            yield return "id".MapTo(() => (string)_nuSpec.metadata.id, v => _nuSpec.metadata.id = v.SafeToString());
-            yield return "version".MapTo(() => (string)_nuSpec.metadata.version, v => _nuSpec.metadata.version = v.SafeToString());
-            yield return "title".MapTo(() => (string)_nuSpec.metadata.title, v => _nuSpec.metadata.title = v.SafeToString());
-            yield return "authors".MapTo(() => (string)_nuSpec.metadata.authors, v => _nuSpec.metadata.authors = v.SafeToString());
-            yield return "owners".MapTo(() => (string)_nuSpec.metadata.owners, v => _nuSpec.metadata.owners = v.SafeToString());
-            yield return "description".MapTo(() => (string)_nuSpec.metadata.description, v => _nuSpec.metadata.description = v.SafeToString());
-            yield return "summary".MapTo(() => (string)_nuSpec.metadata.summary, v => _nuSpec.metadata.summary = v.SafeToString());
-            yield return "releaseNotes".MapTo(() => (string)_nuSpec.metadata.releaseNotes, v => _nuSpec.metadata.releaseNotes = v.SafeToString());
-            yield return "copyright".MapTo(() => (string)_nuSpec.metadata.copyright, v => _nuSpec.metadata.copyright = v.SafeToString());
-            yield return "language".MapTo(() => (string)_nuSpec.metadata.language, v => _nuSpec.metadata.language = v.SafeToString());
-            yield return "tags".MapTo(() => (string)_nuSpec.metadata.tags, v => _nuSpec.metadata.tags = v.SafeToString());
+        private IEnumerable<ToRoute> MapNugetNode() {
+            // only the default package gets to do this.
+            yield return "nuspec".MapTo(new object(), new [] {
+             "id".MapTo(() => (string)_nuSpec.metadata.id, v => _nuSpec.metadata.id = v.SafeToString()),
+             "version".MapTo(() => (string)_nuSpec.metadata.version, v => _nuSpec.metadata.version = v.SafeToString()),
+             "title".MapTo(() => (string)_nuSpec.metadata.title, v => _nuSpec.metadata.title = v.SafeToString()),
+             "authors".MapTo(() => (string)_nuSpec.metadata.authors, v => _nuSpec.metadata.authors = v.SafeToString()),
+             "owners".MapTo(() => (string)_nuSpec.metadata.owners, v => _nuSpec.metadata.owners = v.SafeToString()),
+             "description".MapTo(() => (string)_nuSpec.metadata.description, v => _nuSpec.metadata.description = v.SafeToString()),
+             "summary".MapTo(() => (string)_nuSpec.metadata.summary, v => _nuSpec.metadata.summary = v.SafeToString()),
+             "releaseNotes".MapTo(() => (string)_nuSpec.metadata.releaseNotes, v => _nuSpec.metadata.releaseNotes = v.SafeToString()),
+             "copyright".MapTo(() => (string)_nuSpec.metadata.copyright, v => _nuSpec.metadata.copyright = v.SafeToString()),
+             "language".MapTo(() => (string)_nuSpec.metadata.language, v => _nuSpec.metadata.language = v.SafeToString()),
+             "tags".MapTo(() => (string)_nuSpec.metadata.tags, v => _nuSpec.metadata.tags = v.SafeToString()),
 
-            yield return "licenseUrl".MapTo(() => (string)_nuSpec.metadata.licenseUrl, v => _nuSpec.metadata.licenseUrl = v.SafeToString());
-            yield return "projectUrl".MapTo(() => (string)_nuSpec.metadata.projectUrl, v => _nuSpec.metadata.projectUrl = v.SafeToString());
-            yield return "iconUrl".MapTo(() => (string)_nuSpec.metadata.iconUrl, v => _nuSpec.metadata.iconUrl = v.SafeToString());
+             "licenseUrl".MapTo(() => (string)_nuSpec.metadata.licenseUrl, v => _nuSpec.metadata.licenseUrl = v.SafeToString()),
+             "projectUrl".MapTo(() => (string)_nuSpec.metadata.projectUrl, v => _nuSpec.metadata.projectUrl = v.SafeToString()),
+             "iconUrl".MapTo(() => (string)_nuSpec.metadata.iconUrl, v => _nuSpec.metadata.iconUrl = v.SafeToString()),
 
-            yield return "requireLicenseAcceptance".MapTo(() => ((string)_nuSpec.metadata.requireLicenseAcceptance).IsPositive() ? "true" : "false", v => _nuSpec.metadata.requireLicenseAcceptance = v.SafeToString().IsTrue().ToString().ToLower());
-
-            yield return "dependencies".MapTo(new CustomPropertyList((list) => {
+             "requireLicenseAcceptance".MapTo(() => ((string)_nuSpec.metadata.requireLicenseAcceptance).IsPositive() ? "true" : "false", v => _nuSpec.metadata.requireLicenseAcceptance = v.SafeToString().IsTrue().ToString().ToLower())});
+            
+                
+                    // map the dependencies node into generating 
+            yield return "dependencies.packages".MapTo(new CustomPropertyList((list) => {
                 // when the list changes, set the value of the correct xml elements
                 _nuSpec.metadata.dependencies = null;
                 _nuSpec.metadata.Add("dependencies");
@@ -158,6 +167,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     }
                 }
             }));
+
         }
 
         internal void Process() {
@@ -192,6 +202,16 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     _nuSpec.metadata.requireLicenseAcceptance = "false";
                     _nuSpec.metadata.id = _pkgName;
                     _nuSpec.metadata.description = "Redistributable components for package '{0}'. This package should only be installed as a dependency. \r\n(This is not the package you are looking for).".format(defaultPkg._pkgName);
+                    _nuSpec.metadata.dependencies = null;
+                    break;
+
+                case "symbols":
+                    defaultPkg = _packageScript.GetNugetPackage("default");
+                    _nuSpec = new DynamicNode(new XElement(defaultPkg._nuSpec.Element));
+
+                    _nuSpec.metadata.requireLicenseAcceptance = "false";
+                    _nuSpec.metadata.id = _pkgName;
+                    _nuSpec.metadata.description = "Symbols for package '{0}'. This package should not likely be installed. \r\n(This is not the package you are looking for).".format(defaultPkg._pkgName);
                     _nuSpec.metadata.dependencies = null;
                     break;
 
@@ -263,7 +283,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             Event<Trace>.Raise("NugetPackage.Save", "Saving nuget spec file to [{0}].", FullPath);
 
             foreach(var src in _files.Keys) {
-                AddFileToNuSpec(src, _files[src]);
+                AddFileToNuSpec(_files[src], src );
             }
             _nuSpec.Save(FullPath);
             temporaryFiles.Add(FullPath);
@@ -387,8 +407,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 // add the key
                 var enumProperty = xaml.Rule.Add("EnumProperty");
-                enumProperty.Attributes.Name = "{0}-{1}".format(pivot, _pkgName);
-                enumProperty.Attributes.DisplayName = pivot;
+                enumProperty.Attributes.Name = "{0}-{1}".format(pivot.Name, _pkgName);
+                enumProperty.Attributes.DisplayName = pivot.Name;
                 enumProperty.Attributes.Description = pivot.Description;
                 enumProperty.Attributes.Category = _pkgName;
 

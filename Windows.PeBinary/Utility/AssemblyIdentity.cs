@@ -14,6 +14,7 @@ namespace ClrPlus.Windows.PeBinary.Utility {
     using System.Collections.Generic;
     using System.Linq;
     using System.Xml.Linq;
+    using Core.Extensions;
     using Platform;
 
     public class AssemblyIdentity : ManifestElement {

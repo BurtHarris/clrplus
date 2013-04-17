@@ -195,10 +195,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             _view.InitializeAtRootLevel(importedSheet);
         }
 
-        public void AddChildRoutes(params ToRoute[] routes) {
-            _view.AddChildRoutes(routes);
-        }
-
         public void AddChildRoutes(IEnumerable<ToRoute> routes) {
             _view.AddChildRoutes(routes);
         }

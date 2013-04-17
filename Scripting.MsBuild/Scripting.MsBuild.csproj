@@ -51,9 +51,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
-    <Compile Include="BuildScript.cs" />
-    <Compile Include="Condition.cs" />
-    <Compile Include="MsBuildMap.cs" />
+    <Compile Include="Building\BuildScript.cs" />
+    <Compile Include="Building\ProjectTargetElementExtensions.cs" />
+    <Compile Include="Packaging\AnswerCache.cs" />
+    <Compile Include="Utility\CustomPropertyList.cs" />
+    <Compile Include="Utility\FileCopyList.cs" />
+    <Compile Include="Utility\MsBuildMap.cs" />
     <Compile Include="Packaging\IProjectOwner.cs" />
     <Compile Include="Packaging\NugetPackage.cs" />
     <Compile Include="Packaging\PackageScript.cs" />
@@ -61,7 +64,9 @@
     <Compile Include="Packaging\PackageTypes.cs" />
     <Compile Include="Packaging\Pivots.cs" />
     <Compile Include="Packaging\ProjectPlus.cs" />
-    <Compile Include="StringPropertyList.cs" />
+    <Compile Include="Utility\StringPropertyList.cs" />
+    <Compile Include="Utility\UniquePathPropertyList.cs" />
+    <Compile Include="Utility\UniqueStringPropertyList.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">
@@ -89,7 +94,20 @@
     <EmbeddedResource Include="Packaging\PackageScriptTemplate.autopkg" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Building\template.buildinfo" />
+    <None Include="winsdk7.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="winsdk8.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="vc10.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
+    <None Include="vc11.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

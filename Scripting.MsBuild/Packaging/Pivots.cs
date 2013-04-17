@@ -23,17 +23,6 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
     using Core.Tasks;
     using Languages.PropertySheetV3.Mapping;
 
-    public class AnswerCache<T> {
-        private IDictionary<string, T> _cache = new Dictionary<string, T>();
-        public T GetCachedAnswer(Func<T> calculate, params object[] inputs) {
-            var k = inputs.CreateHashForObjects(inputs);
-            if (!_cache.ContainsKey(k)) {
-                _cache.Add(k, calculate());
-            }
-            return _cache[k];
-        }
-    }
-
     public class Pivots : AbstractDictionary<string, Pivots.Pivot> {
           private class ExpressionTemplate {
               internal static ExpressionTemplate CSharp = new ExpressionTemplate {
@@ -106,6 +95,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
 
         private AnswerCache<bool> _compareCache = new AnswerCache<bool>();
+        private AnswerCache<bool[]> _expressionArrayCache = new AnswerCache<bool[]>();
         private AnswerCache<string> _expressionCache = new AnswerCache<string>();
 
         private static readonly Regex WordRx = new Regex(@"^\w*$");
@@ -165,7 +155,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 foreach (var choice in choices) {
                     var ch = eachPivot.GetProperty(choice);
-                    if (ch == null) {
+                    if(!ch.HasChildren) {
                         piv.Descriptions.Add(choice, choice);
                         piv.Choices.Add(choice, choice.ToLower().SingleItemAsEnumerable());
                     } else {
@@ -235,8 +225,63 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }
 
 
+        internal bool[] GetExpressionArray(string rightExpression) {
+
+            return _expressionArrayCache.GetCachedAnswer(() => {
+
+                var param = _pivots.Keys.Select((each, i) => "{0} {0},".format(each)).Aggregate((current, each) => current + each).Trim(',');
+
+                var rightexpress = GenerateExpression("", rightExpression, ExpressionTemplate.CSharp);
+                var enums = _pivots.Values.Select(each => each.EnumCode).Aggregate((current, each) => "{0}\r\n{1}".format(current, each));
+                
+                var fors = _pivots.Keys.Select((each, i) => "foreach (var _{1} in Enum.GetValues(typeof ({0})).Cast<{0}>()) {{\r\n".format(each, i)).ToArray();
+                var call = fors.Select((each, i) => "_{0},".format(i)).Aggregate((current, each) => current + each).Trim(',');
+                var fn = "result[--n] = ProcessRight({0});".format(call);
+                var close = fors.Select(each => "}\r\n").Aggregate((each, current) => current + each);
+                var loops = fors.Aggregate((current, each) => current + each) + fn + close;
+
+                var script = @"
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+
+    public class Script
+    {{
+        // takes a variable list of all the values from all the pivots
+        internal bool ProcessRight({0}) {{
+            return {1};
+        }}
+
+        public bool[] GetAll(int n) {{
+
+            var result = new bool[n];
+            {2}
+            return result;
+        }}
+    }}
+
+    //enums
+    {3}
+".format(param, rightexpress, loops, enums);
+               
+                var c = _pivots.Values.Select(each => each.Choices.Count + 1).Aggregate(1, (current, i) => current*i);
+                dynamic s = CSScript.Evaluator.LoadCode(script);
+
+                bool[] result = s.GetAll(c+10);
+                return result;
+               
+                //Event<Trace>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
+            },  rightExpression);
+        }
+
         internal bool CompareExpressions(string leftExpression, string rightExpression) {
 
+            var v1 = GetExpressionArray(leftExpression);
+            var v2 = GetExpressionArray(rightExpression);
+            return v1.SequenceEqual(v2);
+
+#if old_way
             return _compareCache.GetCachedAnswer(() => {
 
                 var param = _pivots.Keys.Select((each, i) => "{0} {0},".format(each)).Aggregate((current, each) => current + each).Trim(',');
@@ -285,6 +330,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 //Event<Trace>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
                 return result;
             }, leftExpression, rightExpression);
+#endif
         }
 
 
@@ -403,329 +449,6 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }
 
         
-
-#if false
-        private string GenerateCSharpExpression(string expression) {
-            var result = new StringBuilder();
-            var rxResult = ExpressionRx.Match(expression);
-            if (rxResult.Success) {
-                var state = ExpressionState.None;
-
-                foreach (var item in rxResult.Groups[1].Captures.Cast<Capture>().Select(each => each.Value.Trim()).Where(each => !string.IsNullOrEmpty(each))) {
-                    switch (item[0]) {
-                        case '!':
-                            if (state > ExpressionState.HasOperator) {
-                                throw new ClrPlusException("Invalid expression. (may not state ! on same item more than once)");
-                            }
-                            state = state | ExpressionState.HasNot;
-                            continue;
-
-                        case '&':
-                        case ',':
-                        case '\\':
-                        case '/':
-                            if (state > ExpressionState.HasOperator) {
-                                throw new ClrPlusException("Invalid expression. (May not state two operators in a row)");
-                            }
-                            state = state | ExpressionState.HasAnd;
-                            continue;
-
-                        case '|':
-                            if (state > ExpressionState.HasOperator) {
-                                throw new ClrPlusException("Invalid expression. (May not state two operators in a row)");
-                            }
-                            state = state | ExpressionState.HasOr;
-                            continue;
-
-                        case '(':
-                            if (item.EndsWith(")")) {
-                                // parse nested expression.
-                                var subexp = "( {0} )".format(GenerateCSharpExpression(item.Substring(1, item.Length - 2)));
-                                if (result.Length == 0) {
-                                    switch (state) {
-                                        case ExpressionState.None:
-                                        case ExpressionState.HasAnd:
-                                            result.Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                        case ExpressionState.HasNot:
-                                            result.Append("!").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasOr:
-                                        case ExpressionState.HasOr | ExpressionState.HasNot:
-                                            throw new ClrPlusException("Invalid Conditional Expression (starts with 'or' operator?) ");
-                                    }
-                                } else {
-                                    switch (state) {
-                                        case ExpressionState.None:
-                                        case ExpressionState.HasNot:
-                                            throw new ClrPlusException("Invalid Conditional Expression (missing comparison before value) ");
-
-                                        case ExpressionState.HasAnd:
-                                            result.Append(" && ").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                            result.Append(" && !").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasOr:
-                                            result.Append(" || ").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasOr | ExpressionState.HasNot:
-                                            result.Append(" || !").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-                                    }
-                                }
-                                continue;
-                            }
-                            throw new ClrPlusException("Mismatched '(' in expression");
-
-                        default:
-                            if (!WordRx.IsMatch(item)) {
-                                throw new ClrPlusException("Invalid characters in expression");
-                            }
-                            // otherwise, it's the word we're looking for.
-                            // 
-                            var expr = GenerateCSharpComparison(item);
-
-                            if (result.Length == 0) {
-                                switch (state) {
-                                    case ExpressionState.None:
-                                    case ExpressionState.HasAnd:
-                                        result.Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                    case ExpressionState.HasNot:
-                                        result.Append("!").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasOr:
-                                    case ExpressionState.HasOr | ExpressionState.HasNot:
-                                        throw new ClrPlusException("Invalid Conditional Expression (starts with 'or' operator?) ");
-                                }
-                            } else {
-                                switch (state) {
-                                    case ExpressionState.None:
-                                    case ExpressionState.HasNot:
-                                        throw new ClrPlusException("Invalid Conditional Expression (missing comparison before value) ");
-
-                                    case ExpressionState.HasAnd:
-                                        result.Append(" && ").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                        result.Append(" && !").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasOr:
-                                        result.Append(" || ").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasOr | ExpressionState.HasNot:
-                                        result.Append(" || !").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-                                }
-                            }
-                            break;
-                    }
-                }
-            }
-            return result.ToString();
-        }
-
-        internal string GenerateMSBuildExpression(string projectName, string expression) {
-            var result = new StringBuilder();
-            var rxResult = ExpressionRx.Match(expression);
-            if (rxResult.Success) {
-                var state = ExpressionState.None;
-
-                foreach (var item in rxResult.Groups[1].Captures.Cast<Capture>().Select(each => each.Value.Trim()).Where(each => !string.IsNullOrEmpty(each))) {
-                    switch (item[0]) {
-                        case '!':
-                            if (state > ExpressionState.HasOperator) {
-                                throw new ClrPlusException("Invalid expression. (may not state ! on same item more than once)");
-                            }
-                            state = state | ExpressionState.HasNot;
-                            continue;
-
-                        case '&':
-                        case ',':
-                        case '\\':
-                        case '/':
-                            if (state > ExpressionState.HasOperator) {
-                                throw new ClrPlusException("Invalid expression. (May not state two operators in a row)");
-                            }
-                            state = state | ExpressionState.HasAnd;
-                            continue;
-
-                        case '|':
-                            if (state > ExpressionState.HasOperator) {
-                                throw new ClrPlusException("Invalid expression. (May not state two operators in a row)");
-                            }
-                            state = state | ExpressionState.HasOr;
-                            continue;
-
-                        case '(':
-                            if (item.EndsWith(")")) {
-                                // parse nested expression.
-                                var subexp = "( {0} )".format(GenerateMSBuildExpression(projectName, item.Substring(1, item.Length - 2)));
-                                if (result.Length == 0) {
-                                    switch (state) {
-                                        case ExpressionState.None:
-                                        case ExpressionState.HasAnd:
-                                            result.Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                        case ExpressionState.HasNot:
-                                            result.Append("!").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasOr:
-                                        case ExpressionState.HasOr | ExpressionState.HasNot:
-                                            throw new ClrPlusException("Invalid Conditional Expression (starts with 'or' operator?) ");
-                                    }
-                                } else {
-                                    switch (state) {
-                                        case ExpressionState.None:
-                                        case ExpressionState.HasNot:
-                                            throw new ClrPlusException("Invalid Conditional Expression (missing comparison before value) ");
-
-                                        case ExpressionState.HasAnd:
-                                            result.Append(" And ").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                            result.Append(" And !").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasOr:
-                                            result.Append(" Or ").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-
-                                        case ExpressionState.HasOr | ExpressionState.HasNot:
-                                            result.Append(" Or !").Append(subexp);
-                                            state = ExpressionState.None;
-                                            break;
-                                    }
-                                }
-                                continue;
-                            }
-                            throw new ClrPlusException("Mismatched '(' in expression");
-
-                        default:
-                            if (!WordRx.IsMatch(item)) {
-                                throw new ClrPlusException("Invalid characters in expression");
-                            }
-                            // otherwise, it's the word we're looking for.
-                            // 
-                            var expr = GenerateMsBuildComparison(projectName, item);
-
-                            if (result.Length == 0) {
-                                switch (state) {
-                                    case ExpressionState.None:
-                                    case ExpressionState.HasAnd:
-                                        result.Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                    case ExpressionState.HasNot:
-                                        result.Append("!").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasOr:
-                                    case ExpressionState.HasOr | ExpressionState.HasNot:
-                                        throw new ClrPlusException("Invalid Conditional Expression (starts with 'or' operator?) ");
-                                }
-                            } else {
-                                switch (state) {
-                                    case ExpressionState.None:
-                                    case ExpressionState.HasNot:
-                                        throw new ClrPlusException("Invalid Conditional Expression (missing comparison before value) ");
-
-                                    case ExpressionState.HasAnd:
-                                        result.Append(" And ").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasAnd | ExpressionState.HasNot:
-                                        result.Append(" And !").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasOr:
-                                        result.Append(" Or ").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-
-                                    case ExpressionState.HasOr | ExpressionState.HasNot:
-                                        result.Append(" Or !").Append(expr);
-                                        state = ExpressionState.None;
-                                        break;
-                                }
-                            }
-                            break;
-                    }
-                }
-            }
-            return result.ToString();
-        }
-
-        /*
-        private string GenerateCSharpComparison(string projectName, string item) {
-            string choice;
-            string pivotName;
-
-            if (!GetChoice(item, out choice, out pivotName)) {
-                throw new ClrPlusException("Unmatched configuration choice '{0}".format(item));
-            }
-
-            return "{0} == {0}.@{1}".format(pivotName, choice);
-        }
-
-        private string GenerateMsBuildComparison(string projectName, string item) {
-            string choice;
-            string pivotName;
-
-            if (!GetChoice(item, out choice, out pivotName)) {
-                throw new ClrPlusException("Unmatched configuration choice '{0}".format(item));
-            }
-            var piv = _pivots[pivotName];
-
-            // mark that choice as used.
-            piv.usedChoices.Add(choice);
-
-            if (string.IsNullOrEmpty(piv.key)) {
-                return "'$({1}-{0})' == '{2}'".format(projectName, pivotName, choice);
-            }
-            return "'$({0})' == '{1}'".format(piv.key, choice);
-        }
-*/
-#endif
 
         private bool GetChoice(string item, out string choice, out Pivot pivot) {
             foreach (var p in _pivots.Keys) {

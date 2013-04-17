@@ -18,7 +18,9 @@ namespace Scratch {
     using System.Management.Automation;
     using System.Management.Automation.Runspaces;
     using System.Threading.Tasks;
+    using System.Xml.Linq;
     using ClrPlus.Core.Collections;
+    using ClrPlus.Core.DynamicXml;
     using ClrPlus.Core.Extensions;
     using ClrPlus.Core.Tasks;
     using ClrPlus.Powershell.Core;
@@ -96,6 +98,76 @@ namespace Scratch {
 
         }
 
+        private void zStart(string[] args) {
+            var path = @"C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V110\1033\lib.xml";
+            var doc = XDocument.Load(path);
+
+            dynamic xml = new DynamicNode(doc);
+
+            foreach(var property in xml) {
+                string subType = property.Attributes.Has("Subtype") ? property.Attributes.Subtype : "";
+
+                switch ((string)property.LocalName) {
+                    case "BoolProperty"   :
+                        Console.WriteLine( @"""{0}"".MapBoolean(),",property.Attributes.Name);
+                        break;
+                    case "StringListProperty":
+                        switch(subType) {
+                            case "folder":
+                                Console.WriteLine(@"""{0}"".MapFolderList(),", property.Attributes.Name);
+                                break;
+                            case "file":
+                                Console.WriteLine(@"""{0}"".MapFileList(),", property.Attributes.Name);
+                                break;
+                            case "":
+                                Console.WriteLine(@"""{0}"".MapStringList(),", property.Attributes.Name);
+                                break;
+                            default:
+                                throw new Exception("Unknown subtype:{0}".format(subType));
+                        }
+                        break;
+                    case "IntProperty":
+                        Console.WriteLine(@"""{0}"".MapInt(),", property.Attributes.Name);
+                        break;
+                    case "StringProperty":
+                        switch(subType) {
+                        case "folder":
+                                Console.WriteLine(@"""{0}"".MapFolder(),", property.Attributes.Name);
+                            break;
+                        case "file":
+                            Console.WriteLine(@"""{0}"".MapFile(),", property.Attributes.Name);
+                            break;
+                        case "":
+                            Console.WriteLine(@"""{0}"".MapString(),", property.Attributes.Name);
+                            break;
+                        default:
+                            throw new Exception("Unknown subtype:{0}".format(subType));
+                    }
+                        break;
+                    case "EnumProperty" :
+                        List<string> values = new List<string>();
+
+                        foreach (var enumvalue in property) {
+                            if (enumvalue.LocalName == "EnumProperty.Arguments") {
+                                continue;
+                            }
+                            values.Add(enumvalue.Attributes.Name);
+
+                        }
+                        Console.WriteLine(@"""{0}"".MapEnum({1}),", property.Attributes.Name, values.Select(each => @"""" + each + @"""").Aggregate((current, each) => current + ",  " + each));
+                        break;
+
+                    case "Rule.Categories":
+                    case "Rule.DataSource":
+                        break;
+
+                    default:
+                        Console.WriteLine("==============================UNKNOWN TYPE: {0}", property.LocalName);
+                        break;
+                }
+            }
+        }
+
         private void Start(string[] args) {
 
 
@@ -141,7 +213,7 @@ namespace Scratch {
 
 
             try {
-                Environment.CurrentDirectory = @"C:\root\V2\zlib\copkg";
+                Environment.CurrentDirectory = @"C:\root\V2\zlib\contrib\coapp";
                 Console.WriteLine("Package script" );
                 using( var script = new PackageScript("zlib.autopkg") ){
                 script.Save(PackageTypes.NuGet, false);

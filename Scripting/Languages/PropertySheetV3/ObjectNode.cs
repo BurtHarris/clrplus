@@ -115,7 +115,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return CurrentView.ResolveMacrosInContext(value, items);
         }
 
-      
+        internal void SetNodeValue(IValue value) {
+            
+        }
         
         internal IEnumerable<ToRoute> Routes {
             get {

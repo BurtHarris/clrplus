@@ -18,6 +18,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     using System.Text.RegularExpressions;
     using Core.Collections;
     using Core.Extensions;
+    using Core.Tasks;
     using Languages.PropertySheet;
     using RValue;
     using Utility;
@@ -38,6 +39,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
         private static readonly IDictionary<string, IValue> _empty = new Dictionary<string, IValue>();
         private IDictionary<string, IValue> _metadataValue;
+        protected ToRoute FallbackRoute;
 
         private Map _map;
 
@@ -52,6 +54,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 return _map.ParentView;
             }
             set {
+                _map._thisView = this;
                 _map.ParentView = value;
             }
         }
@@ -68,11 +71,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
         }
 
-        private static string[] Defines = new[] { "define.", "defines." };
+        private static readonly string[] _defines = new[] { "define.", "defines." };
 
         private string ResolveMacro(string valueName, IValueContext context ) {
             if (Metadata != _empty) {
-                foreach (var i in Defines) {
+                foreach (var i in _defines) {
                     var match = i + valueName;
                     if (Metadata.ContainsKey(match)) {
                         var define = Metadata[match];
@@ -121,8 +124,26 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return ResolveMacrosInContext(LookupMacroValue(innerMacro,this));
         }
      
-        public string GetMetadataValue(string metadataName,  bool checkParent = true) {
-            return Metadata.ContainsKey(metadataName) ? Metadata[metadataName].GetValue(this) : (ParentView == null || checkParent == false) ? null : ParentView.GetMetadataValue(metadataName);
+        public string GetMetadataValue(string metadataName, IValueContext context,   bool checkParent = true) {
+            return Metadata.ContainsKey(metadataName) ? Metadata[metadataName].GetValue(context) : (ParentView == null || checkParent == false) ? null : ParentView.GetMetadataValue(metadataName, context);
+        }
+
+        public IEnumerable<string> GetMetadataValues(string metadataName, IValueContext context, bool checkParent = true) {
+            return Metadata.ContainsKey(metadataName) ? Metadata[metadataName].GetValues(context) : (ParentView == null || checkParent == false) ? Enumerable.Empty<string>() : ParentView.GetMetadataValues(metadataName, context);
+        }
+
+        public string GetMetadataValueHarder(string metadataName, string parameter, bool checkParent = true) {
+            if (string.IsNullOrEmpty(parameter) || ParentView == null || ParentView.ParentView == null || !ParentView.ParentView.HasChild(MemberName)) {
+                return GetMetadataValue(metadataName,this , checkParent);
+            }
+            return GetMetadataValue(metadataName,this , false) ?? ParentView.ParentView.GetProperty(MemberName).GetMetadataValue(metadataName,this, false) ?? (checkParent ? ParentView.GetMetadataValue(metadataName,this) : null);
+        }
+
+        public IEnumerable<string> GetMetadataValuesHarder(string metadataName, string parameter, bool checkParent = true) {
+            if(string.IsNullOrEmpty(parameter) || ParentView == null || ParentView.ParentView == null || !ParentView.ParentView.HasChild(MemberName)) {
+                return GetMetadataValues(metadataName, this, checkParent);
+            }
+            return GetMetadataValues(metadataName, this, false) ?? ParentView.ParentView.GetProperty(MemberName).GetMetadataValues(metadataName, this, false) ?? (checkParent ? ParentView.GetMetadataValues(metadataName, this) : null);
         }
 
         public IEnumerable<string> GetMetadataKeys(string prefix = null) {
@@ -130,7 +151,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         }
 
         public IDictionary<string, string> GetMetadataItems(string prefix) {
-            return GetMetadataKeys(prefix).ToXDictionary(each => each.Substring(prefix.Length), each => GetMetadataValue(each));
+            return GetMetadataKeys(prefix).ToXDictionary(each => each.Substring(prefix.Length), each => GetMetadataValue(each,this));
         }
 
         public string ResolveMacrosInContext(string value, object[] eachItems = null) {
@@ -224,10 +245,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return null;
         }
 
-        public string ResolveAlias(Selector selector) {
+        public Selector ResolveAlias(Selector selector) {
             var resolved = ResolveAlias(selector.Name);
             if (resolved != selector.Name) {
-                return new Selector(resolved, selector.Parameter, selector.SourceLocation);
+                return new Selector(resolved, selector.Parameter, selector.SourceLocation, selector.AfterTheParameter);
             }
             return selector;
         }
@@ -364,31 +385,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             }
         }
 
-        internal View GetChild(Selector selector) {
-            if(selector == null || string.IsNullOrEmpty(selector.Name)) {
-                return this;
-            }
-
-            selector = ResolveAlias(selector.Name);
-
-            if (selector.IsGlobal) {
-                return RootView.GetChild(selector.DeGlobaled);
-            }
-
-            if (selector.IsCompound) {
-                var name = selector.Prefix.Name;
-                if (map.ContainsKey(name)) {
-                    return map[name].GetChild(selector.Suffix);
-                }
-                return null;
-            }
-
-            if (selector.HasParameter) {
-                return map.ContainsKey(selector.Name) ? map[selector.Name].GetElement(selector.Parameter) : null;
-            }
-
-            return GetProperty(selector.Name);
-        }
 
         public IEnumerable<string> GetChildPropertyNames() {
             return map.Keys;
@@ -414,23 +410,83 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return map.ChildItems.Count > 0;
         }}
 
+        public bool IsPlaceholder() {
+            return map is PlaceholderMap;
+        }
+
         public View GetProperty(string propertyName) {
             // this falls back to case insensitive matches if th property didn't exist.
             if (propertyName.Contains('.')) {
                 return GetChild(propertyName); // let that unroll the path.to.property
             }
+
             propertyName = ResolveAlias(propertyName);
             if (propertyName.StartsWith("::")) {
                 return RootView.GetChild(propertyName.Trim(':'));
             }
-            return map.ContainsKey(propertyName) ? map[propertyName] : (map.Keys.Where(each => each.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase)).Select(i => map[i])).FirstOrDefault();
+
+            if (map.ContainsKey(propertyName)) {
+                return map[propertyName];
+            }
+
+            // cheat: let's see if there is a case insensitive version:
+            var result = (map.Keys.Where(each => each.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase)).Select(i => map[i])).FirstOrDefault();
+            if (result != null) {
+                return result;
+            }
+
+            // let's add a placeholder node for it then.
+            return CreatePlaceholderView(propertyName);
+        }
+
+
+        internal View GetChild(Selector selector) {
+            if(selector == null || selector.IsEmpty ) {
+                return this;
+            }
+
+            if (string.IsNullOrEmpty(selector.Name) && selector.Parameter != null) {
+                selector = new Selector("*",selector.Parameter,selector.SourceLocation,selector.AfterTheParameter);
+            }
+
+            selector = ResolveAlias(selector);
+
+            if(selector.IsGlobal) {
+                return RootView.GetChild(selector.DeGlobaled);
+            }
+            
+            if (selector.AfterTheParameter.Is()) {
+                return GetChild(selector.WithoutAfterTheParameter).GetChild(selector.AfterSelector);
+            }
+
+            if(selector.IsCompound) {
+                var name = selector.Prefix.Name;
+                return HasChild(name) ? GetProperty(name).GetChild(selector.Suffix) : CreatePlaceholderView(name).GetChild(selector.Suffix);
+            }
+
+            if (selector.IsSpecialCase) {
+                // this ensures a special case where a selector is resolving, but it has an empty auto-condition in it.
+                // this should make sure that '*[].foo' is the same thing as 'foo' 
+                return GetChild(selector.AfterSelector);
+            }
+
+            if (selector.HasParameter) {
+                return HasChild(selector.Name) ? GetProperty(selector.Name).GetElement(selector.Parameter) : CreatePlaceholderView(selector.Name).GetElement(selector.Parameter);
+            }
+
+            return GetProperty(selector.Name);
+        }
+
+        private View CreatePlaceholderView(string placeholderName) {
+            return map.GetOrAdd(placeholderName, () => new View(new PlaceholderMap(placeholderName, Enumerable.Empty<ToRoute>())));
         }
 
         public View GetElement(string elementName) {
             var child = map as IElements;
-            if (child != null && child.ElementDictionary.ContainsKey(elementName)) {
+            if (child != null /* && child.ElementDictionary.ContainsKey(elementName) */) {
                 return child.ElementDictionary[elementName];
             }
+            Event<Error>.Raise("View.GetElement","object is not collection ");
             return null;
         }
 
@@ -443,6 +499,15 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 _resolveValue(); // push the value to the backing object if neccesary first
                 return (map as IHasValueFromBackingStorage).Values;
             }
+            set {
+                if(_map is ICanSetBackingValues) {
+                    (_map as ICanSetBackingValues).Reset();
+                    value.ForEach((_map as ICanSetBackingValues).AddValue );
+                }
+                else {
+                    AggregatePropertyNode.SetCollection(new Collection(null, value.Select( each => new Scalar(null, each))));
+                }
+            }
         }
 
         public string Value {
@@ -453,14 +518,21 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 }
                 _resolveValue(); // push the value to the backing object if neccesary first
                 return (map as IHasValueFromBackingStorage).Value;
+            } 
+            set {
+                if (_map is ICanSetBackingValue) {
+                    (_map as ICanSetBackingValue).SetValue(value);
+                } else {
+                    AggregatePropertyNode.SetValue(new Scalar(null,value ));
+                }
             }
         }
 
         public void AddChildRoutes(IEnumerable<ToRoute> routes) {
             _map.AddChildRoutes(routes);
         }
-        public void AddChildRoutes(params ToRoute[] routes) {
-            _map.AddChildRoutes(routes);
+        public void AddChildRoute(ToRoute route) {
+            _map.AddChildRoutes(route.SingleItemAsEnumerable());
         }
 
         public override bool TryGetIndex(GetIndexBinder binder, object[] indexes, out object result) {
@@ -492,16 +564,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
         public override bool TryGetMember(GetMemberBinder binder, out object result) {
             // returns a child reference 
-            /*
-             * var child = 
-            if (child == null) {
-                // result = null;
-                // return false;
-                Console.WriteLine("object doesn't have child [{0}] -- returning empty string", binder.Name);
-                result = string.Empty;
-                return true;
-            }
-            */
             result = GetProperty(binder.Name);
             return true;
         }
@@ -591,8 +653,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             : base(Unroll(memberName, (member) => new EnumerableMap<TParent>(member, route, childRoutes))) {
         }
 
-        public View(string memberName, ChildRouteDelegate<TParent> childAccessor, IEnumerable<ToRoute> childRoutes)
-            : base(Unroll( memberName, (member) => new ChildMap<TParent>(member, childAccessor, null) {
+        public View(string memberName, IndexedChildRouteDelegate<TParent> childAccessor, IEnumerable<ToRoute> childRoutes)
+            : base(Unroll( memberName, (member) => new IndexedChildMap<TParent>(member, childAccessor, null) {
                 childInitializers = childRoutes
             })) {
 

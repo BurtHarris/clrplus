@@ -140,7 +140,17 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
                 return true;
             }
 
-        
+            if (_version >= TokenizerVersion.V3) {
+                if (CurrentCharacter == ':' && NextCharacter == '=') {
+                    AdvanceAndRecognize();
+                    AddToken(new Token {
+                        Type = TokenType.ColonEquals,
+                        Data = ":="
+                    });
+                    return true;
+                }
+            }
+
             if (_version >= TokenizerVersion.V3) {
                 var instruction = PoachParseMatchWithAnchor('<', '>');
                 if (instruction != null) {
