@@ -169,6 +169,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
             _values.Add(value);
         }
 
+        public void Clear() {
+            _values.Clear();
+        }
+
         public string SourceString {
             get {
                 if (_collectionNames.IsNullOrEmpty()) {
