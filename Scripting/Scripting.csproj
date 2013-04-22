@@ -68,7 +68,7 @@
     <Compile Include="Languages\PropertySheetV3\Mapping\Maps.cs" />
     <Compile Include="Languages\PropertySheetV3\ParseException.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertyNode.cs" />
-    <Compile Include="Languages\PropertySheetV3\PropertySheet.cs" />
+    <Compile Include="Languages\PropertySheetV3\RootPropertySheet.cs" />
     <Compile Include="Languages\PropertySheetV3\PropertySheetParser.cs" />
     <Compile Include="Languages\PropertySheetV3\ObjectNode.cs" />
     <Compile Include="Languages\PropertySheetV3\RValue\IValue.cs" />

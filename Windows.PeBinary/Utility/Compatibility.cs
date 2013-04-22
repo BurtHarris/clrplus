@@ -14,6 +14,7 @@ namespace ClrPlus.Windows.PeBinary.Utility {
     using System.Collections.Generic;
     using System.Linq;
     using System.Xml.Linq;
+    using Core.Extensions;
 
     public class Compatibility : ManifestElement {
         private const string CompatibilityTag = "{urn:schemas-microsoft-com:compatibility.v1}compatibility";

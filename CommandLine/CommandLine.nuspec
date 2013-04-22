@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.CommandLine</id>
-    <version>1.8.0.62</version>
+    <version>1.8.0.66</version>
     <title>CLRPlus CommandLine Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,7 +19,7 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp CommandLine CLI</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.62" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.66" />
     </dependencies>
   </metadata>
   <files>

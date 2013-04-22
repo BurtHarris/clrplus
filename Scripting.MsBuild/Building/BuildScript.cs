@@ -10,81 +10,47 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.MsBuild {
+namespace ClrPlus.Scripting.MsBuild.Building {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
-    using Core.Collections;
     using Core.Extensions;
     using Languages.PropertySheetV3;
     using Languages.PropertySheetV3.Mapping;
     using Languages.PropertySheetV3.RValue;
     using Microsoft.Build.Construction;
-    using Microsoft.Build.Evaluation;
+    using Packaging;
+    using Platform;
+    using Utility;
 
-    internal static class ProjectTargetElementExtensions {
-        
-        internal static CustomPropertyList EnvironmentList(this ProjectTargetElement target) {
-            return null;
-        }
+    public class BuildScript : IDisposable, IProjectOwner {
+        private readonly Pivots _pivots;
+        private readonly ProjectPlus _project;
+        protected RootPropertySheet _sheet;
+        internal IDictionary<string, IValue> productInformation;
 
-        internal static CustomPropertyList Uses(this ProjectTargetElement target) {
-            return null;
-        }
-
-        internal static Accessor DefaultFlag(this ProjectTargetElement target) {
-            return null;
-        }
-
-        internal static Accessor BuildCommand(this ProjectTargetElement target) {
-            return null;
-        }
-
-        internal static Accessor CleanCommand(this ProjectTargetElement target) {
-            return null;
-        }
-
-        internal static Accessor Platform(this ProjectTargetElement target) {
-            return null;
-        }
-        internal static Accessor UsesTool(this ProjectTargetElement target) {
-            return null;
-        }
-        internal static CustomPropertyList ProducesTargets(this ProjectTargetElement target) {
-            return null;
-        }
-        internal static CustomPropertyList GenerateFiles(this ProjectTargetElement target) {
-            return null;
-        }
-        internal static CustomPropertyList RequiresPackages(this ProjectTargetElement target) {
-            return null;
-        }
-        internal static Accessor Condition(this ProjectTargetElement target) {
-            return null;
-        }
-    }
-
-    public class BuildScript : IDisposable {
-        public string Filename { get; set; }
-        protected PropertySheet _sheet;
-        internal IDictionary<string, IValue> productInformation; 
-        private Project _project = new Project();
-        
         public BuildScript(string filename) {
-            _sheet = new PropertySheet(_project);
-            _sheet.ParseFile(filename);
+            Filename = filename.GetFullPath();
 
-            foreach(var target in _sheet.CurrentView.ReplaceableChildren ) {
-                target.MapTo(_project.LookupTarget(target),PtkRoutes); 
+            _sheet = new RootPropertySheet(_project);
+            _sheet.ParseFile(Filename);
+            _project = new ProjectPlus(this, Filename + ".msbuild");
+            _pivots = new Pivots(_sheet.View.configurations);
+
+            foreach (var target in _sheet.CurrentView.ReplaceableChildren) {
+                target.MapTo(_project.LookupTarget(target), PtkRoutes);
             }
 
-            _sheet.Route(_project.ProjectRoutes());
+            _sheet.AddChildRoutes(_project.MemberRoutes);
 
             // convert #product-info into a dictionary.
             productInformation = _sheet.Metadata.Value.Keys.Where(each => each.StartsWith("product-info")).ToXDictionary(each => each.Substring(12), each => _sheet.Metadata.Value[each]);
-            
+
             _sheet.CopyToModel();
         }
+
+        public string Filename {get; set;}
 
         private static IEnumerable<ToRoute> PtkRoutes {
             get {
@@ -100,13 +66,34 @@ namespace ClrPlus.Scripting.MsBuild {
                 yield return "targets".MapTo<ProjectTargetElement>(tgt => tgt.ProducesTargets());
                 yield return "generate".MapTo<ProjectTargetElement>(tgt => tgt.GenerateFiles());
                 yield return "requires".MapTo<ProjectTargetElement>(tgt => tgt.RequiresPackages());
+
                 yield return "condition".MapTo<ProjectTargetElement>(tgt => tgt.Condition());
-                yield return "CHILDREN".MapChildTo<ProjectTargetElement>((tgt, child) => tgt.GetTargetItem(child));// .tasks 
+                yield return "*".MapTo<ProjectTargetElement>(tgt => tgt.Condition());
+
+                yield return "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((tgt, child) => tgt.GetTargetItem(child)); // .tasks 
             }
         }
 
         public void Dispose() {
             _sheet = null;
+        }
+
+        public Pivots Pivots {
+            get {
+                return _pivots;
+            }
+        }
+
+        public string ProjectName {
+            get {
+                return Path.GetFileNameWithoutExtension(Filename);
+            }
+        }
+
+        public string Directory {
+            get {
+                return Path.GetDirectoryName(Filename);
+            }
         }
     }
 }

@@ -14,45 +14,52 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.Diagnostics;
     using Core.Exceptions;
     using Core.Extensions;
+    using Languages.PropertySheet;
 
     public class Selector {
-        public static Selector Empty = new Selector(string.Empty);
+        public static Selector Empty = new Selector(string.Empty, SourceLocation.Unknown);
+        public readonly SourceLocation SourceLocation;
 
         public readonly string Name;
         public readonly string Parameter;
+        public readonly string AfterTheParameter;
+
         private readonly int _hashCode;
         
-        public Selector(string selector) :this(ParseName(selector), ParseParameter(selector)) {
-        }
+        public Selector(string selector,SourceLocation sourceLocation)  {
+            AfterTheParameter = null;
 
-        private static string ParseParameter(string selector) {
+            // parse up to the first square bracket.
             if (string.IsNullOrEmpty(selector)) {
-                return null;
-            }
-
-            var p = selector.IndexOf('[');
-            if (p > -1) {
-                var c = selector.LastIndexOf(']');
-                if (c == -1) {
-                    throw new ClrPlusException("Missing ']' in Selector '{0}'".format(selector));
+                Name = string.Empty;
+                Parameter = null;
+            } else {
+                selector = selector.TrimStart('.');
+                var p = selector.IndexOf('[');
+                var c = selector.IndexOf(']', p + 1);
+                if (p == -1) {
+                    Name = selector;
+                    Parameter = null;
+                } else {
+                    Name = p == 0 ? "*" : selector.Substring(0, p);
+                    p++;
+                    Parameter = selector.Substring(p, c - p).Trim();
+                    if(c < selector.Length) {
+                        AfterTheParameter = selector.Substring(c + 1);
+                    }
+                    
                 }
-                p++;
-                return selector.Substring(p, c - p);
             }
-            return null;
+            SourceLocation = sourceLocation;
+            
+            _hashCode = AfterTheParameter == null ? this.CreateHashCode(Name, Parameter) : this.CreateHashCode(Name,Parameter,AfterTheParameter);
         }
 
-        private static string ParseName(string selector) {
-            if(string.IsNullOrEmpty(selector)) {
-                return string.Empty;
-            }
-            var p = selector.IndexOf('[');
-            return p > -1 ? ParseName(selector.Substring(0, p)) : selector;
-        }
-
-        public Selector(string name, string parameter) {
-            Name = name;
+        public Selector(string name, string parameter, SourceLocation sourceLocation, string afterTheParameter = null) {
+            Name = name.Is() ? name : (parameter.Is() ? "*" : null);
             Parameter = parameter;
+            SourceLocation = sourceLocation;
+            AfterTheParameter = afterTheParameter;
             _hashCode = this.CreateHashCode(Name, Parameter);
         }
 
@@ -66,17 +73,35 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
+        public bool IsGlobal {
+            get {
+                return Name.StartsWith("::");
+            }
+        }
+
+        public Selector DeGlobaled {
+            get {
+                return IsGlobal ? new Selector(Name.TrimStart(':'), Parameter,SourceLocation, AfterTheParameter) : this;
+            }
+        }
+
+        public Selector WithoutAfterTheParameter {
+            get {
+                return AfterTheParameter.Is() ? new Selector(Name,Parameter,SourceLocation) : this;
+            }
+        }
+
         public Selector Prefix {
             get {
                 var p = Name.IndexOf('.');
-                return p > 0 ? new Selector (Name.Substring(0, p)): this;
+                return p > 0 ? new Selector (Name.Substring(0, p),SourceLocation): this;
             }
         }
 
         public Selector Suffix {
             get {
                 var p = Name.IndexOf('.');
-                return p <= 0 ? this : new Selector(Name.Substring(p + 1),Parameter);
+                return p <= 0 ? this : new Selector(Name.Substring(p + 1),Parameter,SourceLocation, AfterTheParameter);
             }
         }
 
@@ -90,15 +115,39 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         public override string ToString() {
-            return string.Format("{0}{1}", Name, string.IsNullOrEmpty(Parameter) ? "" : "[{0}]".format(Parameter));
+            if (Parameter == null) {
+                return Name;
+            }
+            if (AfterTheParameter.Is()) {
+                return string.Format("{0}[{1}]{2}", Name, Parameter,AfterTheParameter);
+            }
+            return string.Format("{0}[{1}]", Name, Parameter);
         }
 
         public static implicit operator Selector(string s) {
-            return new Selector(s);
+            return new Selector(s,SourceLocation.Unknown);
         }
 
         public static implicit operator string(Selector s) {
             return s.ToString();
+        }
+
+        public bool IsSpecialCase {
+            get {
+                return (Name == "*" || Name == string.Empty) && string.IsNullOrEmpty(Parameter);
+            }
+        }
+
+        public Selector AfterSelector {
+            get {
+                return new Selector(AfterTheParameter, SourceLocation);
+            }
+        }
+
+        public bool IsEmpty {
+            get {
+                return (string.IsNullOrEmpty(Name) && string.IsNullOrEmpty(Parameter) && string.IsNullOrEmpty(AfterTheParameter));
+            }
         }
     }
 }

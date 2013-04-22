@@ -10,6 +10,7 @@
     <RootNamespace>ClrPlus.Scripting.MsBuild</RootNamespace>
     <AssemblyName>ClrPlus.Scripting.MsBuild</AssemblyName>
     <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
   </PropertyGroup>
   <Import Project="$(SolutionDir)\ClrPlus.sln.props" Condition="Exists('$(SolutionDir)\ClrPlus.sln.props')" />
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -29,7 +30,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CSScriptLibrary">
+      <HintPath>..\packages\CS-Script.3.5.0.2\lib\net40\CSScriptLibrary.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Build" />
+    <Reference Include="Mono.CSharp">
+      <HintPath>..\packages\CS-Script.3.5.0.2\lib\net40\Mono.CSharp.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -44,12 +51,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
-    <Compile Include="BuildScript.cs" />
-    <Compile Include="Condition.cs" />
-    <Compile Include="Configurations.cs" />
-    <Compile Include="MsBuildMap.cs" />
-    <Compile Include="PackageScript.cs" />
-    <Compile Include="StringPropertyList.cs" />
+    <Compile Include="Building\BuildScript.cs" />
+    <Compile Include="Building\ProjectTargetElementExtensions.cs" />
+    <Compile Include="Packaging\AnswerCache.cs" />
+    <Compile Include="Utility\CustomPropertyList.cs" />
+    <Compile Include="Utility\FileCopyList.cs" />
+    <Compile Include="Utility\MsBuildMap.cs" />
+    <Compile Include="Packaging\IProjectOwner.cs" />
+    <Compile Include="Packaging\NugetPackage.cs" />
+    <Compile Include="Packaging\PackageScript.cs" />
+    <Compile Include="Packaging\PackageScriptExtensions.cs" />
+    <Compile Include="Packaging\PackageTypes.cs" />
+    <Compile Include="Packaging\Pivots.cs" />
+    <Compile Include="Packaging\ProjectPlus.cs" />
+    <Compile Include="Utility\StringPropertyList.cs" />
+    <Compile Include="Utility\UniquePathPropertyList.cs" />
+    <Compile Include="Utility\UniqueStringPropertyList.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj">
@@ -73,8 +90,27 @@
       <Name>Scripting</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="Packaging\PackageScriptTemplate.autopkg" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Building\template.buildinfo" />
+    <None Include="winsdk7.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="winsdk8.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="vc10.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="packages.config" />
+    <None Include="vc11.toolinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

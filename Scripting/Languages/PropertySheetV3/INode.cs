@@ -18,6 +18,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
     public interface INode {
         Lazy<IDictionary<string, IValue>> Metadata {get;}
+        IEnumerable<string> GetSourceText(int indent);
     }
 
    

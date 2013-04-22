@@ -15,6 +15,7 @@ namespace ClrPlus.Core.DynamicXml {
     using System.Linq;
     using System.Reflection;
     using System.Xml.Linq;
+    using Extensions;
 
     /// <summary>
     ///     Represents a dynamic interface to an XML Node.
@@ -57,6 +58,12 @@ namespace ClrPlus.Core.DynamicXml {
             xmlns = _element.Name.Namespace;
         }
 
+        public DynamicNode(string elementName,string defaultNamespace ) {
+            XNamespace ns = defaultNamespace;
+            _element = new XElement(ns + elementName);
+            xmlns = _element.Name.Namespace;
+        }
+
         /// <summary>
         ///     Returns the number of descendent nodes
         /// </summary>
@@ -83,6 +90,12 @@ namespace ClrPlus.Core.DynamicXml {
         public DynamicNode this[int index] {
             get {
                 return new DynamicNode(_element.Descendants().ElementAt(index));
+            }
+        }
+
+        public string LocalName {
+            get {
+                return _element.LocalName();
             }
         }
 
@@ -117,6 +130,10 @@ namespace ClrPlus.Core.DynamicXml {
 
         private XName ActualXName(string elementName) {
             return xmlns == null ? elementName : xmlns + elementName;
+        }
+
+        public void Save(string path) {
+            Element.Save(path);
         }
 
         /// <summary>
@@ -209,7 +226,7 @@ namespace ClrPlus.Core.DynamicXml {
         }
 
         public IEnumerator<DynamicNode> GetEnumerator() {
-            return _element.Descendants().Select(each => new DynamicNode(each)).GetEnumerator();
+            return _element.Elements().Select(each => new DynamicNode(each)).GetEnumerator();
         }
 
         /// <summary>

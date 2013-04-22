@@ -16,6 +16,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
     using System.IO;
     using System.Linq;
     using System.Management.Automation.Provider;
+    using System.Threading;
     using ClrPlus.Core.Exceptions;
     using ClrPlus.Core.Extensions;
     using ClrPlus.Core.Utility;
@@ -32,11 +33,71 @@ namespace ClrPlus.Powershell.Azure.Provider {
             _invalidLocation = true
         };
 
-        private bool _invalidLocation;
         private readonly AsyncLazy<IListBlobItem> _cloudItem;
         private readonly AzureDriveInfo _driveInfo;
-        private CloudBlobContainer _cloudContainer;
+        private string _absolutePath;
         private Stream _blobStream;
+        private CloudBlobContainer _cloudContainer;
+        private bool _invalidLocation;
+
+        public AzureLocation(AzureDriveInfo driveInfo, Path path, IListBlobItem cloudItem) {
+            _driveInfo = driveInfo;
+            Path = path;
+            Path.Validate();
+
+            if (cloudItem != null) {
+                _cloudItem = new AsyncLazy<IListBlobItem>(() => {
+                    if (cloudItem is CloudBlockBlob) {
+                        (cloudItem as CloudBlockBlob).FetchAttributes();
+                    }
+                    return cloudItem;
+                });
+            } else {
+                if (IsRootNamespace || IsAccount || IsContainer) {
+                    // azure namespace mount.
+                    _cloudItem = new AsyncLazy<IListBlobItem>(() => null);
+                    return;
+                }
+
+                _cloudItem = new AsyncLazy<IListBlobItem>(() => {
+                    if (CloudContainer == null) {
+                        return null;
+                    }
+                    // not sure if it's a file or a directory.
+                    if (path.EndsWithSlash) {
+                        // can't be a file!
+                        CloudContainer.GetDirectoryReference(Path.SubPath);
+                    }
+                    // check to see if it's a file.
+
+                    ICloudBlob blobRef = null;
+                    try {
+                        blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
+                        if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                            blobRef.FetchAttributes();
+                            return blobRef;
+                        }
+                    } catch {
+                    }
+
+                    // well, we know it's not a file, container, or account. 
+                    // it could be a directory (but the only way to really know that is to see if there is any files that have this as a parent path)
+                    var dirRef = CloudContainer.GetDirectoryReference(Path.SubPath);
+                    if (dirRef.ListBlobs().Any()) {
+                        return dirRef;
+                    }
+
+                    blobRef = CloudContainer.GetBlockBlobReference(Path.SubPath);
+                    if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
+                        return blobRef;
+                    }
+
+                    // it really didn't match anything, we'll return the reference to the blob in case we want to write to it.
+                    return blobRef;
+                });
+                _cloudItem.InitializeAsync();
+            }
+        }
 
         protected bool IsRootNamespace {
             get {
@@ -91,7 +152,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public bool IsDirectory {
             get {
-                return !_invalidLocation && !string.IsNullOrEmpty(Path.SubPath) && _cloudItem != null &&_cloudItem.Value is CloudBlobDirectory;
+                return !_invalidLocation && !string.IsNullOrEmpty(Path.SubPath) && _cloudItem != null && _cloudItem.Value is CloudBlobDirectory;
             }
         }
 
@@ -117,99 +178,6 @@ namespace ClrPlus.Powershell.Azure.Provider {
             }
         }
 
-        public AzureLocation(AzureDriveInfo driveInfo, Path path, IListBlobItem cloudItem) {
-            _driveInfo = driveInfo;
-            Path = path;
-            Path.Validate();
-
-            if (cloudItem != null) {
-
-                _cloudItem = new AsyncLazy<IListBlobItem>(() => {
-                    if (cloudItem is CloudBlockBlob) {
-                        (cloudItem as CloudBlockBlob).FetchAttributes();
-                    }
-                    return cloudItem;
-                });
-            } else {
-                if (IsRootNamespace || IsAccount || IsContainer) {
-                    // azure namespace mount.
-                    _cloudItem = new AsyncLazy<IListBlobItem>(() => null);
-                    return;
-                }
-
-                _cloudItem = new AsyncLazy<IListBlobItem>(() => {
-                    if (CloudContainer == null) {
-                        return null;
-                    }
-                    // not sure if it's a file or a directory.
-                    if (path.EndsWithSlash) {
-                        // can't be a file!
-                        CloudContainer.GetDirectoryReference(Path.SubPath);
-                    }
-                    // check to see if it's a file.
-
-                    ICloudBlob blobRef = null;
-                    try {
-
-                    
-                        blobRef = CloudContainer.GetBlobReferenceFromServer(Path.SubPath);
-                        if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
-                            blobRef.FetchAttributes();
-                            return blobRef;
-                        }
-                    }
-                   catch {
-
-                     
-                   }
-
-                    // well, we know it's not a file, container, or account. 
-                    // it could be a directory (but the only way to really know that is to see if there is any files that have this as a parent path)
-                    var dirRef = CloudContainer.GetDirectoryReference(Path.SubPath);
-                    if (dirRef.ListBlobs().Any()) {
-                        return dirRef;
-                    }
-
-                    blobRef = CloudContainer.GetBlockBlobReference(Path.SubPath);
-                    if (blobRef != null && blobRef.BlobType == BlobType.BlockBlob) {
-                        return blobRef;
-                    }
-
-                    // it really didn't match anything, we'll return the reference to the blob in case we want to write to it.
-                    return blobRef;
-                });
-                _cloudItem.InitializeAsync();
-            }
-        }
-
-        public override void Delete(bool recurse) {
-            if (IsFile) {
-                var result = FileBlob.DeleteIfExists();
-                if (!result)
-                    throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
-                return;
-            }
-
-            if (IsDirectory && recurse) {
-                foreach (var d in GetDirectories(true)) {
-                    d.Delete(true);
-                }
-
-                foreach (var d in GetFiles(false)) {
-                    d.Delete(false);
-                }
-            }
-
-            if (IsContainer) {
-                if (recurse || (!GetDirectories(false).Any() && !GetFiles(false).Any())) {
-                    var result = CloudContainer.DeleteIfExists();
-                    if(!result)
-                        throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
-                    
-                }
-            }
-        }
-
         public override string Name {
             get {
                 return _invalidLocation ? "<invalid>"
@@ -219,8 +187,6 @@ namespace ClrPlus.Powershell.Azure.Provider {
                                 : Path.Name;
             }
         }
-
-        private string _absolutePath;
 
         public override string AbsolutePath {
             get {
@@ -281,6 +247,35 @@ namespace ClrPlus.Powershell.Azure.Provider {
         public override bool Exists {
             get {
                 return !_invalidLocation && IsRootNamespace || IsAccount || IsContainer || IsDirectory || IsFile;
+            }
+        }
+
+        public override void Delete(bool recurse) {
+            if (IsFile) {
+                var result = FileBlob.DeleteIfExists();
+                if (!result) {
+                    throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
+                }
+                return;
+            }
+
+            if (IsDirectory && recurse) {
+                foreach (var d in GetDirectories(true)) {
+                    d.Delete(true);
+                }
+
+                foreach (var d in GetFiles(false)) {
+                    d.Delete(false);
+                }
+            }
+
+            if (IsContainer) {
+                if (recurse || (!GetDirectories(false).Any() && !GetFiles(false).Any())) {
+                    var result = CloudContainer.DeleteIfExists();
+                    if (!result) {
+                        throw new UnauthorizedAccessException("{0} could not be found or you do not have permissions to delete it.".format(FileBlob.Uri));
+                    }
+                }
             }
         }
 
@@ -351,8 +346,7 @@ namespace ClrPlus.Powershell.Azure.Provider {
         public static IEnumerable<CloudBlobDirectory> ListSubdirectories(CloudBlobDirectory cloudBlobDirectory) {
             var p = cloudBlobDirectory.Uri.AbsolutePath;
             var l = p.EndsWith("/") ? cloudBlobDirectory.Uri.AbsolutePath.Length : cloudBlobDirectory.Uri.AbsolutePath.Length + 1;
-             
-            
+
             return (from blob in cloudBlobDirectory.ListBlobs().Select(each => each.Uri.AbsolutePath.Substring(l))
                 let i = blob.IndexOf('/')
                 where i > -1
@@ -395,6 +389,10 @@ namespace ClrPlus.Powershell.Azure.Provider {
             }
         }
 
+        public override IEnumerable<ILocation> Copy(ILocation newLocation, bool recurse) {
+            throw new NotImplementedException();
+        }
+
         public override Stream Open(FileMode mode) {
             if (_blobStream != null) {
                 return _blobStream;
@@ -434,7 +432,74 @@ namespace ClrPlus.Powershell.Azure.Provider {
         public override void ClearContent() {
         }
 
+        public override ILocation NewItem(string type, object newItemValue) {
+            if ((type ?? "d").ToLower().FirstOrDefault() == 'f') {
+                // new file
 
-        
+            } else {
+                // new directory
+                
+            }
+            return null;
+        }
+
+        public override ILocation Rename(string newName) {
+            if (newName.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) > -1) {
+                throw new ClrPlusException("Invalid characters in new pathname");
+            }
+
+            if (IsContainer) {
+                var newContainer = _driveInfo.CloudFileSystem.GetContainerReference(newName);
+                if (newContainer.Exists()) {
+                    throw new ClrPlusException("Target location exists.");
+                }
+                newContainer.CreateIfNotExists();
+
+                var results = newContainer.ListBlobs().OfType<CloudBlockBlob>().Select(blob => {
+                    var newBlob = newContainer.GetBlockBlobReference(Name);
+                    newBlob.StartCopyFromBlob(blob);
+                    return newBlob;
+                }).ToList();
+
+                while (results.Count > 0) {
+                    for (var i = results.Count; i <= 0; i--) {
+                        var blob = results[i];
+
+                        switch (blob.CopyState.Status) {
+                            case CopyStatus.Success:
+                                results.RemoveAt(i);
+                                continue;
+
+                            case CopyStatus.Aborted:
+                            case CopyStatus.Invalid:
+                            case CopyStatus.Failed:
+                                // something happened. bail on everything.
+                                results.RemoveAt(i);
+                                foreach (var each in results) {
+                                    if (each.CopyState.Status == CopyStatus.Pending) {
+                                        each.AbortCopy(each.CopyState.CopyId);
+                                    }
+                                }
+                                newContainer.DeleteIfExists();
+                                throw new ClrPlusException("Container rename failed");
+                        }
+                    }
+                    // breathe.
+                    Thread.Sleep(20);
+
+                }
+                // delete the old container.
+                _cloudContainer.DeleteIfExists();
+            } else if (IsDirectory) {
+                
+            } else if (IsFile) {
+                
+            }
+            throw new NotImplementedException();
+        }
+
+        public override ILocation Move(ILocation newLocation) {
+            throw new NotImplementedException();
+        }
     }
 }

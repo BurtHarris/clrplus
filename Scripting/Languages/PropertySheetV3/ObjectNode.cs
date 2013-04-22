@@ -69,7 +69,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 });
         }
 
-        protected ObjectNode(PropertySheet root) : this() {
+        protected ObjectNode(RootPropertySheet root) : this() {
             // this is for imported sheets that share the same root.
             Parent = root;
             Selector = Selector.Empty;
@@ -81,26 +81,17 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         public Selector Selector {get; private set;}
-        public virtual PropertySheet Root { get {
-            return Parent == null ? this as PropertySheet : Parent.Root;
+        public virtual RootPropertySheet Root { get {
+            return Parent == null ? this as RootPropertySheet : Parent.Root;
         }}
         public ObjectNode Parent {get; internal set;}
        
         public virtual View CurrentView {
             get {
                 if (Parent == null) {
-                    return Root._view.GetChild(Selector);
+                    return Root.CurrentView.GetChild(Selector);
                 }
                 return Parent.CurrentView.GetChild(Selector);
-            }
-        }
-
-        protected string FullPath {
-            get {
-                if (Parent != null) {
-                    return Parent.FullPath + "//" + Selector;
-                }
-                return Selector.ToString();
             }
         }
 
@@ -124,20 +115,18 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return CurrentView.ResolveMacrosInContext(value, items);
         }
 
-      
-        public void SaveFile(string filename) {
-            var text = GetPropertySheetSource();
-            File.WriteAllText(filename, text);
+        internal void SetNodeValue(IValue value) {
+            
         }
-
-        public string GetPropertySheetSource() {
-            return "";
-        }
-
+        
         internal IEnumerable<ToRoute> Routes {
             get {
                 return Keys.Select(key => (ToRoute)(() => new View(key, this[key])));
             }
+        }
+
+        public IEnumerable<string> GetSourceText(int indent) {
+            yield return "";
         }
     }
 }

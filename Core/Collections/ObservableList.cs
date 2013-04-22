@@ -75,20 +75,20 @@ namespace ClrPlus.Core.Collections {
                 ListCleared(this, e);
         }
 
-        public int IndexOf(T item) {
+        public virtual int IndexOf(T item) {
             return internalList.IndexOf(item);
         }
 
-        public void Insert(int index, T item) {
+        public virtual void Insert(int index, T item) {
             internalList.Insert(index, item);
             OnListChanged(new ListChangedEventArgs(index, item));
         }
 
-        public void Remove(object value) {
+        public virtual void Remove(object value) {
             Remove((T)value);
         }
 
-        public void RemoveAt(int index) {
+        public virtual void RemoveAt(int index) {
             T item = internalList[index];
             internalList.Remove(item);
             OnListChanged(new ListChangedEventArgs(index, item));
@@ -104,7 +104,7 @@ namespace ClrPlus.Core.Collections {
             }
         }
 
-        public T this[int index] {
+        public virtual T this[int index] {
             get { return internalList[index]; }
             set {
                 internalList[index] = value;
@@ -112,75 +112,75 @@ namespace ClrPlus.Core.Collections {
             }
         }
 
-        public void Add(T item) {
+        public virtual void Add(T item) {
             internalList.Add(item);
             OnListChanged(new ListChangedEventArgs(internalList.IndexOf(item), item));
             OnItemAdded(new ListChangedEventArgs(internalList.IndexOf(item), item));
         }
 
-        public int Add(object value) {
+        public virtual int Add(object value) {
             var result = ((IList)internalList).Add(value);
             OnListChanged(new ListChangedEventArgs(result,(T) value));
             OnItemAdded(new ListChangedEventArgs(result, (T)value));
             return result;
         }
 
-        public bool Contains(object value) {
+        public virtual bool Contains(object value) {
             return ((IList)internalList).Contains(value);
         }
 
-        public void Clear() {
+        public virtual void Clear() {
             internalList.Clear();
             OnListCleared(new EventArgs());
         }
 
-        public int IndexOf(object value) {
+        public virtual int IndexOf(object value) {
             return ((IList)internalList).IndexOf(value);
         }
 
-        public void Insert(int index, object value) {
+        public virtual void Insert(int index, object value) {
             Insert(index, (T)value);
         }
 
-        public bool Contains(T item) {
+        public virtual bool Contains(T item) {
             return internalList.Contains(item);
         }
 
-        public void CopyTo(T[] array, int arrayIndex) {
+        public virtual void CopyTo(T[] array, int arrayIndex) {
             internalList.CopyTo(array, arrayIndex);
         }
 
-        public void CopyTo(Array array, int index) {
+        public virtual void CopyTo(Array array, int index) {
             ((IList)internalList).CopyTo(array, index);
         }
 
-        public int Count {
+        public virtual int Count {
             get { return internalList.Count; }
         }
 
-        public object SyncRoot {
+        public virtual object SyncRoot {
             get {
                 return ((IList)internalList).SyncRoot;
             }
         }
 
-        public bool IsSynchronized {
+        public virtual bool IsSynchronized {
             get {
                 return ((IList)internalList).IsSynchronized;
             }
         }
 
-        public bool IsReadOnly {
+        public virtual bool IsReadOnly {
             get { return IsReadOnly; }
         }
 
-        public bool IsFixedSize {
+        public virtual bool IsFixedSize {
             get {
                 return ((IList)internalList).IsFixedSize;
             }
         }
 
-        public bool Remove(T item) {
+        public virtual bool Remove(T item) {
             lock(this) {
                 int index = internalList.IndexOf(item);
                 if(internalList.Remove(item)) {
@@ -193,7 +193,7 @@ namespace ClrPlus.Core.Collections {
             }
         }
 
-        public IEnumerator<T> GetEnumerator() {
+        public virtual IEnumerator<T> GetEnumerator() {
             return internalList.GetEnumerator();
         }
 

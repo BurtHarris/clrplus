@@ -13,6 +13,7 @@
 namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     using System.Collections.Generic;
     using System.Linq;
+    using Languages.PropertySheet;
 
     public class Collection :List<IValue>, IValue {
         public IValueContext Context { get; set; }
@@ -39,33 +40,43 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             return this;
         }
 
-        public IEnumerable<string> Values { get {
+        public IEnumerable<string> GetValues(IValueContext currentContext) {
             if (Count == 0) {
                 return new [] {string.Empty};
             }
-            
-            return this.Select(each => Context.ResolveMacrosInContext(each.Value, null));
-        }}
 
-        public string Value {
-            get {
+            return this.Select(each => (currentContext??Context).ResolveMacrosInContext(each.GetValue(currentContext ?? Context), null));
+        }
+
+        public string GetValue(IValueContext currentContext) {
+            
                 switch(Count) {
                     case 0:
                         return string.Empty;
 
                     case 1:
-                        return this[0].Value;
+                        return this[0].GetValue(currentContext??Context);
                 }
-                return this.Aggregate("", (current, each) => current + ", " + each.Value).Trim(',', ' ');
-            }
+                return this.Aggregate("", (current, each) => current + ", " + each.GetValue(currentContext??Context)).Trim(',', ' ');
+            
         }
 
         public static implicit operator string(Collection rvalue) {
-            return rvalue.Value;
+            return rvalue.GetValue(rvalue.Context);
         }
 
         public static implicit operator string[](Collection rvalue) {
-            return rvalue.Values.ToArray();
+            return rvalue.GetValues(rvalue.Context).ToArray();
         }
+
+        public IEnumerable<string> SourceText {
+            get {
+                yield return "";
+            }
+        }
+
+        public IEnumerable<SourceLocation> SourceLocations { get {
+            return this.SelectMany(each => each.SourceLocations);
+        } }
     }
 }

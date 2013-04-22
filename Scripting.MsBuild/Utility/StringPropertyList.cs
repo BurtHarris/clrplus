@@ -10,11 +10,10 @@
 // </license>
 //-----------------------------------------------------------------------
 
-namespace ClrPlus.Scripting.MsBuild {
+namespace ClrPlus.Scripting.MsBuild.Utility {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
-    using Core.Collections;
+    using ClrPlus.Core.Collections;
 
     public class StringPropertyList : ObservableList<string> {
         public StringPropertyList(Func<string> getter, Action<string> setter) {
@@ -32,17 +31,4 @@ namespace ClrPlus.Scripting.MsBuild {
              ItemAdded += (source, args) => onAdded(args.item);
          }
     }
-
-    public class CustomPropertyList : ObservableList<string> {
-        public CustomPropertyList (Action<CustomPropertyList> onChanged,  Func<IEnumerable<string>> initialItems = null ) {
-            if (initialItems != null) {
-                foreach (var i in initialItems()) {
-                    Add(i);
-                }
-            }
-            ListChanged += (source, args) => onChanged(this);
-        }
-    }
-
-   
 }

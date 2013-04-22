@@ -754,21 +754,18 @@ namespace ClrPlus.Powershell.Provider.Base {
         ///     this provider is working upon.
         /// </remarks>
         protected override void NewItem(string path, string type, object newItemValue) {
-#if TRACE_NOT_FINISHED
-            Console.WriteLine("==NewItem==");
-#endif
-            // Create the new item here after
-            // performing necessary validations
-            //
-            // WriteItemObject(newItemValue, path, false);
+            
+            var location = GetLocation(path);
+            if (!location.Exists) {
+                var item = location.NewItem(type, newItemValue);
 
-            // Example 
-            //
-            // if (ShouldProcess(path, "new item"))
-            // {
-            //      // Create a new item and then call WriteObject
-            //      WriteObject(newItemValue, path, false);
-            // }
+                WriteItemObject(item, path, item.IsFileContainer);
+                return;
+
+            } 
+                
+            WriteItemObject(location,path,location.IsFileContainer);
+
         }
 
         // NewItem
@@ -874,9 +871,6 @@ namespace ClrPlus.Powershell.Provider.Base {
         ///     true when null or String.Empty is passed.
         /// </remarks>
         protected override bool HasChildItems(string path) {
-#if TRACE_FINISHED
-            Console.WriteLine("==HasChildItems==");
-#endif
             var location = GetLocation(path);
             if (location.Exists) {
                 return location.GetFiles(false).Union(location.GetDirectories(false)).Any();
@@ -922,18 +916,14 @@ namespace ClrPlus.Powershell.Provider.Base {
 #if TRACE_NOT_FINISHED
             Console.WriteLine("==CopyItem==");
 #endif
-            // Code for Copying item after performing necessary 
-            // validations here
-            //
-            // WriteItemObject(item, path, true);
+            var location = GetLocation(path);
+            if (location.Exists) {
+                var dest = GetLocation(copyPath);
+                foreach (var i in location.Copy(dest, recurse)) {
+                    WriteItemObject(i, path, i.IsFileContainer);
+                }
+            }
 
-            // Example 
-            //
-            // if (ShouldProcess(path, "copy"))
-            // {
-            //      // Delete the item and call WriteItemObject
-            //      WriteItemObject(item, path, true);
-            // }
         }
 
         // CopyItem

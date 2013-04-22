@@ -61,8 +61,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
     public delegate IDictionary<TKey, TVal> DictionaryRoute<TKey, TVal>();
 
-    public delegate object ChildRoute<TParent>(TParent parent, View childView);
-    internal delegate object ChildRouteDelegate<TParent>(Value<TParent> parent, View childView);
+    public delegate object IndexedChildRoute<TParent>(TParent parent, View childView);
+    internal delegate object IndexedChildRouteDelegate<TParent>(Value<TParent> parent, View childView);
 
 
 }

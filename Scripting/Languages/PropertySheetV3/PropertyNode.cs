@@ -27,50 +27,48 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         private readonly Lazy<IDictionary<string, IValue>> _metadata = new Lazy<IDictionary<string, IValue>>(() => new XDictionary<string, IValue>());
-        internal Action<ICanSetBackingValue> SetResult;
-        internal Action<ICanSetBackingValues> SetResults;
+        internal Action<ICanSetBackingValue,IValueContext> SetResult;
+        internal Action<ICanSetBackingValues,IValueContext> SetResults;
 
         private Result _value;
 
         public PropertyNode() {
-            SetResult = (i) => {
-                setResult(i);
-                SetResult = (x) => {};
+            SetResult = (i,vc) => {
+                setResult(i,vc);
+                SetResult = (x,v) => {};
             };
-            SetResults = (i) => {
-                setResults(i);
-                SetResults = (x) => {};
+            SetResults = (i,vc) => {
+                setResults(i,vc);
+                SetResults = (x,v) => {};
             };
         }
 
-        internal string Value {
-            get {
-                if (_value == null) {
-                    _value = new Result();
-                    setResult(_value);
-                }
-
-                switch (_value.Count) {
-                    case 0:
-                        return string.Empty;
-
-                    case 1:
-                        return _value.First();
-
-                    default:
-                        return _value.Aggregate("", (current, each) => current + ", " + each).Trim(',', ' ');
-                }
+        internal string GetValue(IValueContext currentContext) {
+            
+            if (_value == null) {
+                _value = new Result();
+                setResult(_value,currentContext);
             }
+
+            switch (_value.Count) {
+                case 0:
+                    return string.Empty;
+
+                case 1:
+                    return _value.First();
+
+                default:
+                    return _value.Aggregate("", (current, each) => current + ", " + each).Trim(',', ' ');
+            }
+            
         }
 
-        internal IEnumerable<string> Values {
-            get {
-                if (_value == null) {
-                    _value = new Result();
-                    setResults(_value);
-                }
-                return _value;
+        internal IEnumerable<string> GetValues(IValueContext currentContext) {
+            if (_value == null) {
+                _value = new Result();
+                setResults(_value,currentContext);
             }
+            return _value;
         }
 
         public Lazy<IDictionary<string, IValue>> Metadata {
@@ -79,21 +77,27 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
-        private void setResult(ICanSetBackingValue targetObject) {
+        private void setResult(ICanSetBackingValue targetObject,IValueContext context) {
             if (Count > 0) {
                 foreach (var op in this) {
                     switch (op.Operation) {
                         case Operation.AddToCollection:
-                            targetObject.AddValue(op.Value.Value);
+                            if (op.Value is Scalar) {
+                                targetObject.AddValue(op.Value.GetValue(context));
+                            } else {
+                                foreach (var i in op.Value.GetValues(context)) {
+                                    targetObject.AddValue(i);
+                                }
+                            }
                             break;
 
                         case Operation.Assignment:
-                            targetObject.SetValue(op.Value.Value);
+                            targetObject.SetValue(op.Value.GetValue(context));
                             break;
 
                         case Operation.CollectionAssignment:
                             targetObject.Reset();
-                            foreach (var i in op.Value.Values) {
+                            foreach (var i in op.Value.GetValues(context)) {
                                 targetObject.AddValue(i);
                             }
 
@@ -103,18 +107,25 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
-        private void setResults(ICanSetBackingValues targetObject) {
+        private void setResults(ICanSetBackingValues targetObject,IValueContext context) {
             if (Count > 0) {
                 foreach (var op in this) {
                     switch (op.Operation) {
                         case Operation.AddToCollection:
-                            targetObject.AddValue(op.Value.Value);
+                            if(op.Value is Scalar) {
+                                targetObject.AddValue(op.Value.GetValue(context));
+                            }
+                            else {
+                                foreach(var i in op.Value.GetValues(context)) {
+                                    targetObject.AddValue(i);
+                                }
+                            }
                             break;
 
                         case Operation.Assignment:
                         case Operation.CollectionAssignment:
                             targetObject.Reset();
-                            foreach (var i in op.Value.Values) {
+                            foreach (var i in op.Value.GetValues(context)) {
                                 targetObject.AddValue(i);
                             }
                             break;
@@ -162,6 +173,39 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 Reset();
                 Add(value);
             }
+        }
+
+        public IEnumerable<string> GetSourceText(int indent) {
+            /*
+            if (_metadata.IsValueCreated) {
+                // write metadata out.
+                var categories = (_metadata.Value.Keys.Select(key => new {
+                    key,
+                    dot = key.IndexOf('.')
+                }).Where(each => each.dot >= 0).Select(each => each.key.Substring(each.dot))).Distinct().ToCacheEnumerable();
+
+                foreach (var c in categories) {
+                    var category = c;
+                    var l = category.Length;
+
+                    yield return 
+                    
+                    var items = _metadata.Value.Keys.Where(each => each.StartsWith(category)).Select(each => new {
+                        key = each.Substring(l + 1),
+                        value = _metadata.Value[each].SourceText.Aggregate((e, cur) => e + cur)
+                    });
+
+                }
+
+                foreach (var m in _metadata.Value.Keys) {
+                    var i = m.IndexOf('.');
+                    if (i < 0) {
+                        yield
+                    }
+                }
+            }
+            */
+            yield return "";
         }
     }
 }

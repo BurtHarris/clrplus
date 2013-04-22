@@ -21,6 +21,7 @@
 
 namespace ClrPlus.Core.Extensions {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.Linq;
@@ -314,5 +315,24 @@ namespace ClrPlus.Core.Extensions {
         public static Dictionary<T1, T2> ToDictionary<T1, T2>(this IEnumerable<KeyValuePair<T1, T2>> input) {
             return input.ToDictionary(kv => kv.Key, kv => kv.Value);
         }
+
+        public static void ForEach<T>(this IEnumerable<T> source, Action<T> action) {
+            foreach(var item in source)
+                action(item);
+        }
+
+        public static void Dispose(this IEnumerable<IDisposable> disposables) {
+            foreach(var item in disposables) {
+                item.Dispose();
+            }
+        }
+
+        public static void Dispose(this IDictionary dictionary) {
+            foreach(var item in dictionary.Values.Cast<IDisposable>()) {
+                item.Dispose();
+            }
+            dictionary.Clear();
+        }
+
     }
 }

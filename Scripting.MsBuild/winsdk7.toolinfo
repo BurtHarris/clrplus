@@ -1,0 +1,34 @@
+﻿[SDK & (x86|x64)]
+toolinfo[winsdk71] {
+	
+	// discovery
+	Discover  <-- c#:  
+		var tool = ToolCache.Lookup( "WinSDK71" ); // implicity validates that any files/keys still exist.
+		if( tool == null ) {
+			var setenv = Tools.StandardPaths.Find("setenv.cmd")
+				.FirstOrDefault( each => each.Path.HasDirectory("v7.1") && each.Path.HasDirectory("Microsoft SDKs") );
+			if( setenv == null ) {
+				return null;
+			}
+			tool = ToolCache.Save("WinSDK71")
+				.Add( "SetEnv" , setenv ); // add in the file data that we're looking for.
+		}
+		return tool; // the tool object will have all the properties we need?
+	-->;
+	
+	obj <-- c#:  
+	
+	-->;
+	
+	Environment {
+		SDKVER=7.1;
+	}
+	
+	[x64] {
+		Environment <! cmd: ${SetEnv} ${condition} & set !>;
+	}
+	
+	[x86] {
+		Environment <! cmd: ${SetEnv} ${condition} & set !>;
+	}
+}

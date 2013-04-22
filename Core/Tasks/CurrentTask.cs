@@ -12,31 +12,91 @@
 
 namespace ClrPlus.Core.Tasks {
     using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using Extensions;
 
-    public static class CurrentTask {
-        public class TaskBoundEvents {
-            public static TaskBoundEvents Instance = new TaskBoundEvents();
+    public delegate bool Warning(string messageCode, string message, params object[] args);
+    public delegate bool Message(string messageCode, string message, params object[] args);
+    public delegate bool Error(string messageCode, string message, params object[] args);
+    public delegate bool Debug(string messageCode, string message, params object[] args);
+    public delegate bool Trace(string messageCode, string message, params object[] args);
+    public delegate bool Progress(string messageCode, int progress, string message, params object[] args);
 
-            private TaskBoundEvents() {
-            }
+    public class EventSource {
+        public static EventSource Instance = new EventSource();
+        protected internal EventSource() {
+        }
 
-            /// <summary>
-            ///     Adds an event handler delegate to the current tasktask
-            /// </summary>
-            /// <param name="taskBoundEvents"> </param>
-            /// <param name="eventHandlerDelegate"> </param>
-            /// <returns> </returns>
-            public static TaskBoundEvents operator +(TaskBoundEvents taskBoundEvents, Delegate eventHandlerDelegate) {
-                XTask.CurrentExecutingTask.AddEventHandler(eventHandlerDelegate);
-                return Instance;
-            }
+        /// <summary>
+        ///     Adds an event handler delegate to the current tasktask
+        /// </summary>
+        /// <param name="eventSource"> </param>
+        /// <param name="eventHandlerDelegate"> </param>
+        /// <returns> </returns>
+        public static EventSource operator +(EventSource eventSource, Delegate eventHandlerDelegate) {
+            XTask.CurrentExecutingTask.AddEventHandler(eventHandlerDelegate);
+            return eventSource;
+        }
 
-            public static TaskBoundEvents operator -(TaskBoundEvents taskBoundEvents, Delegate eventHandlerDelegate) {
-                XTask.CurrentExecutingTask.RemoveEventHandler(eventHandlerDelegate);
-                return Instance;
+        public static EventSource operator -(EventSource eventSource, Delegate eventHandlerDelegate) {
+            XTask.CurrentExecutingTask.RemoveEventHandler(eventHandlerDelegate);
+            return eventSource;
+        }
+    }
+
+    public class LocalEventSource : EventSource, IDisposable {
+        protected internal List<Delegate> Delegates = new List<Delegate>();
+        protected internal LocalEventSource() {
+        }
+        public static LocalEventSource operator +(LocalEventSource eventSource, Delegate eventHandlerDelegate) {
+            XTask.CurrentExecutingTask.AddEventHandler(eventHandlerDelegate);
+            eventSource.Delegates.Add(eventHandlerDelegate);
+            return eventSource;
+        }
+
+        public static LocalEventSource operator -(LocalEventSource eventSource, Delegate eventHandlerDelegate) {
+            XTask.CurrentExecutingTask.RemoveEventHandler(eventHandlerDelegate);
+            eventSource.Delegates.Remove(eventHandlerDelegate);
+            return eventSource;
+        }
+
+        public void Dispose() {
+            if (Delegates != null) {
+                foreach (var i in Delegates) {
+                    XTask.CurrentExecutingTask.RemoveEventHandler(i);
+                }
+                Delegates = null;
+                GC.SuppressFinalize(this);
+
+                // encourage a bit of cleanup
+                Task.Factory.StartNew(XTask.Collect);
             }
         }
 
-        public static TaskBoundEvents Events = TaskBoundEvents.Instance;
+        ~LocalEventSource() {
+            if(!Delegates.IsNullOrEmpty()) {
+                Dispose();
+            }
+        }
+
+        public LocalEventSource Events {
+            get {
+                return this;
+            }
+            set {
+                return;
+            }
+        }
+    }
+
+    public static class CurrentTask {
+        public static LocalEventSource Local {
+            get {
+                return new LocalEventSource();
+            }
+        }
+
+        public static EventSource Events = EventSource.Instance;
     }
 }

@@ -364,6 +364,54 @@ namespace ClrPlus.Core.Extensions {
         }
 
         /// <summary>
+        ///     Determines whether the specified text equal to some value indicated on/true/enabled (ignoring case).
+        /// </summary>
+        /// <param name="text"> The text. </param>
+        /// <returns>
+        ///     <c>true</c> if the specified text is true; otherwise, <c>false</c> .
+        /// </returns>
+        /// <remarks>
+        /// </remarks>
+        public static bool IsPositive(this string text) {
+            switch ((text ?? "").ToLower()) {
+                case "true":
+                case "yes":
+                case "y":
+                case "1":
+                case "enabled":
+                case "on":
+                case "positive":
+                    
+                    return true;
+            } ;
+            return false;
+        }
+
+        /// <summary>
+        ///     Determines whether the specified text is equal to some value indicated negative/off/false/no (ignoring case).
+        /// </summary>
+        /// <param name="text"> The text. </param>
+        /// <returns>
+        ///     <c>true</c> if the specified text is false; otherwise, <c>false</c> .
+        /// </returns>
+        /// <remarks>
+        /// </remarks>
+        public static bool IsNegative(this string text) {
+            switch((text ?? "").ToLower()) {
+                case "false":
+                case "no":
+                case "n":
+                case "0":
+                case "disabled":
+                case "off":
+                case "negative":
+                    return true;
+            };
+            return false;
+        }
+
+
+        /// <summary>
         ///     Determines whether the specified text is a boolean (true or false).
         /// </summary>
         /// <param name="text"> The text. </param>
@@ -924,5 +972,19 @@ namespace ClrPlus.Core.Extensions {
             return !(string.IsNullOrEmpty(text) || (text.IndexOfAny(CRLF) == -1));
         }
 
+        public static bool Contains(this string text, params char[] chs) {
+            if (string.IsNullOrEmpty(text)) {
+                return false;
+            }
+            return text.IndexOfAny(chs) > -1;
+        }
+
+        public static string WhenNullOrEmpty(this string original, string whenEmpty) {
+            return string.IsNullOrEmpty(original) ? whenEmpty : original;
+        }
+
+        public static bool Is(this string str) {
+            return !string.IsNullOrEmpty(str);
+        }
     }
 }
