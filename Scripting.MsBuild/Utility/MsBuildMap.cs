@@ -169,15 +169,10 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
             // return the item.
             return null;
         }
-       
-
-     
 
         internal static ProjectItemDefinitionElement LookupItemDefinitionElement(this ProjectItemDefinitionGroupElement pidge, string itemType) {
             return pidge.Children.OfType<ProjectItemDefinitionElement>().FirstOrDefault( each => each.ItemType == itemType) ?? pidge.AddItemDefinition(itemType);
         }
-
-      
 
         internal static StringPropertyList LookupMetadataList(this ProjectItemDefinitionElement pide, string metadataName, string defaultValue = null) {
             foreach (var m in pide.Metadata.Where(metadata => metadata.Name == metadataName)) {

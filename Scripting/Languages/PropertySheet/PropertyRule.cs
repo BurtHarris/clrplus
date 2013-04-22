@@ -40,7 +40,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         public abstract bool HasValues {get;}
         public abstract bool HasValue {get;}
         public abstract IPropertyValue this[string label] {get;}
-        internal abstract PropertyValue GetPropertyValue(string label, IEnumerable<string> collections = null);
+        public abstract PropertyValue GetPropertyValue(string label, IEnumerable<string> collections = null);
     }
 
     public class StandardPropertyRule : PropertyRule {
@@ -135,7 +135,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         /// <param name="label"> </param>
         /// <param name="collections"> </param>
         /// <returns> </returns>
-        internal override PropertyValue GetPropertyValue(string label, IEnumerable<string> collections = null) {
+        public override PropertyValue GetPropertyValue(string label, IEnumerable<string> collections = null) {
             var result = _propertyValues.FirstOrDefault(each => each.Label == label);
             if (result == null) {
                 _propertyValues.Add(result = new PropertyValue(this, label, collections.IsNullOrEmpty() ? null : collections));

@@ -16,7 +16,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     using System.IO;
     using System.Linq;
     using Core.Collections;
+    using Core.Exceptions;
     using Core.Extensions;
+    using Core.Tasks;
     using Languages.PropertySheet;
     using RValue;
     using Utility;
@@ -183,8 +185,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             return t;
         }
 
-        protected ParseException Fail(ErrorCode code, string format) {
-            return new ParseException(Token, Filename, code, format, Data);
+        protected Exception Fail(ErrorCode code, string format) {
+            Event<SourceError>.Raise(code.ToString(), new SourceLocation(Token, Filename).SingleItemAsEnumerable(), format, Data);
+            return new ClrPlusException("Fatal Error.");
         }
 
         /// <exception cref="ParseException">Collections must be nested in an object -- expected one of '.' , '#', '@alias' or identifier</exception>

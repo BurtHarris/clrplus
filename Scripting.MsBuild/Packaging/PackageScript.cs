@@ -85,10 +85,6 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             _nugetPackages = null;
         }
 
-       // private string GetMetadataValue(string mdName) {
-//            return _sheet.CurrentView.GetMetadataValue(mdName);
-        // }
-
         private string NormalizeOuptutKey(string key) {
             if (string.IsNullOrEmpty(key)) {
                 return "default";
@@ -151,11 +147,17 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 "condition".MapTo(conditions, key => Pivots.GetExpressionFilepath(_nuspec.id, key)),
                 "*".MapTo(conditions, key => Pivots.GetExpressionFilepath(_nuspec.id, key))
             }));
+            var conditionFolderMacroHander = (GetMacroValueDelegate)((macro, context) => {
+                if (macro == "conditionFolder") {
+                    return Pivots.GetExpressionFilepath(_nuspec.id, ((View)context).GetMacroValue("ElementId"));
+                }
+                return null;
+            });
+            _nuget.props.AddMacro(conditionFolderMacroHander);
+            _nuget.targets.AddMacro(conditionFolderMacroHander);
 
-            if (_nuget.props != null) {
-                nugetView.AddChildRoute("props".MapTo(() => GetPropsProject("default") /*, GetPropsProject("default").ProjectRoutes() */));
-            }
-
+            nugetView.AddChildRoute("props".MapTo(() => GetPropsProject("default") /*, GetPropsProject("default").ProjectRoutes() */));
+            
             // always need a targets
             nugetView.AddChildRoute("targets".MapTo(() => GetTargetsProject("default")/*, GetTargetsProject("default").ProjectRoutes() */));
             // other variants/frameworks
@@ -324,7 +326,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     var fileset = mask.FindFilesSmarterComplex(srcFilesRoot).GetMinimalPathsToDictionary();
 
                     if (!fileset.Any()) {
-                        Console.WriteLine("WARNING: file selection '{0}' failed to find any files ", mask);
+                        Event<Warning>.Raise("ProcessNugetFiles","WARNING: file selection '{0}' failed to find any files ", mask);
                         continue;
                     }
                     foreach (var key in fileset.Keys) {
@@ -355,7 +357,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 if (addFolder != null) {
                     var folderView = filesView.GetProperty(addFolder.Replace("${condition}", currentCondition));
                     if (folderView != null) {
-                        folderView.Values = folderView.Values.ConcatSingleItem((filesView.GetMacroValue("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
+                        var values = folderView.Values.ToList();
+                        values.Add((filesView.GetMacroValue("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
+                        folderView.Values = values;
                     }
                 }
 
@@ -364,13 +368,16 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         continue;
                     }
 
+                    Event<Trace>.Raise("ProcessNugetFiles (adding file)", "'{0}' + '{1}'",destinationFolder,relativePaths[src] );
                     string target = Path.Combine(destinationFolder, optionFlatten ? Path.GetFileName(relativePaths[src]) : relativePaths[src]).Replace("${condition}", currentCondition).Replace("\\\\", "\\");
                     package.AddFile( src, target);
 
                     if(addEachFile != null) {
                         var fileListView = filesView.GetProperty(addEachFile.Replace("${condition}", currentCondition));
                         if(fileListView != null) {
-                            fileListView.Values = fileListView.Values.ConcatSingleItem((filesView.GetMacroValue("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
+                            var values = fileListView.Values.ToList();
+                            values.Add((filesView.GetMacroValue("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
+                            fileListView.Values = values;
                         }
                     }
                 }

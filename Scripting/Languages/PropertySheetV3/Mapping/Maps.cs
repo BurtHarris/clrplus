@@ -81,7 +81,7 @@
                     _memberName = value;
                 }
             }
-
+#if DEBUG
             internal string Identity {
                 get {
                     var p = ParentView;
@@ -96,9 +96,10 @@
                         }
                         return name + this.GetType().Name + "-???";
                     }
-                    return name+_memberName;
+                    return name+_memberName+"({0})".format(_thisView.OID);
                 }
             }
+#endif 
 
             protected Value _parentReferenceValue;
 
@@ -110,8 +111,11 @@
 
                 MemberName = memberName;
 
-                if (childRoutes != null && childRoutes.Any()) {
-                    Initializers = new Queue<ToRoute>(childRoutes);
+                if (childRoutes != null ) {
+                    var cr = childRoutes.ToArray();
+                    if (cr.Length > 0) {
+                        Initializers = new Queue<ToRoute>(cr);
+                    }
                 }
             }
 
@@ -128,8 +132,10 @@
                     if (_childItems == null) {
                         throw new ClrPlusException("Element '{0}' does not exist in map".format(key));
                     }
+                    
                     var result = _childItems[key];
-                    if (result._map is IReplaceable && _thisView.FallbackRoute != null) {
+
+                    if (result._map is IReplaceable && _thisView != null && _thisView.FallbackRoute != null) {
                         // if the map is replaceable, and we have a fallback route, let's apply that.
                         var view = _thisView.FallbackRoute();
                         view._map.MemberName = key;
@@ -149,7 +155,7 @@
                     if (_childItems == null) {
                         return new View[0];
                     }
-                    return ChildItems.Values;
+                    return ChildItems.Keys.Select(each => this[each]).ToArray();
                 }
             }
 
@@ -191,7 +197,7 @@
 
             internal virtual void CopyToModel() {
                 if (_childItems != null) {
-                    foreach (var i in _childItems.Values) {
+                    foreach (var i in Values) {
                         if (i._map.Active) {
                             i.CopyToModel();
                         }
@@ -206,6 +212,7 @@
             }
 
             internal virtual Map OnAccess(View thisView) {
+                _thisView = thisView;
                 if (Initializers != null) {
                     lock (this) {
                         while (Initializers.Count > 0) {
@@ -216,7 +223,7 @@
                             if (childView != null) {
                                 if(childView.MemberName == "") {
                                     // this is a fallback map, used to match anything.
-                                    thisView.FallbackRoute = childRoute;
+                                   thisView.FallbackRoute = childRoute;
                                     continue;
                                 }
 
@@ -284,6 +291,7 @@
 
                 // ensure this child's parent is set correctly.
                 childView.ParentView = thisView;
+                //_thisView = thisView;
 
                 if (!ChildItems.Keys.Contains(name)) {
                     // we're first -- add it to the view, and get out.
@@ -314,6 +322,8 @@
 
                 // if the child view map is replaceable, then simply steal it's child routes 
                 if (childView._map is IReplaceable) {
+                    currentView.FallbackRoute = currentView.FallbackRoute ?? childView.FallbackRoute;
+
                     currentView._map.Active = childView._map.Active || currentView._map.Active;
                     currentView._map.AddChildRoutes(childView._map.Initializers);
                     currentView._map.GetMacroValue += childView._map.GetMacroValue;
@@ -322,7 +332,9 @@
 
                 // if this current view map is replaceable, then let's go the other way.
                 if (currentView._map is IReplaceable) {
-                    
+                    childView._map._thisView = currentView._map._thisView;
+                    currentView.FallbackRoute = currentView.FallbackRoute ?? childView.FallbackRoute;
+
                     childView._map.Active = childView._map.Active || currentView._map.Active;
                     currentView._map.AddChildRoutes(childView._map.Initializers);
                     childView._map.Initializers = currentView._map.Initializers;
@@ -350,7 +362,11 @@
                 }
 
                 // if neither is replaceable, then we're in a kind of pickle.
+#if DEBUG
                 throw new ClrPlusException("Neither map is replaceable [{0}] vs [{1}]".format( currentView._map.Identity , childView._map.MemberName ));
+#else 
+                throw new ClrPlusException("Neither map is replaceable [{0}] vs [{1}]".format(currentView._map.MemberName, childView._map.MemberName));
+#endif
             }
         }
 
@@ -360,11 +376,7 @@
 
             }
 
-            internal override Map OnAccess(View thisView) {
-                // if this gets accessed, then we should give the parent's FallbackAccessor 
-                // an opportunity to get/set the value
-                return base.OnAccess(thisView);
-            }
+           
         }
 
         protected class IndexedChildMap<TParent> : ReplaceableMap {
@@ -406,21 +418,21 @@
         }
 
         protected class DictionaryMap<TParent, TKey, TVal> : Map, IElements, IHasValueFromBackingStorage  {
-            private DictionaryDelegate<TParent, TKey, TVal> _route;
+            private DictionaryDelegateWithView<TParent, TKey, TVal> _route;
             private List<ToRoute> _childInitializers = new List<ToRoute>();
             public CacheEnumerable<ToRoute> childInitializers;
             private readonly Func<string, string> _keyExchanger;
 
             private IDictionary<TKey, TVal> Dictionary { get {
-                return _route(() => (TParent)_parentReferenceValue());
+                return _route(() => (TParent)_parentReferenceValue(),_thisView);
             }}
 
-            internal DictionaryMap(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
+            internal DictionaryMap(string memberName, DictionaryDelegateWithView<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
                 : this(memberName, route,x => x, childRoutes) {
                 _route = route;
             }
 
-            internal DictionaryMap(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string,string> keyExchanger, IEnumerable<ToRoute> childRoutes)
+            internal DictionaryMap(string memberName, DictionaryDelegateWithView<TParent, TKey, TVal> route, Func<string,string> keyExchanger, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
                 _route = route;
                 _keyExchanger = keyExchanger;
@@ -541,7 +553,7 @@
 
                         // if (Dictionary.ContainsKey(_key)) {
                             var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
-                            var childMap = new ValueMap<object>(key, (p) => accessor, null);
+                            var childMap = new ValueMap<object>(key, (p,v) => accessor, null);
 
                             childMap.GetMacroValue += (name, context) => {
                                 return name == "ElementId" || name == MemberName ? key : null;
@@ -600,7 +612,7 @@
 
                     var accessor = new Accessor(() => Dictionary[_key], v => Dictionary[_key] = (TVal)v);
 
-                    var childMap = new ValueMap<object>(_key.ToString(), (p) => accessor, item.Initializers);
+                    var childMap = new ValueMap<object>(_key.ToString(), (p,v) => accessor, item.Initializers);
 
 
                     childMap.GetMacroValue += (name, context) => {
@@ -628,16 +640,16 @@
         }
 
         protected class EnumerableMap<TParent> : Map, IHasValueFromBackingStorage, IPrefersMultipleValues {
-            private EnumerableDelegate<TParent> _route;
+            private EnumerableDelegateWithView<TParent> _route;
 
-            internal EnumerableMap(string memberName, EnumerableDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+            internal EnumerableMap(string memberName, EnumerableDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
                 _route = route;
             }
 
             protected internal override object ComputedValue {
                 get {
-                    return _route(() => (TParent)_parentReferenceValue());
+                    return _route(() => (TParent)_parentReferenceValue(),_thisView);
                 }
             }
 
@@ -663,16 +675,16 @@
         }
 
         protected class ListMap<TParent> : Map, ICanSetBackingValues, IHasValueFromBackingStorage, IPrefersMultipleValues {
-            private ListDelegate<TParent> _route;
+            private ListDelegateWithView<TParent> _route;
 
-            internal ListMap(string memberName, ListDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+            internal ListMap(string memberName, ListDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
                 _route = route;
             }
 
             protected internal override object ComputedValue {
                 get {
-                    return _route(() => (TParent)_parentReferenceValue());
+                    return _route(() => (TParent)_parentReferenceValue(),_thisView);
                 }
             }
 
@@ -743,9 +755,9 @@
         }
 
         protected class ObjectMap<TParent> : Map, IHasValueFromBackingStorage, IPrefersComputedValue  {
-            private RouteDelegate<TParent> _route;
+            private RouteDelegateWithView<TParent> _route;
 
-            internal ObjectMap(string memberName, RouteDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+            internal ObjectMap(string memberName, RouteDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
 
                 // when this map is activated, add our children to it.
@@ -759,7 +771,7 @@
 
             protected internal override object ComputedValue {
                 get {
-                    return _route(  () => (TParent)_parentReferenceValue());
+                    return _route(() => (TParent)_parentReferenceValue(), _thisView);
                 }
             }
 
@@ -884,20 +896,20 @@
         }
 
         protected class ValueMap<TParent> : Map, ICanSetBackingValue, IHasValueFromBackingStorage, IPrefersSingleValue {
-            private ValueDelegate<TParent> _route;
+            private ValueDelegateWithView<TParent> _route;
 
             internal bool RoutesMatch(ValueMap<TParent> otherMap ) {
                 return (otherMap._route == _route);
             }
 
-            internal ValueMap(string memberName, ValueDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+            internal ValueMap(string memberName, ValueDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
                 _route = route;
             }
 
             protected internal override object ComputedValue {
                 get {
-                    return _route(() => (TParent)_parentReferenceValue()).Value;
+                    return _route(() => (TParent)_parentReferenceValue(),_thisView).Value;
                 }
             }
 
@@ -920,7 +932,7 @@
 
             public void SetValue(string value) {
                 //value = ParentView.ResolveMacrosInContext(value);
-                _route(() => (TParent)_parentReferenceValue()).Value = value;
+                _route(() => (TParent)_parentReferenceValue(), _thisView).Value = value;
             }
 
             string IHasValueFromBackingStorage.Value {

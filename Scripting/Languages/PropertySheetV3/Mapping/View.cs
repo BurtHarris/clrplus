@@ -27,6 +27,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
     // ReSharper disable PossibleNullReferenceException
     public partial class View : DynamicObject, IValueContext {
+#if DEBUG
+        private static int ___i___ = 0;
+        private readonly int OID = ___i___++;
+#endif
+
         protected static string[] _emptyStringArray = new string[0];
         private static readonly Regex _macro = new Regex(@"(\$\{(.*?)\})");
         private Action _resolveValue;
@@ -54,7 +59,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                 return _map.ParentView;
             }
             set {
-                _map._thisView = this;
+                //_map._thisView = this;
                 _map.ParentView = value;
             }
         }
@@ -268,6 +273,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         }
 
         protected View(Map instance) {
+            instance._thisView = this;
             _map = instance;
             _map.GetMacroValue += ResolveMacro;
 
@@ -494,10 +500,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             get {
                 if (!(_map is IHasValueFromBackingStorage)) {
                     // if we can't get the value, the propertynode is the only choice.
-                    return HasProperty ? AggregatePropertyNode.GetValues(this) : new string[0];
+                    return HasProperty ? AggregatePropertyNode.GetValues(this).ToArray() : new string[0];
                 }
                 _resolveValue(); // push the value to the backing object if neccesary first
-                return (map as IHasValueFromBackingStorage).Values;
+                return (map as IHasValueFromBackingStorage).Values.ToArray();   
             }
             set {
                 if(_map is ICanSetBackingValues) {
@@ -628,28 +634,34 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         public void AddMacro(string name, string value) {
             _map.GetMacroValue += (valueName, context) => valueName == name ? value : null;
         }
+
+        public void AddMacro(GetMacroValueDelegate macroHandler) {
+            if (macroHandler != null) {
+                _map.GetMacroValue += macroHandler;
+            }
+        }
     }
 
     internal class View<TParent> : View {
 
-        public View(string memberName, RouteDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+        public View(string memberName, RouteDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new ObjectMap<TParent>(member, route, childRoutes))) {
         }
 
         internal View(RootPropertySheet rootNode, Route<TParent> backingObjectAccessor)
-            : base(new ObjectMap<TParent>("ROOT", p => backingObjectAccessor, null)) {
+            : base(new ObjectMap<TParent>("ROOT", (p,v) => backingObjectAccessor, null)) {
             // used for the propertysheet itself.
         }
 
-        internal View(string memberName, ValueDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+        internal View(string memberName, ValueDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new ValueMap<TParent>(member, route, childRoutes))) {
         }
 
-        internal View(string memberName, ListDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+        internal View(string memberName, ListDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new ListMap<TParent>(member, route, childRoutes))) {
         }
 
-        internal View(string memberName, EnumerableDelegate<TParent> route, IEnumerable<ToRoute> childRoutes)
+        internal View(string memberName, EnumerableDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new EnumerableMap<TParent>(member, route, childRoutes))) {
         }
 
@@ -664,14 +676,14 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     }
 
     internal class View<TParent, TKey, TVal> : View {
-        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
+        public View(string memberName, DictionaryDelegateWithView<TParent, TKey, TVal> route, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, null) {
                 childInitializers = childRoutes.ToCacheEnumerable()
             })) {
             // childRoutes are to be used as initializers for the children, not for the dictionary itself.
         }
 
-        public View(string memberName, DictionaryDelegate<TParent, TKey, TVal> route, Func<string, string> keyExchanger, IEnumerable<ToRoute> childRoutes)
+        public View(string memberName, DictionaryDelegateWithView<TParent, TKey, TVal> route, Func<string, string> keyExchanger, IEnumerable<ToRoute> childRoutes)
             : base(Unroll(memberName, (member) => new DictionaryMap<TParent, TKey, TVal>(member, route, keyExchanger, null) {
                 childInitializers = childRoutes.ToCacheEnumerable()
             })) {

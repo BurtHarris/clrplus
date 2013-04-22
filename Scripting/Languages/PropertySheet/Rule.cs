@@ -105,7 +105,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
             }
         }
 
-        internal PropertyRule GetPropertyRule(string name) {
+        public PropertyRule GetPropertyRule(string name) {
             var property = this[name];
             if (property == null) {
                 property = new StandardPropertyRule(this, name);
