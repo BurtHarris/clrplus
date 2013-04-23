@@ -47,9 +47,14 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                       // mark that choice as used.
                       pivot.UsedChoices.Add(choice);
 
-                      if (string.IsNullOrEmpty(pivot.Key)) {
+                      if (!pivot.IsBuiltIn) {
                           return "'$({1}-{0})' == '{2}'".format(projectName.MakeSafeFileName().Replace(".","_"), pivot.Name, choice);
                       }
+
+                      if (pivot.Conditions.ContainsKey(choice)) {
+                          return pivot.Conditions[choice];
+                      }
+
                       return "'$({0})' == '{1}'".format(pivot.Key, choice);
                   }
               };
@@ -159,6 +164,10 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         piv.Descriptions.Add(choice, choice);
                         piv.Choices.Add(choice, choice.ToLower().SingleItemAsEnumerable());
                     } else {
+                        if (ch.HasChild("condition")) {
+                            piv.IsBuiltIn = true; // if one of these has a condtion, then they all better.
+                            piv.Conditions.Add(choice, ch.GetProperty("condition").Value);   
+                        };
                         piv.Descriptions.Add(choice, ch.HasChild("description") ? ch.GetProperty("description").Value : choice);
                         piv.Choices.Add(choice, ch.HasChild("aliases") ? ch.GetProperty("aliases").Values.Select(each => each.ToLower()) : choice.ToLower().SingleItemAsEnumerable());
                     }
@@ -498,13 +507,22 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         public class Pivot {
             internal Dictionary<string, string> Descriptions = new Dictionary<string, string>();
-            internal Dictionary<string, IEnumerable<string>> Choices = new Dictionary<string, IEnumerable<string>>(); 
-
+            internal Dictionary<string, IEnumerable<string>> Choices = new Dictionary<string, IEnumerable<string>>();
+            internal Dictionary<string, string> Conditions = new Dictionary<string, string>();
+            
+            private string _key;
             internal string Description;
             internal string EnumCode;
-            internal string Key;
+            internal string Key { get {
+                return _key;
+            } set {
+                _key = value;
+                IsBuiltIn = _key.Is();
+            }}
             internal string Name;
             internal HashSet<string> UsedChoices = new HashSet<string>();
+
+            internal bool IsBuiltIn;
         }
     }
 }

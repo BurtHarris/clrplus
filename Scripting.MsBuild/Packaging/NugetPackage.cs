@@ -186,7 +186,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         targets.BeforeSave += () => {
                             ProjectPropertyGroupElement ppge = null;
                             foreach (var p in Pivots.Values) {
-                                if (string.IsNullOrEmpty(p.Key)) {
+                                if (!p.IsBuiltIn) {
                                     ppge = targets.AddPropertyInitializer("{0}-{1}".format(p.Name, redistPkg.SafeName), "", "$({0}-{1})".format(p.Name, SafeName), ppge);
                                 }
                             }
@@ -308,7 +308,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     var used = pivot.Choices.Keys.First().SingleItemAsEnumerable().Union(pivot.UsedChoices).ToArray();
                     // yep, do this one.
                     sb.Append("    ").Append(pivot.Name).Append(" { \r\n"); // Platform {
-                    if (pivot.Key.Is()) {
+                    if (pivot.IsBuiltIn) {
                         sb.Append("        key : \"").Append(pivot.Key).Append("\";\r\n"); //    key : "Platform"; 
                     }
                     sb.Append("        choices : { ").Append(used.Aggregate((current, each) => current + ", " + each)).Append(" };\r\n"); // choices: { Win32, x64, ARM, AnyCPU };

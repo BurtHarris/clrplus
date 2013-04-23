@@ -3,7 +3,7 @@
 
 #defines { 
     ElementId = "";
-    // condition = ${ElementId};
+    // condition = ${ElementId}; // this isn't needed here any longer.
     conditionFolder = ${ElementId};
 }
 
@@ -68,6 +68,9 @@ configurations {
 		Desktop.aliases : { Desktop, NotWinRT };
 		WinRT.aliases : { WinRT, Metro, Modern };
 		Phone8.aliases : { Phone8, Phone, WindowsPhone };
+		Phone8.condition = "('$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0')";
+		WinRT.condition = "('$(AppContainerApplication)' == 'true')";
+		Desktop.condition =  "( !('$(AppContainerApplication)' == 'true') And !('$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0'))";
 	}
 }
 
@@ -173,6 +176,7 @@ nuget := {
         // BuildTimePath : "";
         // CopyToOutput : "";
 
+		/*
 		// if AppContainerApplication is true, it's a WinRT app 
 		['$(AppContainerApplication)' == 'true']
 		TargetApplicationType = WinRT;
@@ -183,6 +187,7 @@ nuget := {
 		// if AppContainerApplication is undefined, it's a Desktop app 
 		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
 		TargetApplicationType = Desktop;
+		*/
     }
     
     props {
@@ -191,8 +196,8 @@ nuget := {
         @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
         // BuildTimePath : "";
         // CopyToOutput : "";
-
 		
+		/*
 		// if AppContainerApplication is true, it's a WinRT app 
 		['$(AppContainerApplication)' == 'true']
 		TargetApplicationType = WinRT;
@@ -203,6 +208,6 @@ nuget := {
 		// if AppContainerApplication is undefined, it's a Desktop app 
 		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
 		TargetApplicationType = Desktop;
-
+		*/
 	}
 }

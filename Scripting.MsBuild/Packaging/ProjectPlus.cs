@@ -458,6 +458,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             yield break;
         }
 
+        private string _rt_or_phone_check_hack_;
+
         internal FileCopyList CopyToOutput(string condition) {
             if(_copyToTargets == null) {
                 _copyToTargets = new Dictionary<ProjectTargetElement, FileCopyList>();
@@ -474,7 +476,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 // and if it's a win8 or phone8 app, make an item for it too.
                 var item = itemGroup.AddItem("None", s);
-                item.Condition = "'$(TargetApplicationType)' == 'WinRT' Or '$(TargetApplicationType)' == 'Phone8'";
+                if (_rt_or_phone_check_hack_ == null) {
+                    var rt = Pivots["TargetApplicationType"].Conditions["WinRT"];
+                    var wp8 = Pivots["TargetApplicationType"].Conditions["Phone8"];
+                    _rt_or_phone_check_hack_ = "({0}) OR ({1})".format(rt, wp8);
+                    //_rt_or_phone_check_hack_  = "'$(TargetApplicationType)' == 'WinRT' Or '$(TargetApplicationType)' == 'Phone8'";
+                }
+
+
+                item.Condition = _rt_or_phone_check_hack_;
                 item.AddMetadata("DeploymentContent", "true");
             }));
         }
@@ -932,7 +942,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 // dynamic cfg = configurationsView.GetProperty(pivot);
                 IEnumerable<string> choices = pivot.Choices.Keys;
 
-                if(string.IsNullOrEmpty(pivot.Key)) {
+                if(!pivot.IsBuiltIn) {
                     // add init steps for this.
                     var finalPropName = "{0}-{1}".format(pivot.Name, SafeName);
 
