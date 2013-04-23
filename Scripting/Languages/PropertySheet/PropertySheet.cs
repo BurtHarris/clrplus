@@ -64,6 +64,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
             return result;
         }
 
+        public void RemoveRule(Rule rule) {
+            _rules.Remove(rule);
+        }
+
         public Rule this[string name = "*", string parameter = null, string @class = null, string id = null] {
             get {
                 return SelectRules(name, parameter, @class, id).FirstOrDefault() ?? AddRule(name, parameter, @class, id);
