@@ -99,7 +99,7 @@
             }
         }
 
-        internal override PropertyValue GetPropertyValue(string label, IEnumerable<string> collections = null) {
+        public override PropertyValue GetPropertyValue(string label, IEnumerable<string> collections = null) {
             throw new NotImplementedException();
         }
     }

@@ -33,6 +33,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         internal StringPropertyList InitialTargets;
         private Dictionary<ProjectTargetElement, FileCopyList> _copyToTargets;
+        private Dictionary<ProjectItemGroupElement, FileCopyList> _embedOutputs;
 
         public ProjectPlus(IProjectOwner owner, string filename) {
             _owner = owner;
@@ -71,6 +72,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 yield return "ItemDefinitionGroup".MapTo(() => LookupItemDefinitionGroup(""), ItemDefinitionGroupChildren);
                 yield return "CopyToOutput".MapTo(() => CopyToOutput(""));
+                yield return "EmbedInOutput".MapTo(() => EmbedInOutput(""));
                 yield return "ImportGroup".MapTo(() => LookupImportGroup(""), ImportGroupChildren);
                 yield return "ItemGroup".MapTo(() => LookupItemGroup(""), ItemGroupChildren);
                 yield return "PropertyGroup".MapTo(() => LookupPropertyGroup(""), PropertyGroupChildren);
@@ -84,8 +86,47 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 // and for ones requiring a condition parameter
                 yield return "condition".MapTo(() => ConditionCreate(), key => Pivots.NormalizeExpression(key), ConditionRoutes());
-                yield return "*".MapTo(() => ConditionCreate(), key => Pivots.NormalizeExpression(key), ConditionRoutes());
+
+                yield return         "*".MapTo(() => ConditionCreate(), key => Pivots.NormalizeExpression(key), ConditionRoutes());
+
+
+                yield return "".MapTo( (view) => {
+                    var prop = LookupProperty(LookupPropertyGroup(""), view.MemberName);
+                    return new Accessor(() => {
+                        return prop.Value;
+                    }, v => {
+                        prop.Value = v.ToString();
+                    });
+                });
             }
+        }
+
+        internal IEnumerable<ToRoute> ConditionRoutes() {
+            yield return "ItemDefinitionGroup".MapTo<string>(condition => LookupItemDefinitionGroup(condition), ItemDefinitionGroupChildren);
+            yield return "CopyToOutput".MapTo<string>(condition => CopyToOutput(condition));
+            yield return "EmbedInOutput".MapTo<string>(condition => EmbedInOutput(condition));
+            yield return "ImportGroup".MapTo<string>(condition => LookupImportGroup(condition), ImportGroupChildren);
+            yield return "ItemGroup".MapTo<string>(condition => LookupItemGroup(condition), ItemGroupChildren);
+            yield return "PropertyGroup".MapTo<string>(condition => LookupPropertyGroup(condition), PropertyGroupChildren);
+
+            yield return "Target".MapTo<string, string, ProjectTargetElement>(condition => new DelegateDictionary<string, ProjectTargetElement>(
+                () => Targets.Keys,
+                key => LookupTarget(key, condition),
+                (name, value) => LookupTarget(name, ""),
+                key => Targets.Remove(key)
+                ), new[] { "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
+
+            yield return "".MapTo<string>((condition,view) => {
+
+
+                var prop = LookupProperty(  LookupPropertyGroup(condition), view.MemberName);
+                return new Accessor(() => {
+                    return prop.Value;
+                }, v => {
+                    prop.Value = v.ToString();
+                });
+
+            });
         }
 
         private IEnumerable<ToRoute> ImportGroupChildren {
@@ -102,7 +143,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         private IEnumerable<ToRoute> PropertyGroupChildren {
             get {
-                yield return "".MapTo<ProjectPropertyGroupElement>(parent => LookupProperty(parent, ""));
+                yield return "".MapTo<ProjectPropertyGroupElement>((parent, view) => {
+                    var prop = LookupProperty(parent, view.MemberName);
+                    return new Accessor(() => {
+                        return prop.Value;
+                    }, v => {
+                        prop.Value = v.ToString();
+                    });
+
+                });
             }
         }
 
@@ -409,38 +458,55 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             yield break;
         }
 
+        private string _rt_or_phone_check_hack_;
+
         internal FileCopyList CopyToOutput(string condition) {
             if(_copyToTargets == null) {
                 _copyToTargets = new Dictionary<ProjectTargetElement, FileCopyList>();
             }
 
+            var itemGroup = LookupItemGroup(condition);
             var target = LookupTarget("AfterBuild", condition, true);
             return _copyToTargets.GetOrAdd(target, () => new FileCopyList(s => {
-                var tsk = target.AddTask("Copy");
+                // copy it using a task
+                var tsk = target.AddTask("Copy");   
                 tsk.SetParameter("SourceFiles", s);
                 tsk.SetParameter("DestinationFolder", "$(TargetDir)");
                 tsk.SetParameter("SkipUnchangedFiles", "true");
+
+                // and if it's a win8 or phone8 app, make an item for it too.
+                var item = itemGroup.AddItem("None", s);
+                if (_rt_or_phone_check_hack_ == null) {
+                    var rt = Pivots["TargetApplicationType"].Conditions["WinRT"];
+                    var wp8 = Pivots["TargetApplicationType"].Conditions["Phone8"];
+                    _rt_or_phone_check_hack_ = "({0}) OR ({1})".format(rt, wp8);
+                    //_rt_or_phone_check_hack_  = "'$(TargetApplicationType)' == 'WinRT' Or '$(TargetApplicationType)' == 'Phone8'";
+                }
+
+
+                item.Condition = _rt_or_phone_check_hack_;
+                item.AddMetadata("DeploymentContent", "true");
             }));
         }
 
-        internal IEnumerable<ToRoute> ConditionRoutes() {
-            yield return "ItemDefinitionGroup".MapTo<string>(condition => LookupItemDefinitionGroup(condition), ItemDefinitionGroupChildren);
-            yield return "CopyToOutput".MapTo<string>(condition => CopyToOutput(condition));
-            yield return "ImportGroup".MapTo<string>(condition => LookupImportGroup(condition), ImportGroupChildren);
-            yield return "ItemGroup".MapTo<string>(condition => LookupItemGroup(condition), ItemGroupChildren);
-            yield return "PropertyGroup".MapTo<string>(condition => LookupPropertyGroup(condition), PropertyGroupChildren);
+        internal FileCopyList EmbedInOutput(string condition) {
+            if(_embedOutputs == null) {
+                _embedOutputs = new Dictionary<ProjectItemGroupElement, FileCopyList>();
+            }
 
-            yield return "Target".MapTo<string, string, ProjectTargetElement>(condition => new DelegateDictionary<string, ProjectTargetElement>(
-                () => Targets.Keys,
-                key => LookupTarget(key, condition),
-                (name, value) => LookupTarget(name, ""),
-                key => Targets.Remove(key)
-                ), new[] { "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
+            var itemGroup = LookupItemGroup(condition);
+
+            return _embedOutputs.GetOrAdd(itemGroup, () => new FileCopyList(s => {
+                var item = itemGroup.AddItem("None", s);
+                item.AddMetadata("DeploymentContent", "true");
+            }));
         }
 
         public new bool Save() {
             if(Xml.Children.Count > 0) {
-                AddConfigurations();
+                if (Filename.ToLower().EndsWith(".targets")) {
+                    AddConfigurations();
+                }
                 if(BeforeSave != null) {
                     BeforeSave();
                 }
@@ -876,7 +942,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 // dynamic cfg = configurationsView.GetProperty(pivot);
                 IEnumerable<string> choices = pivot.Choices.Keys;
 
-                if(string.IsNullOrEmpty(pivot.Key)) {
+                if(!pivot.IsBuiltIn) {
                     // add init steps for this.
                     var finalPropName = "{0}-{1}".format(pivot.Name, SafeName);
 

@@ -32,7 +32,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                   OrNot = " || !",
                   Not = "!",
                   Container = "( {0} )",
-                  Comparison = (projectName, choice, pivot) => "{0} == {0}.@{1}".format(pivot.Name, choice)
+                  Comparison = (projectName, choice, pivot) => "{0} == {0}.@{1}".format(pivot.Name, choice),
               };
 
               internal static ExpressionTemplate MSBuild = new ExpressionTemplate {
@@ -47,9 +47,14 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                       // mark that choice as used.
                       pivot.UsedChoices.Add(choice);
 
-                      if (string.IsNullOrEmpty(pivot.Key)) {
+                      if (!pivot.IsBuiltIn) {
                           return "'$({1}-{0})' == '{2}'".format(projectName.MakeSafeFileName().Replace(".","_"), pivot.Name, choice);
                       }
+
+                      if (pivot.Conditions.ContainsKey(choice)) {
+                          return pivot.Conditions[choice];
+                      }
+
                       return "'$({0})' == '{1}'".format(pivot.Key, choice);
                   }
               };
@@ -159,6 +164,10 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         piv.Descriptions.Add(choice, choice);
                         piv.Choices.Add(choice, choice.ToLower().SingleItemAsEnumerable());
                     } else {
+                        if (ch.HasChild("condition")) {
+                            piv.IsBuiltIn = true; // if one of these has a condtion, then they all better.
+                            piv.Conditions.Add(choice, ch.GetProperty("condition").Value);   
+                        };
                         piv.Descriptions.Add(choice, ch.HasChild("description") ? ch.GetProperty("description").Value : choice);
                         piv.Choices.Add(choice, ch.HasChild("aliases") ? ch.GetProperty("aliases").Values.Select(each => each.ToLower()) : choice.ToLower().SingleItemAsEnumerable());
                     }
@@ -276,7 +285,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }
 
         internal bool CompareExpressions(string leftExpression, string rightExpression) {
-
+            if(leftExpression.IndexOf("$(") > -1 || rightExpression.IndexOf("$(") > -1) {
+                return false;
+            }
             var v1 = GetExpressionArray(leftExpression);
             var v2 = GetExpressionArray(rightExpression);
             return v1.SequenceEqual(v2);
@@ -336,6 +347,13 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         private string GenerateExpression(string projectName, string expression,ExpressionTemplate template ) {
             return _expressionCache.GetCachedAnswer(() => {
+                
+
+                if (expression.IndexOf("$(") > -1) {
+                    // skip the whole parsing, we know this is a MSBuild expression
+                    return expression;
+                }
+
                 var result = new StringBuilder();
                 var rxResult = ExpressionRx.Match(expression);
                 if (rxResult.Success) {
@@ -461,7 +479,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
             foreach(var p in _pivots.Keys) {
                 pivot = _pivots[p];
-                choice = _pivots[p].Choices.Keys.FirstOrDefault(ch => _pivots[p].Choices[ch].Contains(item));
+                choice = _pivots[p].Choices.Keys.FirstOrDefault(ch => _pivots[p].Choices[ch].Contains(item.ToLower()));
                 
                 if (choice != null) {
                     return true;
@@ -489,13 +507,22 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         public class Pivot {
             internal Dictionary<string, string> Descriptions = new Dictionary<string, string>();
-            internal Dictionary<string, IEnumerable<string>> Choices = new Dictionary<string, IEnumerable<string>>(); 
-
+            internal Dictionary<string, IEnumerable<string>> Choices = new Dictionary<string, IEnumerable<string>>();
+            internal Dictionary<string, string> Conditions = new Dictionary<string, string>();
+            
+            private string _key;
             internal string Description;
             internal string EnumCode;
-            internal string Key;
+            internal string Key { get {
+                return _key;
+            } set {
+                _key = value;
+                IsBuiltIn = _key.Is();
+            }}
             internal string Name;
             internal HashSet<string> UsedChoices = new HashSet<string>();
+
+            internal bool IsBuiltIn;
         }
     }
 }

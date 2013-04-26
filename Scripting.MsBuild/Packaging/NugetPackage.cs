@@ -186,7 +186,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         targets.BeforeSave += () => {
                             ProjectPropertyGroupElement ppge = null;
                             foreach (var p in Pivots.Values) {
-                                if (string.IsNullOrEmpty(p.Key)) {
+                                if (!p.IsBuiltIn) {
                                     ppge = targets.AddPropertyInitializer("{0}-{1}".format(p.Name, redistPkg.SafeName), "", "$({0}-{1})".format(p.Name, SafeName), ppge);
                                 }
                             }
@@ -200,6 +200,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     _nuSpec = new DynamicNode(new XElement(defaultPkg._nuSpec.Element));
 
                     _nuSpec.metadata.requireLicenseAcceptance = "false";
+                    _nuSpec.metadata.title = "{0} Redist".format((string)defaultPkg._nuSpec.metadata.title);
+                    _nuSpec.metadata.summary = "Redistributable components for for package '{0}'".format(defaultPkg._pkgName);
                     _nuSpec.metadata.id = _pkgName;
                     _nuSpec.metadata.description = "Redistributable components for package '{0}'. This package should only be installed as a dependency. \r\n(This is not the package you are looking for).".format(defaultPkg._pkgName);
                     _nuSpec.metadata.dependencies = null;
@@ -209,7 +211,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     defaultPkg = _packageScript.GetNugetPackage("default");
                     _nuSpec = new DynamicNode(new XElement(defaultPkg._nuSpec.Element));
 
+                    _nuSpec.metadata.title = "{0} Symbols".format((string)defaultPkg._nuSpec.metadata.title);
                     _nuSpec.metadata.requireLicenseAcceptance = "false";
+                    _nuSpec.metadata.summary = "Symbols for for package '{0}'".format(defaultPkg._pkgName);
                     _nuSpec.metadata.id = _pkgName;
                     _nuSpec.metadata.description = "Symbols for package '{0}'. This package should not likely be installed. \r\n(This is not the package you are looking for).".format(defaultPkg._pkgName);
                     _nuSpec.metadata.dependencies = null;
@@ -304,7 +308,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     var used = pivot.Choices.Keys.First().SingleItemAsEnumerable().Union(pivot.UsedChoices).ToArray();
                     // yep, do this one.
                     sb.Append("    ").Append(pivot.Name).Append(" { \r\n"); // Platform {
-                    if (pivot.Key.Is()) {
+                    if (pivot.IsBuiltIn) {
                         sb.Append("        key : \"").Append(pivot.Key).Append("\";\r\n"); //    key : "Platform"; 
                     }
                     sb.Append("        choices : { ").Append(used.Aggregate((current, each) => current + ", " + each)).Append(" };\r\n"); // choices: { Win32, x64, ARM, AnyCPU };
@@ -362,8 +366,36 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         public void NuPack(string path) {
             using(dynamic ps = Runspace.DefaultRunspace.Dynamic()) {
                 var results = ps.InvokeExpression(@"nuget.exe pack ""{0}"" 2>&1".format(path));
+                bool lastIsBlank = false;
                 foreach(var r in results) {
-                    Event<Message>.Raise(" >", r);
+                    string s = r.ToString();
+                    if (string.IsNullOrWhiteSpace(s)) {
+                        if (lastIsBlank) {
+                            continue;
+                        }
+                        lastIsBlank = true;
+                    } else {
+                        if (s.IndexOf("Issue: Assembly outside lib folder") > -1) {
+                            continue;
+                        }
+                        if(s.IndexOf("folder and hence it won't be added as reference when the package is installed into a project") > -1) {
+                            continue;
+                        }
+                        if (s.IndexOf("Solution: Move it into the 'lib' folder if it should be referenced") > -1) {
+                            continue;
+                        }
+                        if(s.IndexOf("issue(s) found with package") > -1) {
+                            continue;
+                        }
+                        
+                        lastIsBlank = false;
+                    }
+                    
+                    // Issue: Assembly outside lib folder.
+                    // Description: The assembly 'build\native\bin\Win32\v110\Release\WinRT\casablanca110.winrt.dll' is not inside the 'lib' folder and hence it won't be added as reference when the package is installed into a project.
+                    // Solution: Move it into the 'lib' folder if it should be referenced.
+                    
+                    Event<Message>.Raise(" >", "{0}", s);
                 }
             }
         }

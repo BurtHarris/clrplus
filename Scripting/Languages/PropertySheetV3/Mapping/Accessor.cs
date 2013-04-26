@@ -44,21 +44,32 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     public delegate object Value();
     public delegate T Value<T>();
 
-    internal delegate object RouteDelegate<TParent>(Value<TParent> parent);
+    internal delegate object RouteDelegateWithView<TParent>(Value<TParent> parent,View childView);
+    // internal delegate object RouteDelegate<TParent>(Value<TParent> parent);
+    public delegate object RouteWithView<TParent>(TParent parent,View childView);
     public delegate object Route<TParent>(TParent parent);
 
-    internal delegate Accessor ValueDelegate<TParent>(Value<TParent> parent);
+    internal delegate Accessor ValueDelegateWithView<TParent>(Value<TParent> parent, View childView);
+    // internal delegate Accessor ValueDelegate<TParent>(Value<TParent> parent);
+    public delegate Accessor ValueRouteWithView<TParent>(TParent parent,View childView);
     public delegate Accessor ValueRoute<TParent>(TParent parent);
 
-    internal delegate IEnumerable EnumerableDelegate<TParent>(Value<TParent> parent);
+    internal delegate IEnumerable EnumerableDelegateWithView<TParent>(Value<TParent> parent,View childView);
+    // internal delegate IEnumerable EnumerableDelegate<TParent>(Value<TParent> parent);
+    public delegate IEnumerable EnumerableRouteWithView<TParent>(TParent parent,View childView);
     public delegate IEnumerable EnumerableRoute<TParent>(TParent parent);
 
-    internal delegate IList ListDelegate<TParent>(Value<TParent> parent);
+    internal delegate IList ListDelegateWithView<TParent>(Value<TParent> parent,View childView);
+    // internal delegate IList ListDelegate<TParent>(Value<TParent> parent);
+    public delegate IList ListRouteWithView<TParent>(TParent parent,View childView);
     public delegate IList ListRoute<TParent>(TParent parent);
 
-    internal delegate IDictionary<TKey, TVal> DictionaryDelegate<TParent, TKey, TVal>(Value<TParent> parent);
+    internal delegate IDictionary<TKey, TVal> DictionaryDelegateWithView<TParent, TKey, TVal>(Value<TParent> parent,View childView);
+    // internal delegate IDictionary<TKey, TVal> DictionaryDelegate<TParent, TKey, TVal>(Value<TParent> parent);
+    public delegate IDictionary<TKey, TVal> DictionaryRouteWithView<TParent, TKey, TVal>(TParent parent,View childView);
     public delegate IDictionary<TKey, TVal> DictionaryRoute<TParent, TKey, TVal>(TParent parent);
 
+    public delegate IDictionary<TKey, TVal> DictionaryRouteWithView<TKey, TVal>(View childView);
     public delegate IDictionary<TKey, TVal> DictionaryRoute<TKey, TVal>();
 
     public delegate object IndexedChildRoute<TParent>(TParent parent, View childView);

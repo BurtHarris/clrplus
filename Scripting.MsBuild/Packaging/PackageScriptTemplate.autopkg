@@ -3,7 +3,7 @@
 
 #defines { 
     ElementId = "";
-    // condition = ${ElementId};
+    // condition = ${ElementId}; // this isn't needed here any longer.
     conditionFolder = ${ElementId};
 }
 
@@ -52,6 +52,26 @@ configurations {
         thiscall.restricted-to = "Win32";
         clrcall.restricted-to = "Win32";
     };
+
+	/* 
+		Since the MSBuild  property for identifying if a project is compiling a Win8 Store App
+		is a boolean, and we don't want to actually key off that, we're going to generate 
+		a property that gets a value based on that boolean, and key off of that.
+		
+		We'll declare that property in the props file (so that it happens early in the MSBuild)
+		(see the props section down near the bottom)
+	*/
+
+	TargetApplicationType {
+		key: "TargetApplicationType";
+		choices: { Desktop,  WinRT, Phone8 };
+		Desktop.aliases : { Desktop, NotWinRT };
+		WinRT.aliases : { WinRT, Metro, Modern };
+		Phone8.aliases : { Phone8, Phone, WindowsPhone };
+		Phone8.condition = "('$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0')";
+		WinRT.condition = "('$(AppContainerApplication)' == 'true')";
+		Desktop.condition =  "( !('$(AppContainerApplication)' == 'true') And !('$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0'))";
+	}
 }
 
 nuget := {
@@ -64,14 +84,14 @@ nuget := {
         tools_root     = \tools\${framework},
         lib_root       = \lib\${framework},
         build_root     = \build\${framework},
-        src_root       = \src,
+        src_root       = \src\${framework},
 
         d_include   = ${build_root}\include\${conditionFolder},
         d_docs      = ${build_root}\docs\${conditionFolder},
         d_bin       = ${build_root}\bin\${conditionFolder},  
         d_lib       = ${build_root}\lib\${conditionFolder},
         d_tools     = ${tools_root}\${conditionFolder},
-		d_src       = ${src_root}
+		d_src       = ${src_root}\${conditionFolder},
 
         // since the generated msbuild props/targets files are always in a directory two 
         // deep from the package root.
@@ -97,6 +117,14 @@ nuget := {
                 package = redist;
             };
             #add-each-file : ::nuget.[redist]targets.[${condition}].CopyToOutput;
+            #destination : ${d_bin};  
+        };
+
+        appx_bin += {  
+            #output {
+                package = redist;
+            };
+            #add-each-file : ::nuget.[redist]targets.[${condition}].EmbedInOutput;
             #destination : ${d_bin};  
         };
 
@@ -147,6 +175,19 @@ nuget := {
         @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
         // BuildTimePath : "";
         // CopyToOutput : "";
+
+		/*
+		// if AppContainerApplication is true, it's a WinRT app 
+		['$(AppContainerApplication)' == 'true']
+		TargetApplicationType = WinRT;
+
+		['$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0' ]
+		TargetApplicationType = Phone8;
+
+		// if AppContainerApplication is undefined, it's a Desktop app 
+		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
+		TargetApplicationType = Desktop;
+		*/
     }
     
     props {
@@ -155,5 +196,18 @@ nuget := {
         @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
         // BuildTimePath : "";
         // CopyToOutput : "";
-    }
+		
+		/*
+		// if AppContainerApplication is true, it's a WinRT app 
+		['$(AppContainerApplication)' == 'true']
+		TargetApplicationType = WinRT;
+
+		['$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0' ]
+		TargetApplicationType = Phone8;
+
+		// if AppContainerApplication is undefined, it's a Desktop app 
+		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
+		TargetApplicationType = Desktop;
+		*/
+	}
 }
