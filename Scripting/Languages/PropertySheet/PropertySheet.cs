@@ -232,7 +232,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
                 return @"""""";
             }
 
-            if (val.OnlyContains(StringExtensions.LettersNumbersUnderscoresAndDashesAndDots)) {
+            if (val.OnlyContains(StringExtensions.LettersNumbersUnderscoresAndDashesAndDots) && StringExtensions.Letters.Contains(val[0]))
+            {
                 return val;
             }
 

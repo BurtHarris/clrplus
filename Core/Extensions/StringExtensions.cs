@@ -57,6 +57,11 @@ namespace ClrPlus.Core.Extensions {
         public const string LettersNumbersUnderscoresAndDashesAndDots = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_-.";
 
         /// <summary>
+        ///     a string with just letters. Used as a filter somewhere.
+        /// </summary>
+        public const string Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+        /// <summary>
         ///     These are crazy, but valid filepath characters that cause regexs to puke and fail.
         /// </summary>
         private static readonly string[] _validFpCharsThatHurtRegexs = {
