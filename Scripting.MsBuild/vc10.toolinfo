@@ -1,5 +1,8 @@
 ﻿[v100 & (x86|x64)]
 toolinfo[vc10] {
+	#provides: C;
+	#requires: WindowsSDK;
+
 	// what does this toolinfo light up?
 	
 	// discovery

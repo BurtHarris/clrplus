@@ -386,7 +386,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
         /// <exception cref="ParseException">Token '{0}' not expected in object declaration</exception>
         private XDictionary<string, IValue> ParseMetadataObject(ObjectNode context, XDictionary<string, IValue> result = null) {
-            if (TokenType.CloseBrace == NextAfter(WhiteSpaceOrComments)) {
+            if (TokenType.CloseBrace == NextAfter(WhiteSpaceCommentsOrSemicolons)) {
                 return result;
             }
 

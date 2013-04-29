@@ -15,13 +15,16 @@ namespace ClrPlus.Scripting.MsBuild.Building {
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Management.Automation.Runspaces;
     using Core.Extensions;
+    using Core.Tasks;
     using Languages.PropertySheetV3;
     using Languages.PropertySheetV3.Mapping;
     using Languages.PropertySheetV3.RValue;
     using Microsoft.Build.Construction;
     using Packaging;
     using Platform;
+    using Powershell.Core;
     using Utility;
 
     public class BuildScript : IDisposable, IProjectOwner {
@@ -95,5 +98,55 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 return Path.GetDirectoryName(Filename);
             }
         }
+
+        public void Execute(string[] Targets) {
+            var path = Save();
+
+            using (dynamic ps = Runspace.DefaultRunspace.Dynamic()) {
+                var results = ps.InvokeExpression(@"msbuild.exe pack ""{0}"" 2>&1".format(path));
+                bool lastIsBlank = false;
+                foreach (var r in results) {
+                    string s = r.ToString();
+                    if (string.IsNullOrWhiteSpace(s)) {
+                        if (lastIsBlank) {
+                            continue;
+                        }
+                        lastIsBlank = true;
+                    } else {
+                        if (s.IndexOf("Issue: Assembly outside lib folder") > -1) {
+                            continue;
+                        }
+                        if (s.IndexOf("folder and hence it won't be added as reference when the package is installed into a project") > -1) {
+                            continue;
+                        }
+                        if (s.IndexOf("Solution: Move it into the 'lib' folder if it should be referenced") > -1) {
+                            continue;
+                        }
+                        if (s.IndexOf("issue(s) found with package") > -1) {
+                            continue;
+                        }
+
+                        lastIsBlank = false;
+                    }
+
+                    // Issue: Assembly outside lib folder.
+                    // Description: The assembly 'build\native\bin\Win32\v110\Release\WinRT\casablanca110.winrt.dll' is not inside the 'lib' folder and hence it won't be added as reference when the package is installed into a project.
+                    // Solution: Move it into the 'lib' folder if it should be referenced.
+
+                    Event<Message>.Raise(" >", "{0}", s);
+                }
+            }
+        }
+
+
+        public string Save(string filename=null) {
+            filename = filename ?? "pkt.msbuild".GenerateTemporaryFilename();
+
+            return filename;
+        }
+
+        
     }
+
+    
 }

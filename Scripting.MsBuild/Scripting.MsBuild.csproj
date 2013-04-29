@@ -34,6 +34,8 @@
       <HintPath>..\packages\CS-Script.3.5.0.2\lib\net40\CSScriptLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Build" />
+    <Reference Include="Microsoft.Build.Framework" />
+    <Reference Include="Microsoft.Build.Utilities.v4.0" />
     <Reference Include="Mono.CSharp">
       <HintPath>..\packages\CS-Script.3.5.0.2\lib\net40\Mono.CSharp.dll</HintPath>
     </Reference>
@@ -52,7 +54,9 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="Building\BuildScript.cs" />
+    <Compile Include="Building\Logger.cs" />
     <Compile Include="Building\ProjectTargetElementExtensions.cs" />
+    <Compile Include="Building\ToolCache.cs" />
     <Compile Include="Packaging\AnswerCache.cs" />
     <Compile Include="Utility\CustomPropertyList.cs" />
     <Compile Include="Utility\FileCopyList.cs" />
@@ -95,6 +99,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Building\template.buildinfo" />
+    <None Include="test.buildinfo">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="winsdk7.toolinfo">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

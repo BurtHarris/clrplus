@@ -1,6 +1,12 @@
-﻿[SDK & (x86|x64)]
-toolinfo[winsdk71] {
-	
+﻿// what configurations you support
+// what services you provide
+// what version of that are you
+
+
+[x86|x64]
+toolinfo[sdk71] {
+	#provides: WindowsSdk;
+
 	// discovery
 	Discover  <-- c#:  
 		var tool = ToolCache.Lookup( "WinSDK71" ); // implicity validates that any files/keys still exist.
@@ -16,7 +22,7 @@ toolinfo[winsdk71] {
 		return tool; // the tool object will have all the properties we need?
 	-->;
 	
-	obj <-- c#:  
+	obj := <-- c#:  
 	
 	-->;
 	
@@ -25,10 +31,10 @@ toolinfo[winsdk71] {
 	}
 	
 	[x64] {
-		Environment <! cmd: ${SetEnv} ${condition} & set !>;
+		Environment := <-- cmd: ${SetEnv} ${condition} & set -->;
 	}
 	
 	[x86] {
-		Environment <! cmd: ${SetEnv} ${condition} & set !>;
+		Environment := <-- cmd: ${SetEnv} ${condition} & set -->;
 	}
 }

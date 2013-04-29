@@ -175,24 +175,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             
             switch(PkgRole) {
                 case "default":
-                    // add a dependency to the redist package.
-                    var redistPkg = _packageScript.GetNugetPackage("redist");
-                    if (redistPkg != null) {
-                        // add the dependency to the list 
-                        var node = _nuSpec.metadata.dependencies.Add("dependency");
-                        node.Attributes.id = redistPkg._pkgName;
-                        node.Attributes.version = (string)_nuSpec.metadata.version;;
-                        var targets = GetTargetsProject("native");
-                        targets.BeforeSave += () => {
-                            ProjectPropertyGroupElement ppge = null;
-                            foreach (var p in Pivots.Values) {
-                                if (!p.IsBuiltIn) {
-                                    ppge = targets.AddPropertyInitializer("{0}-{1}".format(p.Name, redistPkg.SafeName), "", "$({0}-{1})".format(p.Name, SafeName), ppge);
-                                }
-                            }
-                        };
-
-                    }
+                   
                     break;
                 case "redist":
                     //copy the nuspec fields from the default project (and change what's needed)
@@ -289,10 +272,40 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             foreach(var src in _files.Keys) {
                 AddFileToNuSpec(_files[src], src );
             }
+
+            switch (PkgRole) {
+                    // do any last minute stuff here.
+
+                case "default":
+                    // add a dependency to the redist package.
+                    var redistPkg = _packageScript.GetNugetPackage("redist");
+                    if (redistPkg != null && !redistPkg._files.Values.IsNullOrEmpty()) {
+                        // add the dependency to the list 
+                        var node = _nuSpec.metadata.dependencies.Add("dependency");
+                        node.Attributes.id = redistPkg._pkgName;
+                        node.Attributes.version = (string)_nuSpec.metadata.version;
+                        ;
+                        var targets = GetTargetsProject("native");
+                        targets.BeforeSave += () => {
+                            ProjectPropertyGroupElement ppge = null;
+                            foreach (var p in Pivots.Values) {
+                                if (!p.IsBuiltIn) {
+                                    ppge = targets.AddPropertyInitializer("{0}-{1}".format(p.Name, redistPkg.SafeName), "", "$({0}-{1})".format(p.Name, SafeName), ppge);
+                                }
+                            }
+                        };
+                    }
+                    break;
+
+            }
+
             _nuSpec.Save(FullPath);
             temporaryFiles.Add(FullPath);
 
-            NuPack(FullPath);
+            if (PkgRole == "default" || !_files.Values.IsNullOrEmpty()) { 
+                // don't save the package if it has no files in it.
+                NuPack(FullPath);
+            }
 
             if (cleanIntermediateFiles) {
                 temporaryFiles.ForEach( FilesystemExtensions.TryHardToDelete );
@@ -431,7 +444,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             }
             dynamic xaml = null;
 
-            foreach (var pivot in Pivots.Values.Where(pivot => string.IsNullOrEmpty(pivot.Key))) {
+            foreach (var pivot in Pivots.Values.Where(pivot => !pivot.IsBuiltIn && pivot.UsedChoices.Any() )) {
 
                 xaml = xaml ?? InitXaml();
 
@@ -445,7 +458,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 enumProperty.Attributes.Category = _pkgName;
 
                 // add the choices
-                foreach (var v in pivot.UsedChoices) {
+                var used = pivot.Choices.Keys.First().SingleItemAsEnumerable().Union(pivot.UsedChoices).ToArray();
+
+                foreach (var v in used) {
                     var enumValue = enumProperty.Add("EnumValue");
                     enumValue.Attributes.Name = (v == defaultchoice) ? "" : v; // store "" as the value for defaultchoice.
                     enumValue.Attributes.DisplayName = pivot.Descriptions[v];

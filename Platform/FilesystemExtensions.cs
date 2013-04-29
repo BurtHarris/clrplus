@@ -228,6 +228,27 @@ namespace ClrPlus.Platform {
             return null;
         }
 
+        public static string WalkUpPaths(this string[] filenames, string currentDirectory = null) {
+            try {
+                currentDirectory = currentDirectory ?? Environment.CurrentDirectory;
+                if(!string.IsNullOrEmpty(currentDirectory)) {
+                    currentDirectory = currentDirectory.GetFullPath();
+                    while(!string.IsNullOrEmpty(currentDirectory)) {
+                        foreach (var filename in filenames) {
+                            var chkPath = Path.Combine(currentDirectory, filename);
+                            if (File.Exists(chkPath)) {
+                                return chkPath;
+                            }
+                        }
+                        currentDirectory = Path.GetDirectoryName(currentDirectory);
+                    }
+                }
+            }
+            catch {
+            }
+            return null;
+        }
+
         public static string GetCustomFilePathOrWalkUp(this string filename, string currentDirectory = null) {
             return GetCustomFilePath(filename) ?? WalkUpPath(filename, currentDirectory);
         }

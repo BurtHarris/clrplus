@@ -148,7 +148,16 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             if(string.IsNullOrEmpty(parameter) || ParentView == null || ParentView.ParentView == null || !ParentView.ParentView.HasChild(MemberName)) {
                 return GetMetadataValues(metadataName, this, checkParent);
             }
-            return GetMetadataValues(metadataName, this, false) ?? ParentView.ParentView.GetProperty(MemberName).GetMetadataValues(metadataName, this, false) ?? (checkParent ? ParentView.GetMetadataValues(metadataName, this) : null);
+            var result = GetMetadataValues(metadataName, this, false);
+            if (!result.IsNullOrEmpty()) {
+                return result;
+            }
+            result = ParentView.ParentView.GetProperty(MemberName).GetMetadataValues(metadataName, this, false);
+            if(!result.IsNullOrEmpty()) {
+                return result;
+            }
+
+            return (checkParent ? ParentView.GetMetadataValues(metadataName, this) : Enumerable.Empty<string>());
         }
 
         public IEnumerable<string> GetMetadataKeys(string prefix = null) {

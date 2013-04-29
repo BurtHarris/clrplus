@@ -334,15 +334,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     }
                 }
 
-                var optionPackage = container.GetMetadataValueHarder("output.package", currentCondition) ?? "default";
+                var optionPackages = container.GetMetadataValuesHarder("output.package", currentCondition).Union(container.GetMetadataValuesHarder("output.packages", currentCondition)).ToArray();
+
+                if (optionPackages.Length == 0) {
+                    optionPackages = new [] {"default"};
+                }
 
                 var optionExcludes = container.GetMetadataValues("exclude", container, false).Union(container.GetMetadataValues("excludes", container, false)).ToArray();
              
-                if (!_nugetPackages.Keys.Contains(optionPackage)) {
-                    FailAlways(Event<SourceError>.Raise("AP300", SourceLocation.Unknowns, "Unknown #output-package '{0}' in files section '{1}' ", optionPackage,containerName ));
-                }
-
-                var package = _nugetPackages[optionPackage];
+              
                 // var targets = package.GetTargetsProject(optionFramework); 
 
                 // determine the destination location in the target package
@@ -351,33 +351,46 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 var optionFlatten = container.GetMetadataValueHarder("flatten", currentCondition).IsPositive();
 
-                var addEachFile = container.GetMetadataValueHarder("add-each-file", currentCondition);
-                var addFolder = container.GetMetadataValueHarder("add-folder", currentCondition);
+              
+                var addEachFiles = container.GetMetadataValuesHarder("add-each-file", currentCondition).ToArray();
+                var addFolders = container.GetMetadataValuesHarder("add-folder", currentCondition).ToArray();
 
-                if (addFolder != null) {
-                    var folderView = filesView.GetProperty(addFolder.Replace("${condition}", currentCondition));
-                    if (folderView != null) {
-                        var values = folderView.Values.ToList();
-                        values.Add((filesView.GetMacroValue("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
-                        folderView.Values = values;
+                if (addFolders.Length > 0 ) {
+                    foreach (var addFolder in addFolders) {
+                        var folderView = filesView.GetProperty(addFolder.Replace("${condition}", currentCondition));
+                        if (folderView != null) {
+                            var values = folderView.Values.ToList();
+                            values.Add((filesView.GetMacroValue("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
+                            folderView.Values = values;
+                        }
                     }
                 }
 
-                foreach (var src in relativePaths.Keys) {
-                    if (optionExcludes.HasWildcardMatch(src)) {
-                        continue;
+                foreach (var optionPackage in optionPackages) {
+                    if (!_nugetPackages.Keys.Contains(optionPackage)) {
+                        FailAlways(Event<SourceError>.Raise("AP300", SourceLocation.Unknowns, "Unknown #output-package '{0}' in files section '{1}' ", optionPackage, containerName));
                     }
 
-                    Event<Trace>.Raise("ProcessNugetFiles (adding file)", "'{0}' + '{1}'",destinationFolder,relativePaths[src] );
-                    string target = Path.Combine(destinationFolder, optionFlatten ? Path.GetFileName(relativePaths[src]) : relativePaths[src]).Replace("${condition}", currentCondition).Replace("\\\\", "\\");
-                    package.AddFile( src, target);
+                    var package = _nugetPackages[optionPackage];
 
-                    if(addEachFile != null) {
-                        var fileListView = filesView.GetProperty(addEachFile.Replace("${condition}", currentCondition));
-                        if(fileListView != null) {
-                            var values = fileListView.Values.ToList();
-                            values.Add((filesView.GetMacroValue("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
-                            fileListView.Values = values;
+                    foreach (var src in relativePaths.Keys) {
+                        if (optionExcludes.HasWildcardMatch(src)) {
+                            continue;
+                        }
+
+                        Event<Trace>.Raise("ProcessNugetFiles (adding file)", "'{0}' + '{1}'", destinationFolder, relativePaths[src]);
+                        string target = Path.Combine(destinationFolder, optionFlatten ? Path.GetFileName(relativePaths[src]) : relativePaths[src]).Replace("${condition}", currentCondition).Replace("\\\\", "\\");
+                        package.AddFile(src, target);
+
+                        if (addEachFiles.Length > 0) {
+                            foreach (var addEachFile in addEachFiles) {
+                                var fileListView = filesView.GetProperty(addEachFile.Replace("${condition}", currentCondition));
+                                if (fileListView != null) {
+                                    var values = fileListView.Values.ToList();
+                                    values.Add((filesView.GetMacroValue("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
+                                    fileListView.Values = values;
+                                }
+                            }
                         }
                     }
                 }

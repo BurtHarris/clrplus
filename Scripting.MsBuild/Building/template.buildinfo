@@ -5,11 +5,15 @@ commands {
 };
 
 configurations {
-	Toolset { 
+    Toolset { 
         key : "PlatformToolset"; 
-        choices: { v110, v100, v90, v80, v71, v70, v60, gcc };  
+        choices: { v110, v100, v90, v80, v71, v70, v60, gcc, v110_xp, v110_wp80 };  
+		// Explicitly Not including pivot variants:  "WindowsKernelModeDriver8.0", "WindowsApplicationForDrivers8.0", "WindowsUserModeDriver8.0" 
+		
+		// We're normalizing out the concept of the v110 platform -- Overloading the $(PlatformToolset) variable for additional pivots was a dumb idea.
+		v110.condition = "( $(PlatformToolset.IndexOf('v110')) > -1 Or '$(PlatformToolset)' == 'WindowsKernelModeDriver8.0' Or '$(PlatformToolset)' == 'WindowsApplicationForDrivers8.0' Or '$(PlatformToolset)' == 'WindowsUserModeDriver8.0' )";
     };
-    
+ 
     Platform {
         key : "Platform"; 
         choices: { Win32, x64, ARM, AnyCPU };
@@ -49,7 +53,52 @@ configurations {
         thiscall.restricted-to = "Win32";
         clrcall.restricted-to = "Win32";
     };
-};
+
+	/* 
+		Since the MSBuild  property for identifying if a project is compiling a Win8 Store App
+		is a boolean, and we don't want to actually key off that, we're going to generate 
+		a property that gets a value based on that boolean, and key off of that.
+		
+		We'll declare that property in the props file (so that it happens early in the MSBuild)
+		(see the props section down near the bottom)
+	*/
+
+	TargetApplicationType {
+		key: "TargetApplicationType";
+		
+		choices: { Desktop,  WinRT, Phone8, KernelModeDriver, ApplicationForDriver, UserModeDriver }; // "WindowsKernelModeDriver8.0", "WindowsApplicationForDrivers8.0", "WindowsUserModeDriver8.0" 
+		
+		#defines {
+			// we are going to define the conditions here
+			// so that we can reuse them to detect 'desktop', since it's the absence 
+			// of all others, and I don't want to accidentally make a copy/paste error.
+
+			KernelModeDriver_condition = "('$(PlatformToolset)' == 'WindowsKernelModeDriver8.0')";
+			ApplicationForDriver_condition = "('$(PlatformToolset)' == 'WindowsApplicationForDrivers8.0')";
+			UserModeDriver_condition = "('$(PlatformToolset)' == 'WindowsUserModeDriver8.0')";
+
+			Phone8_condition = "('$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0')";
+			WinRT_condition = "('$(AppContainerApplication)' == 'true')";
+			Desktop_condition =  "( !${KernelModeDriver_condition} And !${ApplicationForDriver_condition} And !${UserModeDriver_condition} And !${Phone8_condition} And !${WinRT_condition} )";
+		}
+
+		Desktop.aliases : { Desktop, NotWinRT };
+		WinRT.aliases : { WinRT, Metro, Modern };
+		Phone8.aliases : { Phone8, Phone, WindowsPhone };
+		
+		KernelModeDriver.aliases : { KernelModeDriver, Kernel, KernelDriver ,Driver };
+		ApplicationForDriver.aliases : { ApplicationForDriver };
+		UserModeDriver.aliases  : { UserModeDriver, UserMode, UserDriver };
+
+		KernelModeDriver.condition = ${KernelModeDriver_condition};
+		ApplicationForDriver.condition = ${ApplicationForDriver_condition};
+		UserModeDriver.condition = ${UserModeDriver_condition};
+
+		Phone8.condition = ${Phone8_condition};
+		WinRT.condition = ${WinRT_condition};
+		Desktop.condition =  ${Desktop_condition};
+	}
+}
 
 [Release | Debug] 
 toolinfo[Configuration] {

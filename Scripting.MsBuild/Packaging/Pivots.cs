@@ -263,7 +263,6 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }}
 
         public bool[] GetAll(int n) {{
-
             var result = new bool[n];
             {2}
             return result;
@@ -344,11 +343,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 #endif
         }
 
-
         private string GenerateExpression(string projectName, string expression,ExpressionTemplate template ) {
             return _expressionCache.GetCachedAnswer(() => {
-                
-
                 if (expression.IndexOf("$(") > -1) {
                     // skip the whole parsing, we know this is a MSBuild expression
                     return expression;

@@ -455,7 +455,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         public IEnumerable<ToRoute> GetMemberRoutes(View view) {
             // an alternative method that gets access to the view while mapping.
-            yield break;
+            yield break; 
         }
 
         private string _rt_or_phone_check_hack_;
@@ -534,7 +534,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             // thank you.
             body.XmlElement().Append("Code").InnerText = @"Result = ((Text ?? """").Split(';').Contains(Library) ) ? Value : String.Empty;";
 
-            return AddInitTarget("init");
+            return AddInitTarget(SafeName + "_init" );
         }
 
         public IDictionary<string, string> ConditionCreate() {
