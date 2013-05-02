@@ -11,10 +11,7 @@ namespace ClrPlus.Powershell.Core
 
     public abstract class AsyncCmdlet : PSCmdlet
     {
-
-        private BlockingCollection<Message> _messages;
-
-
+        private BlockingCollection<Action> _messages;
 
         public virtual void BeginProcessingAsync()
         {
@@ -33,37 +30,11 @@ namespace ClrPlus.Powershell.Core
 
         private void ProcessMessages()
         {
-            foreach (var m in _messages.GetConsumingEnumerable())
-            {
-                switch (m.MessageType)
-                {
-                    case MessageType.Debug:
-                        base.WriteDebug(m.Data as string);
-                        break;
-                    case MessageType.Error:
-                        base.WriteError(m.Data as ErrorRecord);
-                        break;
-                    case MessageType.Object:
-                        base.WriteObject(m.Data);
-                        break;
-                    case MessageType.ObjectAsEnumerable:
-                        var data = m.Data as Tuple<object, bool>;
-                        base.WriteObject(data.Item1, data.Item2);
-                        break;
-                    case MessageType.Progress:
-                        base.WriteProgress(m.Data as ProgressRecord);
-                        break;
-                    case MessageType.Verbose:
-                        base.WriteVerbose(m.Data as string);
-                        break;
-                    case MessageType.Warning:
-                        base.WriteWarning(m.Data as string);
-                        break;
-                }
+            foreach (var m in _messages.GetConsumingEnumerable()) {
+                m();
             }
 
         }
-
 
         protected override void BeginProcessing()
         {
@@ -102,67 +73,50 @@ namespace ClrPlus.Powershell.Core
 
         public new void WriteObject(object obj)
         {
-            _messages.Add(new Message { MessageType = MessageType.Object, Data = obj });
+
+            _messages.Add(() => base.WriteObject(obj));
         }
 
         public new void WriteObject(object sendToPipeline, bool enumerateCollection)
         {
-            _messages.Add(new Message { MessageType = MessageType.ObjectAsEnumerable, Data = new Tuple<object, bool>(sendToPipeline, enumerateCollection) });
+            _messages.Add(() => base.WriteObject(sendToPipeline, enumerateCollection));
         }
 
         public new void WriteProgress(ProgressRecord progressRecord)
         {
-            _messages.Add(new Message { MessageType = MessageType.Progress, Data = progressRecord });
+            _messages.Add(() => base.WriteProgress(progressRecord));
         }
 
         public new void WriteWarning(string text)
         {
-            _messages.Add(new Message { MessageType = MessageType.Warning, Data = text });
+            _messages.Add(() => base.WriteWarning(text));
         }
 
         public new void WriteDebug(string text)
         {
-            _messages.Add(new Message { MessageType = MessageType.Debug, Data = text });
+            _messages.Add(() => base.WriteDebug(text));
         }
 
         public new void WriteError(ErrorRecord errorRecord)
         {
-            _messages.Add(new Message { MessageType = MessageType.Error, Data = errorRecord });
+            _messages.Add(() => base.WriteError(errorRecord));
         }
 
         public new void WriteVerbose(string text)
         {
-            _messages.Add(new Message { MessageType = MessageType.Verbose, Data = text });
+            _messages.Add(() => base.WriteDebug(text));
         }
 
 
         private void SetupMessages()
         {
-            _messages = new BlockingCollection<Message>();
+            _messages = new BlockingCollection<Action>();
         }
 
         private void EndLoop()
         {
             _messages.CompleteAdding();
         }
-
-
-        class Message
-        {
-            public MessageType MessageType { get; set; }
-            public object Data { get; set; }
-        }
-
-
-        enum MessageType
-        {
-            Debug,
-            Object,
-            ObjectAsEnumerable,
-            Verbose,
-            Warning,
-            Error,
-            Progress
-        }
+       
     }
 }
