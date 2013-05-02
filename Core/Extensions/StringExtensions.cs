@@ -102,7 +102,15 @@ namespace ClrPlus.Core.Extensions {
         /// <remarks>
         /// </remarks>
         public static string format(this string formatString, params object[] args) {
+#if DEBUG_Q
+            try {
+                return String.Format(formatString, args);
+            } catch (Exception e) {
+                return formatString.Replace('{', '[').Replace('}',']');
+            }
+#else
             return String.Format(formatString, args);
+#endif
         }
 
         // ReSharper restore InconsistentNaming

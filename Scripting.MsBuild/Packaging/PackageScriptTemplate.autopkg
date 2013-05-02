@@ -60,6 +60,11 @@ configurations {
         clrcall.restricted-to = "Win32";
     };
 
+	Other {
+		Key:OTHER_STUFF;
+		choices: { RuntimeLibraryNull };
+		RuntimeLibraryNull.condition = "('$(RuntimeLibrary)' == '')";
+	}
 	/* 
 		Since the MSBuild  property for identifying if a project is compiling a Win8 Store App
 		is a boolean, and we don't want to actually key off that, we're going to generate 
@@ -192,8 +197,10 @@ nuget := {
             // add each file as a link rule
             #add-each-file : {
 				::nuget.targets.[${condition}].Libraries,
-				::nuget.targets.[${condition}].LibLibraries;
-			}
+				
+			};
+			//::nuget.targets.[${condition}].LibLibraries;
+
             #flatten = true;
             #destination = ${d_lib}; 
         };
@@ -229,6 +236,25 @@ nuget := {
 		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
 		TargetApplicationType = Desktop;
 		*/
+
+		
+		[Debug,Static,RuntimeLibraryNull] {
+			RuntimeLibrary = MultiThreadedDebug;
+		}
+
+		[Debug,Dynamic,RuntimeLibraryNull] {
+			RuntimeLibrary = MultiThreadedDebugDLL;
+		}
+
+		[Release,Static,RuntimeLibraryNull] {
+			RuntimeLibrary = MultiThreaded;
+		}
+
+		// if it still didn't make it in...
+		[RuntimeLibraryNull] 
+		RuntimeLibrary = MultiThreadedDLL;
+
+		ItemDefinitionGroup.ClCompile.RuntimeLibrary = $(RuntimeLibrary);
     }
     
     props {
@@ -252,5 +278,7 @@ nuget := {
 		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
 		TargetApplicationType = Desktop;
 		*/
+
+		
 	}
 }

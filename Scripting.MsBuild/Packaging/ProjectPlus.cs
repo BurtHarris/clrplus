@@ -91,13 +91,22 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
 
                 yield return "".MapTo( (view) => {
-                    var prop = LookupProperty(LookupPropertyGroup(""), view.MemberName);
-                    return new Accessor(() => {
-                        return prop.Value;
-                    }, v => {
-                        prop.Value = v.ToString();
-                    });
-                });
+                    // if (!view.IsObjectNode) {
+                        // var prop = LookupProperty(LookupPropertyGroup(""), view.MemberName);
+                        return new Accessor(() => {
+                            if (!view.HasChildren) {
+                                return LookupProperty(LookupPropertyGroup(""), view.MemberName).Value;
+                            }
+                            return "";
+                        }, v => {
+                            if (v != null || v != string.Empty) {
+                                LookupProperty(LookupPropertyGroup(""), view.MemberName).Value = v.ToString();
+                            }
+                        });
+                    //} else {
+                        //return new Accessor(() => LookupTarget(view.MemberName), v => {});
+                    //}
+                }, new[] { "CHILDREN".MapIndexedChildrenTo<string>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
             }
         }
 
@@ -116,17 +125,18 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 key => Targets.Remove(key)
                 ), new[] { "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
 
+
             yield return "".MapTo<string>((condition,view) => {
 
-
-                var prop = LookupProperty(  LookupPropertyGroup(condition), view.MemberName);
                 return new Accessor(() => {
-                    return prop.Value;
+                    return LookupProperty(  LookupPropertyGroup(condition), view.MemberName).Value;
                 }, v => {
-                    prop.Value = v.ToString();
+                    if (v != null || v != string.Empty) {
+                        LookupProperty(LookupPropertyGroup(condition), view.MemberName).Value = v.ToString();
+                    }
                 });
 
-            });
+            }, new[] { "CHILDREN".MapIndexedChildrenTo<string>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
         }
 
         private IEnumerable<ToRoute> ImportGroupChildren {
@@ -511,7 +521,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     BeforeSave();
                 }
 
-                Event<Trace>.Raise("ProjectPlus.Save", "Saving msbuild project file [{0}].", FullPath);
+                Event<Verbose>.Raise("ProjectPlus.Save", "Saving msbuild project file [{0}].", FullPath);
                 FullPath.TryHardToDelete();
                 base.Save();
                 return true;
@@ -541,7 +551,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 #if false
             var dic = parent.Conditions2;
             if (dic == null) {
-                Event<Trace>.Raise("", "ConditionCreate");
+                Event<Verbose>.Raise("", "ConditionCreate");
                 var list = parent.Conditions;
 
                 dic = parent.Conditions2 = new DelegateDictionary<string, string>(

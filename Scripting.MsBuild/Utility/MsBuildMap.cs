@@ -144,8 +144,11 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     if(metadata.Name == name) {
                         return new Accessor(() => metadata.Value, (v) => {
                             string val = v.ToString();
-                            if(values.Contains(val)) {
-                                metadata.Value = val;
+                            if (val != null) {
+                                // allow them to set it to a propert value...
+                                if (val.IndexOf("$(") > -1 || values.Contains(val)) {
+                                    metadata.Value = val;
+                                }
                             }
                         });
                     }
@@ -153,7 +156,7 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                 var n = pide.AddMetadata(name, "");
                 return new Accessor(() => n.Value, (v) => {
                     string val = v.ToString();
-                    if (values.Contains(val)) {
+                    if (val.IndexOf("$(") > -1 || values.Contains(val)) {
                         n.Value = val;
                     }
                 });

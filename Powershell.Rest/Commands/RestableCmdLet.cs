@@ -113,7 +113,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
                     return false;
                 });
 
-                local.Events += new Trace((code, message, objects) => {
+                local.Events += new Verbose((code, message, objects) => {
                     WriteVerbose("{0}:{1}".format(code, message.format(objects)));
                     return false;
                 });
@@ -127,7 +127,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
                 if (!Quiet) {
                     local.Events += new Message((code, message, objects) => {
-                        Host.UI.WriteLine("{0}:{1}".format(code, message.format(objects)));
+                        Host.UI.WriteLine("{0}{1}".format(code, message.format(objects)));
                         return false;
                     });
                 }

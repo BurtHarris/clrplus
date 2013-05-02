@@ -14,6 +14,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
     using System.Text;
     using System.Text.RegularExpressions;
     using CSScriptLibrary;
@@ -275,11 +276,13 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                
                 var c = _pivots.Values.Select(each => each.Choices.Count + 1).Aggregate(1, (current, i) => current*i);
                 dynamic s = CSScript.Evaluator.LoadCode(script);
-
+                
+                
+                
                 bool[] result = s.GetAll(c+10);
                 return result;
                
-                //Event<Trace>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
+                //Event<Verbose>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
             },  rightExpression);
         }
 
@@ -337,7 +340,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 dynamic s = CSScript.Evaluator.LoadCode(script);
                 bool result = s.AreEqual();
 
-                //Event<Trace>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
+                //Event<Verbose>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
                 return result;
             }, leftExpression, rightExpression);
 #endif
@@ -407,7 +410,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         }
                     }
                 }
-                // Event<Trace>.Raise("Pivots.GenerateExpression", "result [{0}]", result.ToString());
+                // Event<Verbose>.Raise("Pivots.GenerateExpression", "result [{0}]", result.ToString());
 
                 return result.ToString();
             }, projectName, expression, template);

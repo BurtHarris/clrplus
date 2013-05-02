@@ -489,7 +489,7 @@ namespace ClrPlus.Core.Configuration {
         }
 
         public void DeleteValues() {
-            using (var key = ReadableKey) {
+            using (var key = WriteableKey) {
                 if (key != null) {
                     foreach (var v in key.GetValueNames()) {
                         key.DeleteValue(v);

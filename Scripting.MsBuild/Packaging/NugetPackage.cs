@@ -16,6 +16,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System.IO;
     using System.Linq;
     using System.Management.Automation.Runspaces;
+    using System.Reflection;
     using System.Text;
     using System.Xml.Linq;
     using Core.DynamicXml;
@@ -31,6 +32,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
     using Utility;
 
     internal class NugetPackage : IProjectOwner {
+        private static readonly string _defaultUIProperties = Assembly.GetExecutingAssembly().ExtractFileResource("default-ui-properties.xml");
+
         private readonly Dictionary<string, string> _files = new Dictionary<string, string>();
         private readonly PackageScript _packageScript;
         private readonly string _pkgName;  // whole name of the package (ie 'zlib' or 'zlib.redist')
@@ -171,7 +174,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }
 
         internal void Process() {
-            Event<Trace>.Raise("NugetPackage.Process", "Processing nuget package [{0}].", NuspecFilename);
+            Event<Verbose>.Raise("NugetPackage.Process", "Processing nuget package [{0}].", NuspecFilename);
             
             switch(PkgRole) {
                 case "default":
@@ -215,7 +218,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         }
 
         internal void Validate() {
-            // Event<Trace>.Raise("NugetPackage.Validate", "Validating nuget package (nothing)");
+            // Event<Verbose>.Raise("NugetPackage.Validate", "Validating nuget package (nothing)");
         }
 
         internal void Save(bool cleanIntermediateFiles) {
@@ -225,12 +228,25 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
             var files = _nuSpec.Add("files");
 
+            // default xamlUi
+            var xamlText = _defaultUIProperties;
+            if (xamlText.Is()) {
+                var targetFilename = @"default-propertiesui.xml";
+                var xamlPath = Path.Combine(Directory, targetFilename);
+                xamlPath.TryHardToDelete();
+                File.WriteAllText(xamlPath, xamlText);
+                temporaryFiles.Add(xamlPath);
+                AddFileToNuSpec(xamlPath, @"\build\native\{0}".format(targetFilename));
+                GetTargetsProject("native").Xml.AddItemGroup().AddItem("PropertyPageSchema", @"$(MSBuildThisFileDirectory)\{0}".format(targetFilename));
+            }
+
+            // generated xaml
             var xaml = GenerateSettingsXaml();
             if (xaml != null) {
                 var targetFilename = @"{0}-propertiesui-{1}.xml".format(_pkgName, Guid.NewGuid());
                 var xamlPath = Path.Combine(Directory, targetFilename);
                 xamlPath.TryHardToDelete();
-                Event<Trace>.Raise("NugetPackage.Save", "Saving xaml file [{0}].", xamlPath);
+                Event<Verbose>.Raise("NugetPackage.Save", "Saving xaml file [{0}].", xamlPath);
                 xaml.Save(xamlPath);
                 temporaryFiles.Add(xamlPath);
                 AddFileToNuSpec(xamlPath, @"\build\native\{0}".format(targetFilename));
@@ -267,7 +283,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             temporaryFiles.Add(cfgPath);
             AddFileToNuSpec(cfgPath, @"\build\{0}".format(configurationsFilename));
 
-            Event<Trace>.Raise("NugetPackage.Save", "Saving nuget spec file to [{0}].", FullPath);
+            Event<Verbose>.Raise("NugetPackage.Save", "Saving nuget spec file to [{0}].", FullPath);
 
             foreach(var src in _files.Keys) {
                 AddFileToNuSpec(_files[src], src );
@@ -359,7 +375,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             switch (projectFileExtension) {
                 case "targets":
                     if (!_targets.ContainsKey(frameworkVariant)) {
-                        Event<Trace>.Raise("NugetPackage.GetOrCreateProject", "Creating .targets for [{0}] in role [{1}].", frameworkVariant, PkgRole);
+                        Event<Verbose>.Raise("NugetPackage.GetOrCreateProject", "Creating .targets for [{0}] in role [{1}].", frameworkVariant, PkgRole);
                         _targets.Add(frameworkVariant, new ProjectPlus(this, "{0}.targets".format(_pkgName)));
                     }
                     return _targets[frameworkVariant];
@@ -367,7 +383,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 case "props":
                     if (!_props.ContainsKey(frameworkVariant)) {
-                        Event<Trace>.Raise("NugetPackage.GetOrCreateProject", "Creating .props for [{0}] in role [{1}].", frameworkVariant, PkgRole);
+                        Event<Verbose>.Raise("NugetPackage.GetOrCreateProject", "Creating .props for [{0}] in role [{1}].", frameworkVariant, PkgRole);
                         _props.Add(frameworkVariant, new ProjectPlus(this, "{0}.props".format(_pkgName)));
                     }
                     return _props[frameworkVariant];

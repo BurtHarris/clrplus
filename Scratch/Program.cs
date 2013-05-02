@@ -24,6 +24,7 @@ namespace Scratch {
     using ClrPlus.Powershell.Core;
     using ClrPlus.Scripting.Languages.PropertySheet;
     using ClrPlus.Scripting.Languages.PropertySheetV3;
+    using ClrPlus.Scripting.MsBuild.Building;
     using ClrPlus.Scripting.MsBuild.Packaging;
 
     internal class Program {
@@ -46,7 +47,7 @@ namespace Scratch {
                     return false;
                 });
 
-                local.Events += new Trace((code, message, objects) => {
+                local.Events += new Verbose((code, message, objects) => {
                     Console.WriteLine("{0} {1}".format(code, message.format(objects)));
                     return false;
                 });
@@ -193,10 +194,16 @@ namespace Scratch {
                 return false;
             });
 
-            CurrentTask.Events += new Trace((code, message, objects) => {
-                Console.WriteLine("{0}:Trace {1}", code, message.format(objects));  
+            CurrentTask.Events += new Verbose((code, message, objects) => {
+                Console.WriteLine("{0}:Verbose {1}", code, message.format(objects));  
                 return false;
             });
+            CurrentTask.Events += new Message((code, message, objects) => {
+                Console.WriteLine("{0}:Message {1}", code, message.format(objects));
+                return false;
+            });
+
+#if AUTOPKG
 
             try {
                 Environment.CurrentDirectory = @"C:\project";
@@ -207,6 +214,19 @@ namespace Scratch {
             } catch (Exception e) {
                 Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
             }
+#else 
+            try {
+                // Environment.CurrentDirectory = @"C:\project";
+                Console.WriteLine("Build script");
+                using(var script = new BuildScript("test.buildinfo")) {
+                    script.Execute();
+                }
+            }
+            catch(Exception e) {
+                Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
+            }
+
+#endif
             return;
             //
         }

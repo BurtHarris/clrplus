@@ -32,6 +32,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
     public class PackageScript : IDisposable {
         private static readonly string _requiredTemplate = Assembly.GetExecutingAssembly().ExtractFileResource("PackageScriptTemplate.autopkg");
+        
         internal readonly Pivots Pivots;
         internal string PackageDirectory {
             get {
@@ -48,9 +49,10 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         private dynamic _nuget;
         private dynamic _nugetfiles;
         private readonly List<string> _dependentNuGetPackageDirectories = new List<string>();
+        private IDictionary<string, string> _macros = new Dictionary<string, string>();
 
         public PackageScript(string filename) {
-            Event<Trace>.Raise("PackageScript", "Constructor");
+            Event<Verbose>.Raise("PackageScript", "Constructor");
             _sheet = new RootPropertySheet(this);
 
             // get the full path to the .autopkgFile
@@ -68,7 +70,13 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
             // set the package name macro 
             _sheet.AddMacro("pkgname", packageName);
+            _sheet.CurrentView.AddMacro( (name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
+            _sheet.CurrentView.AddMacro((name, context) => System.Environment.GetEnvironmentVariable(name));
             Pivots = new Pivots(_sheet.CurrentView.GetProperty("configurations"));
+        }
+
+        public void AddMacro(string key, string value) {
+            _macros.AddOrSet(key.ToLower(), value);
         }
 
         public void AddNuGetPackageDirectory(string directory) {
@@ -183,7 +191,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 return;
             }
 
-            Event<Trace>.Raise("PackageScript.Initialize", "Init package script");
+            Event<Verbose>.Raise("PackageScript.Initialize", "Init package script");
 
             if (packageTypes.HasFlag(PackageTypes.NuGet) ) {
                InitializeNuget();
@@ -197,10 +205,10 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             if(!_nugetfiles.HasChildren) {
                 Fail(Event<SourceWarning>.Raise("AP200", _nuget.SourceLocations, "script does not contain a 'files' declaration in 'nuget'"));
             }
-            Event<Trace>.Raise("PackageScript.ProcessNuget", "Processing Nuget Files");
+            Event<Verbose>.Raise("PackageScript.ProcessNuget", "Processing Nuget Files");
             // process files
             ProcessNugetFiles(_nugetfiles, PackageDirectory, null);
-            Event<Trace>.Raise("PackageScript.ProcessNuget", "Done Processing Nuget Files");
+            Event<Verbose>.Raise("PackageScript.ProcessNuget", "Done Processing Nuget Files");
             // handle each package 
             foreach(var nugetPackage in _nugetPackages.Values) {
                 nugetPackage.Process();
@@ -220,12 +228,12 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 return;
             }
 
-            Event<Trace>.Raise("PackageScript.Process", "Processing Package Creation");
+            Event<Verbose>.Raise("PackageScript.Process", "Processing Package Creation");
 
             // persist the propertysheet to the msbuild model.
             _sheet.View.CopyToModel();
 
-            Event<Trace>.Raise("PackageScript.Process", "(copy to model, done)");
+            Event<Verbose>.Raise("PackageScript.Process", "(copy to model, done)");
 
             if (packageTypes.HasFlag(PackageTypes.NuGet)) {
                 ProcessNuget();
@@ -378,7 +386,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                             continue;
                         }
 
-                        Event<Trace>.Raise("ProcessNugetFiles (adding file)", "'{0}' + '{1}'", destinationFolder, relativePaths[src]);
+                        Event<Verbose>.Raise("ProcessNugetFiles (adding file)", "'{0}' + '{1}'", destinationFolder, relativePaths[src]);
                         string target = Path.Combine(destinationFolder, optionFlatten ? Path.GetFileName(relativePaths[src]) : relativePaths[src]).Replace("${condition}", currentCondition).Replace("\\\\", "\\");
                         package.AddFile(src, target);
 

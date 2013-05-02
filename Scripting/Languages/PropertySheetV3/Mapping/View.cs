@@ -429,6 +429,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return map is PlaceholderMap;
         }
 
+        public bool IsObjectNode {
+            get {
+                return map.IsObjectNode;
+            }
+        }
+
         public View GetProperty(string propertyName) {
             // this falls back to case insensitive matches if th property didn't exist.
             if (propertyName.Contains('.')) {

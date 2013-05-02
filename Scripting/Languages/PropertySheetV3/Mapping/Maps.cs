@@ -55,6 +55,7 @@
 
         protected internal class Map : AbstractDictionary<string, View> {
             internal View ParentView;
+            internal bool IsObjectNode;
             protected internal View _thisView;
             protected IDictionary<string, View> _childItems;
             protected Dictionary<string, Func<View>> _dynamicViewInitializers;
@@ -750,6 +751,7 @@
         protected class NodeMap : PlaceholderMap {
             internal NodeMap(string memberName, INode node)
                 : base(memberName, node is ObjectNode ? (node as ObjectNode).Routes : null) {
+                IsObjectNode = node is ObjectNode;
                 _active = true;
             }
         }
