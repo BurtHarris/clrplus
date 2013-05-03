@@ -79,6 +79,7 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="AllVerbs.cs" />
+    <Compile Include="AsyncCmdlet.cs" />
     <Compile Include="BackgroundPowershellProcess.cs" />
     <Compile Include="DynamicPowershell.cs" />
     <Compile Include="DynamicPowershellCommand.cs" />
