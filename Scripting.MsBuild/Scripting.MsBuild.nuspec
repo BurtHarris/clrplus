@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Scripting.MsBuild</id>
-    <version>1.8.0.73</version>
+    <version>1.8.0.74</version>
     <title>CLRPlus MSBuild Scripting Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,9 +19,9 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Scripting MsBuild</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.73" />
-        <dependency  id="ClrPlus.Platform" version="1.8.0.73" />
-        <dependency  id="ClrPlus.Scripting" version="1.8.0.73" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.74" />
+        <dependency  id="ClrPlus.Platform" version="1.8.0.74" />
+        <dependency  id="ClrPlus.Scripting" version="1.8.0.74" />
     </dependencies>
     
   </metadata>

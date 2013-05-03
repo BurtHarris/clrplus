@@ -13,6 +13,7 @@
 namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Linq;
     using Core.Collections;
@@ -89,13 +90,13 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 yield return         "*".MapTo(() => ConditionCreate(), key => Pivots.NormalizeExpression(key), ConditionRoutes());
 
-
                 yield return "".MapTo( (view) => {
-                    // if (!view.IsObjectNode) {
-                        // var prop = LookupProperty(LookupPropertyGroup(""), view.MemberName);
+                    if (view.HasChildren) {
+                        return new Accessor(() => (object)LookupTarget(view.MemberName), v => {});
+                    } else 
                         return new Accessor(() => {
                             if (!view.HasChildren) {
-                                return LookupProperty(LookupPropertyGroup(""), view.MemberName).Value;
+                                return (object)LookupProperty(LookupPropertyGroup(""), view.MemberName).Value;
                             }
                             return "";
                         }, v => {
@@ -106,7 +107,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     //} else {
                         //return new Accessor(() => LookupTarget(view.MemberName), v => {});
                     //}
-                }, new[] { "CHILDREN".MapIndexedChildrenTo<string>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
+                }, new[] { "CHILDREN".MapIndexedChildrenTo<object>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
             }
         }
 

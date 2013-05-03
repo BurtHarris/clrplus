@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="Building\BuildScript.cs" />
+    <Compile Include="Building\ExecEx.cs" />
     <Compile Include="Building\Logger.cs" />
     <Compile Include="Building\ProjectTargetElementExtensions.cs" />
     <Compile Include="Building\ToolCache.cs" />

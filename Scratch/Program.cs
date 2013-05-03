@@ -16,6 +16,7 @@ namespace Scratch {
     using System.Linq;
     using System.Management.Automation;
     using System.Management.Automation.Runspaces;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Xml.Linq;
     using ClrPlus.Core.DynamicXml;
@@ -195,7 +196,7 @@ namespace Scratch {
             });
 
             CurrentTask.Events += new Verbose((code, message, objects) => {
-                Console.WriteLine("{0}:Verbose {1}", code, message.format(objects));  
+                Console.WriteLine("{0}:Verbose {1}", code, message.format(objects));
                 return false;
             });
             CurrentTask.Events += new Message((code, message, objects) => {
@@ -214,15 +215,14 @@ namespace Scratch {
             } catch (Exception e) {
                 Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
             }
-#else 
+#else
             try {
                 // Environment.CurrentDirectory = @"C:\project";
                 Console.WriteLine("Build script");
-                using(var script = new BuildScript("test.buildinfo")) {
+                using (var script = new BuildScript("test.buildinfo")) {
                     script.Execute();
                 }
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
             }
 
@@ -230,7 +230,45 @@ namespace Scratch {
             return;
             //
         }
-    }
+
+        public delegate bool PleaseShouldIDie();
+        /*
+        public void Start(string[] args) {
+
+            // original context.
+            CurrentTask.Events += new Func<string,int>((x) => {
+                Console.WriteLine(x);
+                Thread.Sleep(1000);
+                return 5;
+            });
+
+            CurrentTask.Events += new PleaseShouldIDie(() => {
+                var yesno = Console.ReadLine();
+                if (yesno == "y") {
+                    return true;
+                }
+                return false;
+            });
+
+            Task.Factory.StartNewExAndWait(() => {
+
+                // doing something here.
+                var x = Event<Func<string, int>>.Raise("hello world");
+
+                bool shouldAbort = Event<PleaseShouldIDie>.RaiseFirst();
+
+                if (shouldAbort) {
+                    return;
+                }
+
+            });
+
+            
+
+
+        } */
+    
+}
 
     [Cmdlet(AllVerbs.Add, "Nothing")]
     public class AddNothingCmdlet : PSCmdlet {

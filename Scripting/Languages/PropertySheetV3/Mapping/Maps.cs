@@ -742,11 +742,7 @@
             internal PlaceholderMap(string memberName, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
             }
-
-            
         }
-
-        
 
         protected class NodeMap : PlaceholderMap {
             internal NodeMap(string memberName, INode node)
@@ -756,49 +752,40 @@
             }
         }
 
-        protected class ObjectMap<TParent> : Map, IHasValueFromBackingStorage, IPrefersComputedValue  {
-            private RouteDelegateWithView<TParent> _route;
-
-            internal ObjectMap(string memberName, RouteDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
+        protected class RoutableMap: Map {
+            internal RoutableMap(string memberName, IEnumerable<ToRoute> childRoutes)
                 : base(memberName, childRoutes) {
 
                 // when this map is activated, add our children to it.
                 AddChildRoute(() => {
-                    
+
                     AddChildRoutes(MemberRoutes);
                     return null;
                 });
-                _route = route;
             }
 
-            protected internal override object ComputedValue {
-                get {
-                    return _route(() => (TParent)_parentReferenceValue(), _thisView);
-                }
-            }
-
-            private IEnumerable<ToRoute> MemberRoutes {
+            protected IEnumerable<ToRoute> MemberRoutes {
                 get {
                     var result = ComputedValue;
 
-                    if (result != null) {
+                    if(result != null) {
                         var type = result.GetType();
 
                         // allows a member object to add a field/property called "MemberRoutes" and have it define child routes too.
                         var customMemberRoutesProperty = type.GetReadableElements().FirstOrDefault(ppi => ppi.Name == "MemberRoutes");
-                        if (customMemberRoutesProperty != null) {
-                            var customRoutes = customMemberRoutesProperty.GetValue(result,null) as IEnumerable<ToRoute>;
-                            if (customRoutes != null) {
-                                foreach (var i in customRoutes) {
+                        if(customMemberRoutesProperty != null) {
+                            var customRoutes = customMemberRoutesProperty.GetValue(result, null) as IEnumerable<ToRoute>;
+                            if(customRoutes != null) {
+                                foreach(var i in customRoutes) {
                                     yield return i;
                                 }
                             }
                         }
 
-                        foreach (var each in type.GetPersistableElements().Where( each => each.Name != "MemberRoutes ")) {
+                        foreach(var each in type.GetPersistableElements().Where(each => each.Name != "MemberRoutes")) {
                             var ppi = each;
 
-                            switch (ppi.ActualType.GetPersistableInfo().PersistableCategory) {
+                            switch(ppi.ActualType.GetPersistableInfo().PersistableCategory) {
                                 case PersistableCategory.String:
                                     yield return (ppi.Name.MapTo(new Accessor(() => {
                                         return ppi.GetValue(result, null);
@@ -814,13 +801,13 @@
 
                                     yield return (ppi.Name.MapTo(new Accessor(() => ppi.GetValue(result, null), v => {
                                         // if the value is null, try to set null..
-                                        if (v == null) {
+                                        if(v == null) {
                                             ppi.SetValue(result, null, null);
                                             return;
                                         }
 
                                         // if the types are compatible, assign directly
-                                        if (ppi.ActualType.IsInstanceOfType(v)) {
+                                        if(ppi.ActualType.IsInstanceOfType(v)) {
                                             ppi.SetValue(result, v, null);
                                             return;
                                         }
@@ -836,10 +823,11 @@
                                     break;
 
                                 case PersistableCategory.Enumerable:
-                                    if (typeof (IList).IsAssignableFrom(ppi.ActualType)) {
+                                    if(typeof(IList).IsAssignableFrom(ppi.ActualType)) {
                                         // it's actually an IList
                                         yield return (ppi.Name.MapTo(() => (IList)ppi.GetValue(result, null)));
-                                    } else {
+                                    }
+                                    else {
                                         // everything else
                                         yield return (ppi.Name.MapTo(() => (IEnumerable)ppi.GetValue(result, null)));
                                     }
@@ -856,13 +844,13 @@
                         }
 
                         // then check to see if the object has a function "IEnumerable<ToRoute> GetMemeberRoutes(View view)" and call it
-                        var fn = type.GetMethod("GetMemberRoutes", new [] {typeof (View)});
+                        var fn = type.GetMethod("GetMemberRoutes", new[] { typeof(View) });
 
-                        if (fn != null) {
-                            var moreRoutes =  fn.Invoke(result, new object[] {
+                        if(fn != null) {
+                            var moreRoutes = fn.Invoke(result, new object[] {
                                 _thisView
                             }) as IEnumerable<ToRoute>;
-                            if (moreRoutes != null) {
+                            if(moreRoutes != null) {
                                 foreach(var i in moreRoutes) {
                                     yield return i;
                                 }
@@ -870,6 +858,21 @@
                         }
 
                     }
+                }
+            }
+        }
+
+        protected class ObjectMap<TParent> : RoutableMap, IHasValueFromBackingStorage, IPrefersComputedValue {
+            private RouteDelegateWithView<TParent> _route;
+
+            internal ObjectMap(string memberName, RouteDelegateWithView<TParent> route, IEnumerable<ToRoute> childRoutes)
+                : base(memberName, childRoutes) {
+                _route = route;
+            }
+
+            protected internal override object ComputedValue {
+                get {
+                    return _route(() => (TParent)_parentReferenceValue(), _thisView);
                 }
             }
 
@@ -897,7 +900,7 @@
             }
         }
 
-        protected class ValueMap<TParent> : Map, ICanSetBackingValue, IHasValueFromBackingStorage, IPrefersSingleValue {
+        protected class ValueMap<TParent> : RoutableMap, ICanSetBackingValue, IHasValueFromBackingStorage, IPrefersSingleValue {
             private ValueDelegateWithView<TParent> _route;
 
             internal bool RoutesMatch(ValueMap<TParent> otherMap ) {
@@ -911,7 +914,7 @@
 
             protected internal override object ComputedValue {
                 get {
-                    return _route(() => (TParent)_parentReferenceValue(),_thisView).Value;
+                    return  _route(() => (TParent)_parentReferenceValue(), _thisView).Value;
                 }
             }
 

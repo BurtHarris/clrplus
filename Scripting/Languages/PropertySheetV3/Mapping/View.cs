@@ -684,10 +684,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             : base(Unroll( memberName, (member) => new IndexedChildMap<TParent>(member, childAccessor, null) {
                 childInitializers = childRoutes
             })) {
-
         }
 
-      
     }
 
     internal class View<TParent, TKey, TVal> : View {

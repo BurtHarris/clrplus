@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Networking</id>
-    <version>1.8.0.73</version>
+    <version>1.8.0.74</version>
     <title>CLRPlus Networking Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,7 +19,7 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp FTP Networking</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.73" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.74" />
     </dependencies>
   </metadata>
   <files>

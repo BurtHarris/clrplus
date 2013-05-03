@@ -206,7 +206,6 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 if(stdout.Is()) {
                     Event<Verbose>.Raise("stdout", stdout);
                 }
-
             }
         }
 

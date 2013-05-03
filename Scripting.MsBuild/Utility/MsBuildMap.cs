@@ -11,6 +11,7 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Utility {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Collections;
@@ -24,10 +25,6 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
     public static class MsBuildMap {
         internal static XDictionary<object,StringPropertyList>  _stringPropertyList = new XDictionary<object, StringPropertyList>();
 
-      
-
-
-
         internal static ProjectElement GetTargetItem(this ProjectTargetElement target, View view) {
             // get the member name and data from the view, and create/lookup the item.
             // return the item.
@@ -36,11 +33,21 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     break;
                 case "ItemGroup":
                     break;
+                case "AfterTargets":
+                    break;
                 default:
                     var tsk = target.AddTask(view.MemberName);
 
                     foreach (var n in view.GetChildPropertyNames()) {
-                        tsk.SetParameter(n, view.GetProperty(n));
+                        var prop = view.GetProperty(n);
+
+                        if (n.ToInt32(-1) > -1) {
+                            // an output paramter.
+                            var nam = prop.GetProperty(prop.GetChildPropertyNames().FirstOrDefault());
+                            tsk.AddOutputProperty( nam.Value, nam.MemberName);
+                        } else {
+                            tsk.SetParameter(n, prop);
+                        }
                     }
                     return tsk;
             }

@@ -43,7 +43,7 @@ namespace ClrPlus.Platform {
             if (Marshal.GetLastWin32Error() != 87) {
             Kernel32.FreeConsole();
                 var rc = 0;
-                var process = new Process {
+                var process = new System.Diagnostics.Process {
                     StartInfo = {
                         UseShellExecute = false,
                         WorkingDirectory = Environment.CurrentDirectory,
@@ -62,7 +62,7 @@ namespace ClrPlus.Platform {
                  // this is a console process.
              // }
 
-             var process = new Process {
+            var process = new System.Diagnostics.Process {
                  StartInfo = {
                      UseShellExecute = true,
                      WorkingDirectory = Environment.CurrentDirectory,
@@ -100,7 +100,7 @@ namespace ClrPlus.Platform {
                 // :) Seems that we need to elevate?
             }
 
-            var process = new Process {
+            var process = new System.Diagnostics.Process {
                 StartInfo = {
                     UseShellExecute = true,
                     WorkingDirectory = Environment.CurrentDirectory,
@@ -124,9 +124,9 @@ namespace ClrPlus.Platform {
             Environment.Exit(0);
         }
 
-        private static Process _parentProcess;
+        private static System.Diagnostics.Process _parentProcess;
 
-        public static Process Parent {
+        public static System.Diagnostics.Process Parent {
             get {
                 return _parentProcess ?? (_parentProcess = ParentProcess.GetParentProcess());
             }
