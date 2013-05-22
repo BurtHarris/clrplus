@@ -44,7 +44,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         internal string GetValue(IValueContext currentContext) {
-            
             if (_value == null) {
                 _value = new Result();
                 setResult(_value,currentContext);
@@ -60,7 +59,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 default:
                     return _value.Aggregate("", (current, each) => current + ", " + each).Trim(',', ' ');
             }
-            
         }
 
         internal IEnumerable<string> GetValues(IValueContext currentContext) {
@@ -206,6 +204,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
             */
             yield return "";
+        }
+    }
+
+    public class ExpansionPropertyNode : PropertyNode {
+        public ObjectIterator ObjectIterator {
+            get; set;
         }
     }
 }

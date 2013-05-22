@@ -62,7 +62,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             
                 return GetValue(currentContext).Split(new[] {
                     ','
-                }, StringSplitOptions.RemoveEmptyEntries);
+                }, StringSplitOptions.RemoveEmptyEntries).Select( each => each.Trim());
             
         }
 

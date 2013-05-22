@@ -15,17 +15,64 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
     using System.Collections.Generic;
     using System.Linq;
     using System.Collections;
+    using System.Reflection;
     using System.Xml;
     using ClrPlus.Core.Collections;
     using ClrPlus.Core.Extensions;
     using ClrPlus.Core.Utility;
     using ClrPlus.Scripting.Languages.PropertySheetV3.Mapping;
+    using Core.Tasks;
     using Microsoft.Build.Construction;
+    using Microsoft.Build.Framework;
+
+    internal class MSBuildTaskType {
+        public Type TaskClass;
+        public string[] OptionalInputs;
+        public string[] RequiredInputs;
+        public string[] Outputs;
+        
+    }
+
 
     public static class MsBuildMap {
         internal static XDictionary<object,StringPropertyList>  _stringPropertyList = new XDictionary<object, StringPropertyList>();
 
+        // private static MSBuildTaskUtility _taskUtility;
+
+        private static Dictionary<string, MSBuildTaskType> _taskClasses = new Dictionary<string, MSBuildTaskType>();
+        private static string[] _ignoreProperties = new string[] {
+            "BuildEngine",
+            "BuildEngine2",
+            "BuildEngine3",
+            "BuildEngine4",
+            "HostObject",
+            "Log"
+        };
+        static MsBuildMap() {
+            // ensure a few assemblies are loaded.
+            AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Tasks.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
+            AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Utilities.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
+            AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
+
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach(var asm in assemblies) {
+                var tasks = asm.GetTypes().Where(each => each.GetInterfaces().Contains(typeof(ITask))).Where(each => each.IsPublic);
+                foreach(var t in tasks) {
+                    var properties = t.GetProperties().Where(each => !_ignoreProperties.Contains(each.Name)).ToArray();
+                    _taskClasses.Add(t.Name, new MSBuildTaskType {
+                        TaskClass = t,
+                        Outputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "OutputAttribute")).Select(each => each.Name).ToArray(),
+                        RequiredInputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "RequiredAttribute")).Select(each => each.Name).ToArray(),
+                        OptionalInputs = properties.Where(each => each.GetCustomAttributes(true).All(attr => attr.GetType().Name != "OutputAttribute" && attr.GetType().Name != "RequiredAttribute")).Select(each => each.Name).ToArray()
+                    });
+                }
+            }
+        }
+
+
         internal static ProjectElement GetTargetItem(this ProjectTargetElement target, View view) {
+           
+
             // get the member name and data from the view, and create/lookup the item.
             // return the item.
             switch (view.MemberName) {
@@ -36,20 +83,88 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                 case "AfterTargets":
                     break;
                 default:
-                    var tsk = target.AddTask(view.MemberName);
+                    var taskName = view.MemberName;
+                    if (_taskClasses.ContainsKey(taskName)) {
+                        // for tasks we recognize
+                        var tskType = _taskClasses[taskName];
+
+                        var tsk = target.AddTask(taskName);
+                        var required = tskType.RequiredInputs.ToList();
+
+
+                        foreach (var n in view.GetChildPropertyNames()) {
+                            var prop = view.GetProperty(n);
+
+                            if (n == "Condition") {
+                                tsk.Condition = prop;
+                                continue;
+                            }
+
+                            if (required.Contains(n)) {
+                                required.Remove(n);
+                            } else {
+                                if (!tskType.OptionalInputs.Contains(n)) {
+                                    Event<Warning>.Raise("Unknown Parameter", "Task '{0}' does not appear to have an input parameter '{1}'", taskName, n);
+                                }
+                            }
+
+                           
+                            tsk.SetParameter(n, prop);
+                        }
+
+                        foreach (var r in required) {
+                            Event<Warning>.Raise("Missing Parameter", "Task '{0}' is missing required input parameter '{1}'", taskName, r);
+                        }
+
+                        var outputs = tskType.Outputs.ToList();
+
+                        foreach (var n in view.GetIndexedPropertyNames()) {
+                            var prop = view.GetProperty(n);
+                            // an output paramter.
+                            var nam = prop.GetProperty(prop.GetChildPropertyNames().FirstOrDefault());
+
+                            if (!tskType.Outputs.Contains(nam.Value)) {
+                                Event<Warning>.Raise("Unknown Parameter", "Task '{0}' does not appear to have an output parameter '{1}'", taskName, nam.Value);
+                            }
+
+                            if (outputs.Contains(nam.Value)) {
+                                outputs.Remove(nam.Value);
+                            }
+
+                            tsk.AddOutputProperty(nam.Value, nam.MemberName);
+                            tsk.AddOutputItem(nam.Value, nam.MemberName);
+                        }
+
+                        foreach (var output in outputs) {
+                            // add in any unreferenced outputs as themselves.
+                            tsk.AddOutputProperty(output, output);
+                            tsk.AddOutputItem(output, output);
+                        }
+                        return tsk;
+                    }
+
+
+                    // for tasks we don't recognize
+                    var tsk2 = target.AddTask(taskName);
 
                     foreach (var n in view.GetChildPropertyNames()) {
                         var prop = view.GetProperty(n);
-
-                        if (n.ToInt32(-1) > -1) {
-                            // an output paramter.
-                            var nam = prop.GetProperty(prop.GetChildPropertyNames().FirstOrDefault());
-                            tsk.AddOutputProperty( nam.Value, nam.MemberName);
-                        } else {
-                            tsk.SetParameter(n, prop);
+                        if(n == "Condition") {
+                            tsk2.Condition = prop;
+                            continue;
                         }
+                        tsk2.SetParameter(n, prop);
                     }
-                    return tsk;
+
+                    foreach (var n in view.GetIndexedPropertyNames()) {
+                        var prop = view.GetProperty(n);
+                        // an output paramter.
+                        var nam = prop.GetProperty(prop.GetChildPropertyNames().FirstOrDefault());
+                        tsk2.AddOutputProperty(nam.Value, nam.MemberName);
+                        tsk2.AddOutputItem(nam.Value, nam.MemberName);
+                    }
+                    return tsk2;
+
             }
             return null;
         }

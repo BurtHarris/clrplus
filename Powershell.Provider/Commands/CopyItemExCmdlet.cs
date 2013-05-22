@@ -133,14 +133,17 @@ namespace ClrPlus.Powershell.Provider.Commands {
                         CopyOperation operation1 = operation;
                         outputStream.BytesWritten += (sender, args) => WriteProgress(CreateProgressRecord(2, "Copy",
                             "Copying '{0}' to '{1}'".format(operation1.Source.AbsolutePath, operation1.Destination.AbsolutePath), 100*(double)args.StreamPosition/inputLength, 1));
-                            
+                         
+                        inputStream.CopyTo(outputStream, 32768);
+
+                        /*
                         Task t = inputStream.CopyToAsync(outputStream, _cancellationToken.Token, false);
                         try {
                             t.RunSynchronously();
                         } catch (TaskCanceledException e) {
                             return;
                         }
-
+                        */
                     }
                 }
 

@@ -70,8 +70,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
             // set the package name macro 
             _sheet.AddMacro("pkgname", packageName);
-            _sheet.CurrentView.AddMacro( (name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
-            _sheet.CurrentView.AddMacro((name, context) => System.Environment.GetEnvironmentVariable(name));
+            _sheet.CurrentView.AddMacroHandler( (name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
+            _sheet.CurrentView.AddMacroHandler((name, context) => System.Environment.GetEnvironmentVariable(name));
             Pivots = new Pivots(_sheet.CurrentView.GetProperty("configurations"));
         }
 
@@ -155,14 +155,18 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 "condition".MapTo(conditions, key => Pivots.GetExpressionFilepath(_nuspec.id, key)),
                 "*".MapTo(conditions, key => Pivots.GetExpressionFilepath(_nuspec.id, key))
             }));
+
+            var nuspecid = _nuspec.id;
+
             var conditionFolderMacroHander = (GetMacroValueDelegate)((macro, context) => {
                 if (macro == "conditionFolder") {
-                    return Pivots.GetExpressionFilepath(_nuspec.id, ((View)context).GetMacroValue("ElementId"));
+
+                    return LinqExtensions.SingleItemAsEnumerable(Pivots.GetExpressionFilepath(nuspecid, ((View)context).GetMacroValues("ElementId").FirstOrEmptyString()));
                 }
                 return null;
             });
-            _nuget.props.AddMacro(conditionFolderMacroHander);
-            _nuget.targets.AddMacro(conditionFolderMacroHander);
+            _nuget.props.AddMacroHandler(conditionFolderMacroHander);
+            _nuget.targets.AddMacroHandler(conditionFolderMacroHander);
 
             nugetView.AddChildRoute("props".MapTo(() => GetPropsProject("default") /*, GetPropsProject("default").ProjectRoutes() */));
             
@@ -355,7 +359,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 // determine the destination location in the target package
                 var optionDestination = container.GetMetadataValueHarder("destination", currentCondition);
-                var destinationFolder = string.IsNullOrEmpty(optionDestination) ? (filesView.GetMacroValue("d_" + containerName) ?? "\\") : optionDestination;
+                var destinationFolder = string.IsNullOrEmpty(optionDestination) ? (filesView.GetSingleMacroValue("d_" + containerName) ?? "\\") : optionDestination;
 
                 var optionFlatten = container.GetMetadataValueHarder("flatten", currentCondition).IsPositive();
 
@@ -368,7 +372,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         var folderView = filesView.GetProperty(addFolder.Replace("${condition}", currentCondition));
                         if (folderView != null) {
                             var values = folderView.Values.ToList();
-                            values.Add((filesView.GetMacroValue("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
+                            values.Add((filesView.GetMacroValues("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
                             folderView.Values = values;
                         }
                     }
@@ -395,7 +399,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                                 var fileListView = filesView.GetProperty(addEachFile.Replace("${condition}", currentCondition));
                                 if (fileListView != null) {
                                     var values = fileListView.Values.ToList();
-                                    values.Add((filesView.GetMacroValue("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
+                                    values.Add((filesView.GetMacroValues("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
                                     fileListView.Values = values;
                                 }
                             }

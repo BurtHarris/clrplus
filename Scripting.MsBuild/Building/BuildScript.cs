@@ -42,18 +42,19 @@ namespace ClrPlus.Scripting.MsBuild.Building {
         private IDictionary<string, string> _macros = new Dictionary<string, string>() ;
         public BuildScript(string filename) {
             Filename = filename.GetFullPath();
+            _project = new ProjectPlus(this, Filename + ".msbuild");
+            _project.Xml.AddImport(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc", "MSBuild.ExtensionPack.tasks"));
 
             _sheet = new RootPropertySheet(_project);
             _sheet.ParseFile(Filename);
-            _project = new ProjectPlus(this, Filename + ".msbuild");
+            
             _pivots = new Pivots(_sheet.View.configurations);
            
-            _project.Xml.AddImport(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc", "MSBuild.ExtensionPack.tasks"));
-
             _sheet.AddChildRoutes(_project.MemberRoutes);
+            // _sheet.AddChildRoutesForType(typeof (ProjectTargetElement), _project.TargetRoutes);
 
-            _sheet.CurrentView.AddMacro((name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
-            _sheet.CurrentView.AddMacro((name, context) => System.Environment.GetEnvironmentVariable(name));
+            _sheet.CurrentView.AddMacroHandler((name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
+            _sheet.CurrentView.AddMacroHandler((name, context) => System.Environment.GetEnvironmentVariable(name));
             // convert #product-info into a dictionary.
             productInformation = _sheet.Metadata.Value.Keys.Where(each => each.StartsWith("product-info")).ToXDictionary(each => each.Substring(12), each => _sheet.Metadata.Value[each]);
         }
@@ -84,7 +85,7 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 yield return "condition".MapTo<ProjectTargetElement>(tgt => tgt.Condition());
                 yield return "*".MapTo<ProjectTargetElement>(tgt => tgt.Condition());
 
-                yield return "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((tgt, child) => tgt.GetTargetItem(child)); // .tasks 
+                yield return "$$INDEXED".MapIndexedChildrenTo<ProjectTargetElement>((tgt, child) => tgt.GetTargetItem(child)); // .tasks 
             }
         }
 
@@ -185,7 +186,11 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                                     break;
 
                                 case "MessageRaised":
-                                    Event<Message>.Raise("", obj.Message);
+                                    if (obj.Message.IndexOf("due to false condition") > -1) {
+                                        Event<Verbose>.Raise("", obj.Message);
+                                    } else {
+                                        Event<Message>.Raise("", obj.Message);
+                                    }
                                     break;
 
                                 default:

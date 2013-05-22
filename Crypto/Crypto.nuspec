@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Crypto</id>
-    <version>1.8.0.74</version>
+    <version>1.8.0.76</version>
     <title>CLRPlus Crypto Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,7 +19,7 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Crypto Cryptography</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.74" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.76" />
     </dependencies>
   </metadata>
   <files>

@@ -39,6 +39,7 @@
     </Reference>
     <Reference Include="Microsoft.Build" />
     <Reference Include="Microsoft.Build.Framework" />
+    <Reference Include="Microsoft.Build.Tasks.v4.0" />
     <Reference Include="Microsoft.Build.Utilities.v4.0" />
     <Reference Include="Mono.CSharp, Version=4.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -63,9 +64,12 @@
   <ItemGroup>
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="Building\BuildScript.cs" />
-    <Compile Include="Building\ExecEx.cs" />
+    <Compile Include="Building\Tasks\ExecEx.cs" />
     <Compile Include="Building\Logger.cs" />
     <Compile Include="Building\ProjectTargetElementExtensions.cs" />
+    <Compile Include="Building\Tasks\GetEnvironmentFromBatchFile.cs" />
+    <Compile Include="Building\Tasks\PushEnvironment.cs" />
+    <Compile Include="Building\Tasks\SetEnvironmentFromTarget.cs" />
     <Compile Include="Building\ToolCache.cs" />
     <Compile Include="Packaging\AnswerCache.cs" />
     <Compile Include="Utility\CustomPropertyList.cs" />
@@ -113,22 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Building\template.buildinfo" />
-    <None Include="test.buildinfo">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="winsdk7.toolinfo">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="winsdk8.toolinfo">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="vc10.toolinfo">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="packages.config" />
-    <None Include="vc11.toolinfo">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Packaging\default-ui-properties.xml" />

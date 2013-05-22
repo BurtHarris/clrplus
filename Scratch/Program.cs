@@ -204,12 +204,12 @@ namespace Scratch {
                 return false;
             });
 
-#if AUTOPKG
+#if true
 
             try {
-                Environment.CurrentDirectory = @"C:\project";
+                Environment.CurrentDirectory = @"C:\forks\pcre\COPKG";
                 Console.WriteLine("Package script");
-                using (var script = new PackageScript("CppRestSDK.autopkg")) {
+                using(var script = new PackageScript("pcre.autopkg")) {
                     script.Save(PackageTypes.NuGet, false);
                 }
             } catch (Exception e) {

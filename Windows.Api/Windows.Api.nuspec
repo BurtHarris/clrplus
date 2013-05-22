@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Windows.Api</id>
-    <version>1.8.0.74</version>
+    <version>1.8.0.76</version>
     <title>CLRPlus Windows.Api Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -35,7 +35,7 @@ It's not all perfect yet, and far from completely implemented, but a ton of stuf
     <tags>ClrPlus CoApp Win32 API Native</tags>
     <!-- 
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.74" />
+        <dependency  id="ClrPlus.Core" version="1.8.0.76" />
     </dependencies>
     -->
   </metadata>

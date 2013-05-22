@@ -34,7 +34,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         protected readonly Tailcall Invalid;
 
         private readonly PropertySheet _propertySheet;
-        private readonly IEnumerator<Token> _enumerator;
+        private IEnumerator<Token> _enumerator;
 
         private Token _token;
         private bool _rewind;
@@ -121,6 +121,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             Invalid = () => null;
         }
 
+        internal void ResetParser(IEnumerable<Token> tokens) {
+            _enumerator = tokens.GetEnumerator();
+            var x = Next;
+
+        }
+
+
         internal void Parse() {
             Global();
         }
@@ -205,6 +212,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
                 case TokenType.Identifier:
                 case TokenType.Dot:
+                case TokenType.SelectorParameter:
+                case TokenType.EmbeddedInstruction:
 
                     switch (Data) {
                         case "@import":
@@ -218,7 +227,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     // old way : just parsed a dictionary. New way, it checks to see what kind of dictionary first.
                     // return Global(ParseItemsInDictionary(_propertySheet.Children[ParseSelector(OpenBrace)]));
                     
-                    return Global(ParseItemAsDictionary(_propertySheet.Children[ParseSelector(OpenBraceInstructionOrColonEquals)]));
+                    // return Global(ParseItemAsDictionary(_propertySheet.Children[ParseSelector(OpenBraceInstructionOrColonEquals)]));
+                    return Global(ParseItemsInDictionary(_propertySheet,justOneItem:true));
 
                 case TokenType.Colon:  
                     // not permitted at global level
@@ -267,7 +277,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     }
                     break;
                     
-
+                case TokenType.NumericLiteral:
                 case TokenType.Identifier:
                 case TokenType.Dot:
                     if ( parameter != null ) {
@@ -298,7 +308,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     break; // fall thru to end fail.
             }
             throw Fail(ErrorCode.TokenNotExpected, "Invalid token in selector declaration--found '{0}'");
-        }
+            }
 
         /// <exception cref="ParseException">@import filename must not be empty.</exception>
         private Tailcall ParseImport(Tokens path = null) {
@@ -409,13 +419,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected in metadata kvpair declaration");
         }
 
-        private Tailcall ParseItemAsDictionary(ObjectNode context) {
+        internal Tailcall ParseItemAsDictionary(ObjectNode context, string prefix = null) {
             bool justOneItem = context.Selector.Name == "" || context.Selector.Name == "*";
 
         
             switch (Type) {
                 case TokenType.OpenBrace:
-                    return ParseItemsInDictionary(context);
+                    return ParseItemsInDictionary(context,prefix:prefix);
                     
                 case TokenType.EmbeddedInstruction:
                     context.SetNodeValue( new Instruction(context, Token.Data, new SourceLocation(Token,Filename)));
@@ -431,7 +441,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     //      - an RValue to be used as the value source for an object.
                     switch (NextAfter(WhiteSpaceOrComments)) {
                         case TokenType.OpenBrace:
-                            return ParseItemsInDictionary(context);
+                            return ParseItemsInDictionary(context, prefix: prefix);
 
                         case TokenType.EmbeddedInstruction:
                             context.SetNodeValue(new Instruction(context, Token.Data, new SourceLocation(Token, Filename)));
@@ -449,20 +459,32 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         /// <exception cref="ParseException">Token '{0}' not expected in object declaration</exception>
-        private Tailcall ParseItemsInDictionary(ObjectNode context, Continuation onComplete = null, bool justOneItem = false) {
-
+        private Tailcall ParseItemsInDictionary(ObjectNode context, Continuation onComplete = null, bool justOneItem = false, string prefix = null) {
+            
             switch(NextAfter(justOneItem ? WhiteSpaceOrComments : WhiteSpaceCommentsOrSemicolons, onComplete != null)) {
                 case TokenType.Identifier:
                     if (Data == "@alias") {
                         ParseAlias(context);
-                        return ParseItemsInDictionary(context, onComplete);
+                        return ParseItemsInDictionary(context, onComplete,prefix:prefix);
                     }
                     break;
 
                 case TokenType.Pound:
                     // metadata entry
                     ParseMetadataItem(context);
-                    return ParseItemsInDictionary(context, onComplete);
+                    return ParseItemsInDictionary(context, onComplete, prefix: prefix);
+
+                case TokenType.OpenParenthesis:
+                    //var iValue = ParseMatrixForEach(context, Semicolon, new ObjectIterator(context, new SourceLocation(Token, Filename)){Prefix = prefix ?? (context.IndexValue-1).ToString()});
+                    // iValue is the ObjectIterator.
+
+                    var n = new ExpansionPropertyNode();
+                    context.Properties[Guid.NewGuid().ToString()] = n; // unique node for the item
+                    n.ObjectIterator = ParseMatrixForEach(context, Semicolon, new ObjectIterator(context, new SourceLocation(Token, Filename)) {
+                        Prefix = prefix ?? (context.IndexValue - 1).ToString()
+                    }) as ObjectIterator;
+
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
 
                 case TokenType.CloseBrace:
                     return (onComplete ?? Continue)();
@@ -476,33 +498,33 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
             var selector = ParseSelector(MemberTerminator);
             if (selector.Name.StartsWith(".")) {
-                selector = new Selector( context.IndexValue  + selector.Name, selector.Parameter , selector.SourceLocation );
+                selector = new Selector( (prefix ?? string.Empty) + context.IndexValue + selector.Name, selector.Parameter, selector.SourceLocation);
             }
 
             switch (Type) {
                 case TokenType.Dot:
                 case TokenType.Identifier: {
                     // if we're pointing to an identifier or a dot, we're about to take whatever is next, and include it in a dictionary as a way of syntatic sugar.
-                    return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete), true);
+                    return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete, prefix: prefix), true);
                 }
                     
                 case TokenType.OpenBrace: {
                     if (justOneItem) {
                         return ParseItemsInDictionary(context.Children[selector], (onComplete ?? Continue));
                     }
-                    return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete));
+                    return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete, prefix: prefix));
                 }
 
                 case TokenType.Colon: {
                     var p = context.Properties[selector];
                     p.SetCollection(ParseRValue(context, SemicolonCommaOrCloseBrace, p));
-                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
                 }
 
                 case TokenType.PlusEquals: {
                     var p = context.Properties[selector];
                     p.AddToCollection(ParseRValue(context, Semicolon, p));
-                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
                 }
 
                 // same as the part in ParseItemAsDictionary()
@@ -510,7 +532,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var n = context.Children[selector];
                     n.SetNodeValue(new Instruction(n, Token.Data, new SourceLocation(Token, Filename)));
                     if (NextAfter(WhiteSpaceOrComments) == TokenType.Semicolon) {
-                        return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                        return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
                     }
                     
                     throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Instruction. Looking for ';'");
@@ -526,13 +548,13 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                             if (justOneItem) {
                                 return ParseItemsInDictionary(context.Children[selector], (onComplete ?? Continue));
                             }
-                            return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete));
+                            return ParseItemsInDictionary(context.Children[selector], () => ParseItemsInDictionary(context, onComplete, prefix: prefix));
 
                         case TokenType.EmbeddedInstruction:
                             var no = context.Children[selector];
                             no.SetNodeValue(new Instruction(no, Token.Data, new SourceLocation(Token, Filename)));
                             if (NextAfter(WhiteSpaceOrComments) == TokenType.Semicolon) {
-                                return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                                return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
                             }
 
                             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected after Instruction. Looking for ';'");
@@ -541,12 +563,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     Rewind();
                     context.SetNodeValue(ParseRValue(context, Semicolon, context));
 
-                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
 
                 case TokenType.Equal: {
                     var p = context.Properties[selector];
                     p.SetValue(ParseRValue(context, SemicolonCommaOrCloseBrace, p));
-                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete);
+                    return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
                 }
             }
             throw Fail(ErrorCode.TokenNotExpected, "Token '{0}' not expected in object declaration");
@@ -582,7 +604,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     throw Fail(ErrorCode.TokenNotExpected, "Leading colon in front of RValue is not permitted--did you mean '::' (global scope)");
 
                 case TokenType.OpenParenthesis:
-                    return ParseMatrixForEach(context, terminators);
+                    return ParseMatrixForEach(context, terminators, new Iterator(context, new SourceLocation(Token, Filename)));
 
                 case TokenType.OpenBrace:
                     return ParseCollection(context, terminators, metadataContainer);
@@ -662,8 +684,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
 
         /// <exception cref="ParseException">Unrecognized token '{0}' in matrix foreach</exception>
-        private IValue ParseMatrixForEach(ObjectNode context, TokenTypes terminators, Iterator rvalue = null) {
-            rvalue = rvalue ?? new Iterator(context,new SourceLocation(Token,Filename));
+        private IValue ParseMatrixForEach(ObjectNode context, TokenTypes terminators, Iterator rvalue) {
             rvalue.Add(ParseRValue(context, CommaOrCloseParenthesis, null));
 
             switch (Type) {
@@ -680,13 +701,16 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         private IValue ExpectingForEach(ObjectNode context, TokenTypes terminators, Iterator expression) {
             switch (NextAfter(WhiteSpaceOrComments)) {
                 case TokenType.Lambda:
+                    if (expression is ObjectIterator) {
+                        return ExpectingForeachObjectExpression(context, terminators, expression as ObjectIterator);
+                    }
                     return ExpectingForeachExpression(context, terminators, expression);
             }
             throw Fail(ErrorCode.TokenNotExpected, "Unrecognized token '{0}' in matrix foreach");
         }
 
         private IValue ExpectingForeachExpression(ObjectNode context, TokenTypes terminators, Iterator rvalue) {
-            switch (rvalue.Template.Length == 0 ? NextAfter(WhiteSpaceOrComments) : NextAfter(Comments)) {
+            switch(rvalue.Template.Count == 0 ? NextAfter(WhiteSpaceOrComments) : NextAfter(Comments)) {
                 case TokenType.Lambda:
                     // chained foreach.
                     return ExpectingForeachExpression(context, terminators, new Iterator(context, rvalue));
@@ -695,8 +719,36 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                 // we got to the end. finish up the expression and return it as the rvalue;
                 return rvalue;
             }
-            rvalue.Template.Append(Token.Data);
+            rvalue.Template.Add(Token.Data);
             return ExpectingForeachExpression(context, terminators, rvalue);
+        }
+
+        private IValue ExpectingForeachObjectExpression(ObjectNode context, TokenTypes terminators, ObjectIterator rvalue, int depth = 0) {
+            // do we need the context? 
+
+            switch(rvalue.Template.Count == 0 ? NextAfter(WhiteSpaceOrComments) : NextAfter(Comments)) {
+                case TokenType.Lambda:
+                    // can't chain foreach object expressions.
+                    throw Fail(ErrorCode.TokenNotExpected, "Object ForEach Expressions can not be nested.");
+            }
+            if (depth == 0) {
+                if (terminators.Contains(Type)) {
+                    // we got to the end. finish up the expression and return it as the rvalue;
+                    return rvalue;
+                }
+            } 
+
+            switch (Type) {
+                case TokenType.OpenBrace:
+                    depth++;
+                    break;
+                case TokenType.CloseBrace:
+                    depth--;
+                    break;
+            }
+
+            rvalue.Template.Add(Token);
+            return ExpectingForeachObjectExpression(context, terminators, rvalue,depth);
         }
 
         /// <exception cref="ParseException">Unexpected end of input.</exception>

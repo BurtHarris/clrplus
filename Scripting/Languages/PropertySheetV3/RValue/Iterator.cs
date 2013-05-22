@@ -11,15 +11,22 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
+    using Core.Collections;
     using Core.Extensions;
+    using Core.Tasks;
     using Languages.PropertySheet;
+    using Languages.PropertySheetV3;
+    using Mapping;
+    using Utility;
+    using PropertySheetParser = PropertySheetV3.PropertySheetParser;
 
     public class Iterator : List<IValue>, IValue {
         private readonly SourceLocation[] _sourceLocations = SourceLocation.Unknowns;
-        public readonly StringBuilder Template;
+        public readonly List<Token> Template = new List<Token>();
         public IValueContext Context {
             get;
             set;
@@ -27,7 +34,6 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
 
         public Iterator(ObjectNode context,params SourceLocation[] sourceLocation) {
             _sourceLocations = sourceLocation;
-            Template = new StringBuilder();
             Context = context;
         }
 
@@ -55,7 +61,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             // then matrix out a final collection by looping thru each of the values and 
             // processing the template.
             // then, should return the collection of generated values 
-            var t = Template.ToString();
+            var t = Template.Select(each => (string)each.Data.ToString()).Aggregate((c, e) => c + e);
             return Permutations.Select(each => (currentContext??Context).ResolveMacrosInContext(t, each));
         }
 
@@ -67,7 +73,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             return rvalue.GetValues(rvalue.Context).ToArray();
         }
 
-        private IEnumerable<object[]> Permutations {
+        protected IEnumerable<object[]> Permutations {
             get {
                 if (this.IsNullOrEmpty()) {
                     yield return new object[0];
@@ -105,8 +111,9 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             if (parameter is Scalar) {
                 // if this is an Scalar, then it's possible that it can match for a value 
                 // in the view.
-                var value = Context.TryGetRValueInContext(parameter.GetValue(Context));
-                if (value != null) {
+                
+                var value = Context.GetMacroValues(parameter.GetValue(Context),null);
+                if (value != null && value.Any()) {
                     return value;
                 }
 
@@ -126,6 +133,74 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             get {
                 return _sourceLocations;
             }
+        }
+    }
+
+    public class ObjectIterator  : Iterator {
+        private static IEnumerable<Token> open = new[] { new Token { Type = TokenType.OpenBrace, Data = "{" } };
+        private static IEnumerable<Token> close = new[] { new Token { Type = TokenType.CloseBrace, Data = "}" } };
+        private static IEnumerable<Token> eof = new[] { new Token { Type = TokenType.Eof, Data = "" } };
+
+        public ObjectIterator(ObjectNode context, params SourceLocation[] sourceLocation) : base(context, sourceLocation) {
+        }
+
+        public string Prefix { get; set;}
+
+        public IEnumerable<ToRoute> GetContents(IValueContext currentContext) {
+
+            IEnumerable<ToRoute> result = Enumerable.Empty<ToRoute>();
+            var ps = new PropertySheetV3.PropertySheet();
+            var context = ps.Children[(Context as ObjectNode).Selector];
+            var propertySheetParser = new PropertySheetParser(Enumerable.Empty< Token>(), ps, "");
+           
+            foreach (var permutation in Permutations ) {
+                IEnumerable<Token> tokens = DoIt(Template).ToArray();
+
+                if (tokens.FirstOrDefault().Type != TokenType.OpenBrace) {
+                    tokens = open.Concat(tokens).Concat(close);
+                }
+
+                tokens = PropertySheetTokenizer.Tokenize((currentContext ?? Context).ResolveMacrosInContext(tokens.Select(each => each.Data.ToString()).Aggregate((cur, each) => cur + each),permutation), TokenizerVersion.V3);
+                ;
+
+                var tokenArray = tokens.ToArray();
+#if DEBUG
+                Event<Debug>.Raise("", DoIt(tokenArray).ToArray().Select(each => (string)each.Data.ToString()).CollapseToString(""));
+#endif
+
+                propertySheetParser.ResetParser(tokenArray);
+
+                propertySheetParser.ParseItemAsDictionary(context, Prefix + "#") ;
+                result = result.Concat(context.Routes);
+            }
+
+            return result;
+        }
+
+        public IEnumerable<Token> DoIt(IEnumerable<Token> tokens ) {
+            return tokens.Select(token => {
+                switch (token.Type) {
+                    case TokenType.SelectorParameter:
+                        token.Data = "[" + token.Data + "]";
+                        break;
+                    case TokenType.EmbeddedInstruction:
+                        token.Data = "<-- " + token.Data + " -->";
+                        break;
+                    case TokenType.StringLiteral:
+                    
+                        token.Data = @"@""" + ((string)token.Data).Replace(@"""", @"""""") + @"""";
+                        break;
+                    // case TokenType.MacroExpression:
+                        // token.Data = (currentContext ?? Context).ResolveMacrosInContext("${" + token.Data + "}", macros);
+                       // token.Data = "${" + token.Data + "}";
+                        //break;
+
+                    default:
+                        // token.Data = token.Data = (currentContext ?? Context).ResolveMacrosInContext(token.Data.ToString(), macros);
+                        break;
+                }
+                return token;
+            });
         }
     }
 }

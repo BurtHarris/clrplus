@@ -15,6 +15,8 @@ namespace ClrPlus.Scripting.Utility {
     ///     Enumeration of different token types
     /// </summary>
     public enum TokenType {
+        _Null, 
+
         Plus,
         PlusPlus,
         PlusEquals,

@@ -102,15 +102,16 @@ namespace ClrPlus.Core.Extensions {
         /// <remarks>
         /// </remarks>
         public static string format(this string formatString, params object[] args) {
-#if DEBUG_Q
+            if (args == null || args.Length == 0) {
+                return formatString;
+            }
+
             try {
                 return String.Format(formatString, args);
-            } catch (Exception e) {
-                return formatString.Replace('{', '[').Replace('}',']');
             }
-#else
-            return String.Format(formatString, args);
-#endif
+            catch(Exception e) {
+                return formatString.Replace('{', '[').Replace('}', ']');
+            }
         }
 
         // ReSharper restore InconsistentNaming
@@ -998,6 +999,10 @@ namespace ClrPlus.Core.Extensions {
 
         public static bool Is(this string str) {
             return !string.IsNullOrEmpty(str);
+        }
+
+        public static bool StartsWithNumber(this string str) {
+            return !string.IsNullOrEmpty(str) && (str[0] >= '0' && str[0] <= '9');
         }
     }
 }

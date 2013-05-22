@@ -334,5 +334,8 @@ namespace ClrPlus.Core.Extensions {
             dictionary.Clear();
         }
 
+        public static IEnumerable<T> ToEnumerable<T>(this ICollection collection) {
+            return from object i in collection select (T)i;
+        }
     }
 }

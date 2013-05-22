@@ -85,6 +85,34 @@ namespace ClrPlus.Core.Extensions {
             };
         }
 
+        public static string FirstOrEmptyString<T>(this IEnumerable<T> source) {
+            if (source == null) {
+                return string.Empty;
+            }
+            var r = source.FirstOrDefault();
+            if (r == null) {
+                return string.Empty;
+            }
+            return r.ToString();
+        }
+
+        public static string CollapseToString<T>(this IEnumerable<T> source, string separator = null) {
+            separator = separator ?? ", ";
+
+            if (source == null) {
+                return string.Empty;
+            }
+            var c = source.Select(each => each.ToString()).ToArray();
+            switch (c.Length) {
+                case 0:
+                    return string.Empty;
+                case 1:
+                    return c[0];
+            }
+            return c.Aggregate((cur, each) => cur + separator + each);
+        }
+
+
         /// <summary>
         ///     Returns all the contiguous elements from sequence except for a specified number from the end.
         /// </summary>

@@ -101,18 +101,28 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
-        private int _indexValue;
+        private int _indexValue = 1;
 
         internal int IndexValue { get {
             return _indexValue++;
         }}
 
+    /*
         public IEnumerable<string> TryGetRValueInContext(string property) {
             return CurrentView.TryGetRValueInContext(property);
         }
+        */
 
         public string ResolveMacrosInContext(string value, object[] items = null) {
             return CurrentView.ResolveMacrosInContext(value, items);
+        }
+
+        public IEnumerable<string> GetMacroValues(string macro, object[] items = null) {
+            return CurrentView.GetMacroValues(macro, items);
+        }
+
+        public string GetSingleMacroValue(string macro, object[] items = null) {
+            return CurrentView.GetSingleMacroValue(macro, items);
         }
 
         internal void SetNodeValue(IValue value) {

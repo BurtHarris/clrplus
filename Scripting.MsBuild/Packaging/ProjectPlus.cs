@@ -83,7 +83,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     key => LookupTarget(key, ""),
                     (name, value) => LookupTarget(name, ""),
                     key => Targets.Remove(key)
-                    ), new[] { "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
+                    ), new[] { "$$INDEXED".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
 
                 // and for ones requiring a condition parameter
                 yield return "condition".MapTo(() => ConditionCreate(), key => Pivots.NormalizeExpression(key), ConditionRoutes());
@@ -107,7 +107,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     //} else {
                         //return new Accessor(() => LookupTarget(view.MemberName), v => {});
                     //}
-                }, new[] { "CHILDREN".MapIndexedChildrenTo<object>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
+                }, new[] { "$$INDEXED".MapIndexedChildrenTo<object>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
             }
         }
 
@@ -124,7 +124,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 key => LookupTarget(key, condition),
                 (name, value) => LookupTarget(name, ""),
                 key => Targets.Remove(key)
-                ), new[] { "CHILDREN".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
+                ), new[] { "$$INDEXED".MapIndexedChildrenTo<ProjectTargetElement>((target, child) => target.GetTargetItem(child)) });
 
 
             yield return "".MapTo<string>((condition,view) => {
@@ -137,8 +137,22 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     }
                 });
 
-            }, new[] { "CHILDREN".MapIndexedChildrenTo<string>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
+            }, new[] { "$$INDEXED".MapIndexedChildrenTo<string>((targetName, child) => LookupTarget(child.ParentView.ParentView.MemberName).GetTargetItem(child)) });
         }
+
+        /*
+        internal IEnumerable<ToRoute> TargetRoutes { get {
+
+                yield break;
+        }}
+
+        internal IEnumerable<ToRoute> TargetChildrenConditionRoutes {
+            get {
+
+                yield break;
+            }
+        }
+        */
 
         private IEnumerable<ToRoute> ImportGroupChildren {
             get {
