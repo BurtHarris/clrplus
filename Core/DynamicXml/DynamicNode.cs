@@ -9,12 +9,14 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Core.DynamicXml {
-    using System.Collections;
+  using System;
+  using System.Collections;
     using System.Collections.Generic;
     using System.Dynamic;
     using System.Linq;
     using System.Reflection;
-    using System.Xml.Linq;
+  using System.Xml;
+  using System.Xml.Linq;
     using Extensions;
 
     /// <summary>
@@ -24,6 +26,70 @@ namespace ClrPlus.Core.DynamicXml {
     /// </summary>
     public class DynamicNode : DynamicObject, IEnumerable<DynamicNode> {
         protected XNamespace xmlns = null;
+
+     		private static Dictionary<Type, Func<string, object>> _xmlConverters;
+
+        static DynamicNode()
+		    {
+			    _xmlConverters = new Dictionary<Type, Func<string, object>>
+			    {
+				    { typeof(Boolean), s => XmlConvert.ToBoolean(s) },
+				    { typeof(Byte), s => XmlConvert.ToByte(s) },
+				    { typeof(Char), s => XmlConvert.ToChar(s) },
+				    { typeof(DateTime), s => XmlConvert.ToDateTime(s, XmlDateTimeSerializationMode.RoundtripKind) },
+				    { typeof(DateTimeOffset), s => XmlConvert.ToDateTimeOffset(s) },
+				    { typeof(Decimal), s => XmlConvert.ToDecimal(s) },
+				    { typeof(Double), s => XmlConvert.ToDouble(s) },
+				    { typeof(Guid), s => XmlConvert.ToGuid(s) },
+				    { typeof(Int16), s => XmlConvert.ToInt16(s) },
+				    { typeof(Int32), s => XmlConvert.ToInt32(s) },
+				    { typeof(Int64), s => XmlConvert.ToInt64(s) },
+				    { typeof(SByte), s => XmlConvert.ToSByte(s) },
+				    { typeof(Single), s => XmlConvert.ToSingle(s) },
+				    { typeof(TimeSpan), s => XmlConvert.ToTimeSpan(s) },
+				    { typeof(UInt16), s => XmlConvert.ToUInt16(s) },
+				    { typeof(UInt32), s => XmlConvert.ToUInt32(s) },
+				    { typeof(UInt64), s => XmlConvert.ToUInt64(s) },
+			    };
+		    }
+
+        private static bool TryXmlConvert(string value, Type returnType, out object result)
+        {
+          if (returnType == typeof(string))
+          {
+            result = value;
+            return true;
+          }
+          else if (returnType.IsEnum)
+          {
+            // First try enum try parse:
+            if (Enum.IsDefined(returnType, value))
+            {
+              result = Enum.Parse(returnType, value);
+              return true;
+            }
+
+            // We know we support all underlying types for enums, 
+            // which are all numeric.
+            var enumType = Enum.GetUnderlyingType(returnType);
+            var rawValue = _xmlConverters[enumType].Invoke(value);
+
+            result = Enum.ToObject(returnType, rawValue);
+            return true;
+          }
+          else
+          {
+            Func<string, object> converter;
+            if (_xmlConverters.TryGetValue(returnType, out converter))
+            {
+              result = converter(value);
+              return true;
+            }
+          }
+
+          result = null;
+          return false;
+        }
 
         /// <summary>
         ///     The XML Node this object is fronting for.
@@ -198,13 +264,7 @@ namespace ClrPlus.Core.DynamicXml {
         /// <param name="result">the result</param>
         /// <returns>True if succesful</returns>
         public override bool TryConvert(ConvertBinder binder, out object result) {
-            if (binder.Type == typeof (string)) {
-                result = _element.Value;
-                return true;
-            }
-
-            result = null;
-            return false;
+            return TryXmlConvert(_element.Value, binder.ReturnType, out result);            
         }
 
         /// <summary>
