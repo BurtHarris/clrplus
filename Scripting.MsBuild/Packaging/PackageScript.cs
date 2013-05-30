@@ -72,6 +72,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             _sheet.AddMacro("pkgname", packageName);
             _sheet.CurrentView.AddMacroHandler( (name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
             _sheet.CurrentView.AddMacroHandler((name, context) => System.Environment.GetEnvironmentVariable(name));
+            
             Pivots = new Pivots(_sheet.CurrentView.GetProperty("configurations"));
         }
 
@@ -161,7 +162,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             var conditionFolderMacroHander = (GetMacroValueDelegate)((macro, context) => {
                 if (macro == "conditionFolder") {
 
-                    return LinqExtensions.SingleItemAsEnumerable(Pivots.GetExpressionFilepath(nuspecid, ((View)context).GetMacroValues("ElementId").FirstOrEmptyString()));
+                    return LinqExtensions.SingleItemAsEnumerable(Pivots.GetExpressionFilepath(nuspecid, ((View)context).GetSingleMacroValue("ElementId")??""));
                 }
                 return null;
             });
@@ -372,7 +373,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         var folderView = filesView.GetProperty(addFolder.Replace("${condition}", currentCondition));
                         if (folderView != null) {
                             var values = folderView.Values.ToList();
-                            values.Add((filesView.GetMacroValues("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
+                            values.Add((filesView.GetSingleMacroValue("pkg_root") + destinationFolder).Replace("\\\\", "\\"));
                             folderView.Values = values;
                         }
                     }
@@ -399,7 +400,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                                 var fileListView = filesView.GetProperty(addEachFile.Replace("${condition}", currentCondition));
                                 if (fileListView != null) {
                                     var values = fileListView.Values.ToList();
-                                    values.Add((filesView.GetMacroValues("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
+                                    values.Add((filesView.GetSingleMacroValue("pkg_root") + target).Replace("${condition}", currentCondition).Replace("\\\\", "\\"));
                                     fileListView.Values = values;
                                 }
                             }

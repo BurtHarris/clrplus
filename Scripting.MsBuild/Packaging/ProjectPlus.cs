@@ -29,8 +29,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         private readonly IProjectOwner _owner;
         internal Action BeforeSave;
         internal List<string> Conditions = new List<string>();
-        internal IDictionary<string, string> Conditions2;
-        internal View ConfigurationsView;
+        // internal IDictionary<string, string> Conditions2;
+        // internal View ConfigurationsView;
 
         internal StringPropertyList InitialTargets;
         private Dictionary<ProjectTargetElement, FileCopyList> _copyToTargets;

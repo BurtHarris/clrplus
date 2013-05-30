@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus</id>
-    <version>1.8.0.76</version>
+    <version>1.8.0.80</version>
     <title>CLRPlus Monolithic Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>

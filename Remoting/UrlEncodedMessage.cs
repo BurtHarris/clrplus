@@ -176,6 +176,7 @@ namespace ClrPlus.Remoting {
         /// <param name="rawMessage"> The raw message. </param>
         /// <param name="seperator"> </param>
         /// <param name="storeTypeInformation"> </param>
+        /// <param name="typeCreator"> </param>
         /// <remarks>
         /// </remarks>
         public UrlEncodedMessage(string rawMessage = null, string seperator = "&", bool storeTypeInformation = false, TypeCreator typeCreator = null) {

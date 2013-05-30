@@ -41,22 +41,26 @@ namespace ClrPlus.Scripting.MsBuild.Building {
         internal IDictionary<string, IValue> productInformation;
         private IDictionary<string, string> _macros = new Dictionary<string, string>() ;
         public BuildScript(string filename) {
-            Filename = filename.GetFullPath();
-            _project = new ProjectPlus(this, Filename + ".msbuild");
-            _project.Xml.AddImport(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc", "MSBuild.ExtensionPack.tasks"));
+            try {
+                Filename = filename.GetFullPath();
+                _project = new ProjectPlus(this, Filename + ".msbuild");
+                _project.Xml.AddImport(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc", "MSBuild.ExtensionPack.tasks"));
 
-            _sheet = new RootPropertySheet(_project);
-            _sheet.ParseFile(Filename);
-            
-            _pivots = new Pivots(_sheet.View.configurations);
-           
-            _sheet.AddChildRoutes(_project.MemberRoutes);
-            // _sheet.AddChildRoutesForType(typeof (ProjectTargetElement), _project.TargetRoutes);
+                _sheet = new RootPropertySheet(_project);
+                _sheet.ParseFile(Filename);
 
-            _sheet.CurrentView.AddMacroHandler((name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
-            _sheet.CurrentView.AddMacroHandler((name, context) => System.Environment.GetEnvironmentVariable(name));
-            // convert #product-info into a dictionary.
-            productInformation = _sheet.Metadata.Value.Keys.Where(each => each.StartsWith("product-info")).ToXDictionary(each => each.Substring(12), each => _sheet.Metadata.Value[each]);
+                _pivots = new Pivots(_sheet.View.configurations);
+
+                _sheet.AddChildRoutes(_project.MemberRoutes);
+                // _sheet.AddChildRoutesForType(typeof (ProjectTargetElement), _project.TargetRoutes);
+
+                _sheet.CurrentView.AddMacroHandler((name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
+                _sheet.CurrentView.AddMacroHandler((name, context) => System.Environment.GetEnvironmentVariable(name));
+                // convert #product-info into a dictionary.
+                productInformation = _sheet.Metadata.Value.Keys.Where(each => each.StartsWith("product-info")).ToXDictionary(each => each.Substring(12), each => _sheet.Metadata.Value[each]);
+            } catch {
+                Dispose();
+            }
         }
 
         public void AddMacro(string key, string value ) {
@@ -112,6 +116,19 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             }
         }
 
+        public string EmitScript() {
+            _sheet.CopyToModel();
+            return Save();
+        }
+
+        public string ScriptText() {
+            _sheet.CopyToModel();
+            var path = Save();
+            var result = File.ReadAllText(path);
+            path.TryHardToDelete();
+            return result;
+        }
+         
         public void Execute(string[] targets = null) {
             _sheet.CopyToModel();
 
@@ -211,11 +228,13 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 if(stdout.Is()) {
                     Event<Verbose>.Raise("stdout", stdout);
                 }
+
+                path.TryHardToDelete();
             }
         }
 
         public string Save(string filename=null) {
-            filename =filename ?? Filename + ".msbuild"; //  filename ?? "pkt.msbuild".GenerateTemporaryFilename();
+            filename = filename ?? Filename + ("." + DateTime.Now.Ticks + ".msbuild").MakeSafeFileName(); //  filename ?? "pkt.msbuild".GenerateTemporaryFilename();
             _project.Save(filename);
             return filename;
         }

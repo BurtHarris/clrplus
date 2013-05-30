@@ -2,8 +2,7 @@
 // This file is automatically imported into Autopackage to set the defaults 
 
 #defines { 
-    ElementId = "";
-    // condition = ${ElementId}; // this isn't needed here any longer.
+    // ElementId = "/";
     conditionFolder = ${ElementId};
 }
 

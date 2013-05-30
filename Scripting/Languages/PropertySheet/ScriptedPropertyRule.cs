@@ -9,7 +9,7 @@
         private readonly string ScriptType;
         private readonly string ScriptText;
         private Func<string[], object> _scriptDelegate;
-        private string _sourceText;
+        // private string _sourceText;
         private object _result;
 
         public bool Executed {get; set;}
@@ -49,7 +49,8 @@
 
         internal override string SourceString {
             get {
-                return _sourceText;
+                // return _sourceText;
+                return string.Empty;
             }
         }
 

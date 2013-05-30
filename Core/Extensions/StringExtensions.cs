@@ -617,7 +617,7 @@ namespace ClrPlus.Core.Extensions {
         }
 
         public static string MakeSafeFileName(this string input) {
-            return new Regex(@"-+").Replace(new Regex(@"[^\d\w\[\]_\-\. ]").Replace(input, "-"), "-");
+            return new Regex(@"-+").Replace(new Regex(@"[^\d\w\[\]_\-\.\ ]").Replace(input, "-"), "-").Replace(" ","");
         }
 
         public static string MakeAttractiveFilename(this string input) {

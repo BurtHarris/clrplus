@@ -103,7 +103,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             if (_files.ContainsKey(destinationPath)) {
                 Event<Error>.Raise("AP100", "Duplicate file '{0}' added to NuGet package from source '{1}'", destinationPath, sourcePath);
             }
-
+            //destinationPath = destinationPath.Replace("${ElementId}", "");
             _files.Add(destinationPath, sourcePath);
         }
 

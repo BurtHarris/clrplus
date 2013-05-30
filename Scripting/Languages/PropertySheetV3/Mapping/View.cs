@@ -13,6 +13,7 @@
 namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Dynamic;
     using System.Linq;
     using System.Text.RegularExpressions;
@@ -164,6 +165,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
         }
 
         private IEnumerable<string> LookupMacroValue(string innerMacro, IValueContext originalContext) {
+
             return AcceptFirstAnswer(_map.GetMacroValue, innerMacro, originalContext ?? this) ?? (ParentView != null ? ParentView.LookupMacroValue(innerMacro, originalContext ?? this) : null);
         }
 
@@ -179,7 +181,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
 
         public string GetSingleMacroValue(string innerMacro, object[] items = null) {
-            return ResolveMacrosInContext(LookupMacroValue(innerMacro, this).CollapseToString(), items);
+            var v = LookupMacroValue(innerMacro, this).ToArray();
+            if (v.Length > 0) {
+                return ResolveMacrosInContext(v.CollapseToString(), items);    
+            }
+            return null;
         }
 
         public IEnumerable<string> GetMacroValues(string innerMacro, object[] items = null) {
@@ -221,8 +227,11 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                             }
                         }
                         else {
-
-                            replacement = LookupMacroValue(innerMacro, this).CollapseToString();
+                            var mv = LookupMacroValue(innerMacro, this);
+                            if (!mv.IsNullOrEmpty()) {
+                                replacement = mv.CollapseToString();
+                            }
+                            // replacement = LookupMacroValue(innerMacro, this).CollapseToString();
                         }
                     }
 
@@ -268,7 +277,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                     }
                 }
             } while(keepGoing);
-            return value;
+            return value.Replace("${ElementId}", "").Replace("${conditionFolder}", "");
         }
 
         #endregion

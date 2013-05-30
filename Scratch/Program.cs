@@ -207,9 +207,9 @@ namespace Scratch {
 #if true
 
             try {
-                Environment.CurrentDirectory = @"C:\forks\pcre\COPKG";
+                Environment.CurrentDirectory = @"C:\root\tmp\pthreads\CoPKG";
                 Console.WriteLine("Package script");
-                using(var script = new PackageScript("pcre.autopkg")) {
+                using(var script = new PackageScript("pthread.autopkg")) {
                     script.Save(PackageTypes.NuGet, false);
                 }
             } catch (Exception e) {

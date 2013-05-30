@@ -13,6 +13,7 @@
 namespace ClrPlus.Scripting.Languages.PropertySheet {
     using System.Collections.Generic;
     using System.Globalization;
+    using System.Text;
     using Utility;
 
     public enum TokenizerVersion {
@@ -362,20 +363,23 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
         protected virtual void ParseAtStringLiteral() {
             // @"..."
             Index += 2;
-            var start = Index;
+            // var start = Index;
 
             RecognizeNextCharacter();
-            do {
+            var sb = new StringBuilder();
+
+            while ((CurrentCharacter == '"' && NextCharacter == '"') || CurrentCharacter != '"') {
                 if (CurrentCharacter == '"' && NextCharacter == '"') {
                     Index++;
                 }
 
+                sb.Append(CurrentCharacter);
                 AdvanceAndRecognize();
-            } while (CurrentCharacter != '"' || (CurrentCharacter == '"' && NextCharacter == '"'));
+            };
 
             AddToken(new Token {
                 Type = TokenType.StringLiteral,
-                Data = new string(Text, start, (Index - start)).Replace("\"\"", "\""),
+                Data = sb.ToString(),
                 RawData = "@Literal"
             });
         }

@@ -20,16 +20,17 @@
 
         // Methods
         public override bool Execute() {
-            
+            Target = Target.ToLower();
+
             if (_environments.ContainsKey(Target)) {
                 
                 var env = _environments[Target];
                 if (env == null) {
-
                     IsEnvironmentValid = false;
                     return true;
                 }
 
+                IsEnvironmentValid = true;
                 EnvironmentManager.Instance.Apply(env);
                 return true;
             } 
@@ -42,6 +43,7 @@
                     IsEnvironmentValid = true;
                     return true;
                 }
+
             } catch  {
                 // any failure here really means that it should just assume it didn't work.
             }

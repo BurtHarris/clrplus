@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Crypto</id>
-    <version>1.8.0.76</version>
+    <version>1.8.0.80</version>
     <title>CLRPlus Crypto Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -19,7 +19,15 @@
     <copyright>Copyright 2012</copyright>
     <tags>ClrPlus CoApp Crypto Cryptography</tags>
     <dependencies>
-        <dependency  id="ClrPlus.Core" version="1.8.0.76" />
+        <group targetFramework="net45">
+            <dependency  id="ClrPlus.Core" version="1.8.0.80" />
+        </group >
+        <group targetFramework="net40">
+            <dependency  id="ClrPlus.Core" version="1.8.0.80" />
+			<dependency id="Microsoft.Bcl" version="1.0.19" />
+			<dependency id="Microsoft.Bcl.Async" version="1.0.16" />
+			<dependency id="Microsoft.Bcl.Build" version="1.0.5" />
+        </group>
     </dependencies>
   </metadata>
   <files>
