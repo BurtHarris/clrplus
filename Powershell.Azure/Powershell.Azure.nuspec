@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Powershell.Azure</id>
-    <version>1.8.0.80</version>
+    <version>1.8.0.81</version>
     <title>CLRPlus Powershell Azure Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -21,18 +21,18 @@
     <tags>ClrPlus CoApp Powershell Azure Storage</tags>
     <dependencies>
         <group targetFramework="net45">
-            <dependency  id="ClrPlus.Core" version="1.8.0.80" />
-            <dependency  id="ClrPlus.Scripting" version="1.8.0.80" />
-            <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.80" />
-            <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.80" />
+            <dependency  id="ClrPlus.Core" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Scripting" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.81" />
             <dependency  id="ServiceStack" version="3.9.32" />
             <dependency  id="WindowsAzure.Storage" version="2.0.1.0" />
         </group >
         <group targetFramework="net40">
-            <dependency  id="ClrPlus.Core" version="1.8.0.80" />
-            <dependency  id="ClrPlus.Scripting" version="1.8.0.80" />
-            <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.80" />
-            <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.80" />
+            <dependency  id="ClrPlus.Core" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Scripting" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Powershell.Core" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Powershell.Provider" version="1.8.0.81" />
             <dependency  id="ServiceStack" version="3.9.32" />
             <dependency  id="WindowsAzure.Storage" version="2.0.1.0" />
 			<dependency id="Microsoft.Bcl" version="1.0.19" />
