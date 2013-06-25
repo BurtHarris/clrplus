@@ -100,9 +100,6 @@
     <None Include="test.props">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="test.ps1">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="testcode.ps1" />
     <None Include="users.props">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
