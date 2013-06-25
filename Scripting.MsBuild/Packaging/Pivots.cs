@@ -128,9 +128,11 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
       |
       \|+
       |
+      \++
+      |
       /+
       |
-      \\+
+      \\+|
       |
       \,+
       |
@@ -141,7 +143,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
       .*
       )*\s*$", RegexOptions.IgnorePatternWhitespace);
 
-        private readonly HashSet<string> _canonicalExpressions = new HashSet<string>();
+        // private readonly HashSet<string> _canonicalExpressions = new HashSet<string>();
+        private readonly Dictionary<string,List<string>> _canonicalExpressions = new Dictionary<string, List<string>>();
         private readonly Dictionary<string, Pivot> _pivots = new Dictionary<string, Pivot>();
 
         internal Pivots(View configurationsView) {
@@ -207,14 +210,23 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             if (string.IsNullOrEmpty(expression)) {
                 return expression;
             }
-            if (_canonicalExpressions.Contains(expression)) {
+            /*
+            if (_canonicalExpressions.Keys.Contains(expression)) {
                 return expression;
+            }*/
+            foreach (var i in _canonicalExpressions.Keys) {
+                if (_canonicalExpressions[i].Contains(expression)) {
+                    return i;
+                }
             }
 
-            foreach (var ex in _canonicalExpressions.Where(ex => CompareExpressions(ex, expression))) {
-                return ex;
+            foreach (var i in _canonicalExpressions.Keys) {
+                if (CompareExpressions(i, expression)) {
+                    _canonicalExpressions[i].Add(expression);
+                    return i;
+                }
             }
-            _canonicalExpressions.Add(expression);
+            _canonicalExpressions.Add(expression,new List<string>{expression});
             return expression;
         }
 
@@ -379,6 +391,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                                 continue;
 
                             case '|':
+                            case '+':
                                 if (state > ExpressionState.HasOperator) {
                                     throw new ClrPlusException("Invalid expression. (May not state two operators in a row)");
                                 }
@@ -417,7 +430,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 return result.ToString();
             }, projectName, expression, template);
-
+            _canonicalExpressions.GetOrAdd(expression, () => new List<string>()).Add(theresult);
+            
             var pU = _pivotsUsedCache.GetCachedAnswer(() => pivotsUsed.ToArray(), expression);
             if (pivotsUsed.Count == 0) {
                 pivotsUsed.AddRange(pU);

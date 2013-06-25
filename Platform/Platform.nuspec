@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Platform</id>
-    <version>1.8.0.81</version>
+    <version>1.8.0.82</version>
     <title>CLRPlus Platform Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -20,12 +20,12 @@
     <tags>ClrPlus CoApp</tags>
     <dependencies>
         <group targetFramework="net45">
-            <dependency  id="ClrPlus.Core" version="1.8.0.81" />
-            <dependency  id="ClrPlus.Windows.Api" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Core" version="1.8.0.82" />
+            <dependency  id="ClrPlus.Windows.Api" version="1.8.0.82" />
         </group>        
         <group targetFramework="net40">
-            <dependency  id="ClrPlus.Core" version="1.8.0.81" />
-            <dependency  id="ClrPlus.Windows.Api" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Core" version="1.8.0.82" />
+            <dependency  id="ClrPlus.Windows.Api" version="1.8.0.82" />
 			<dependency id="Microsoft.Bcl" version="1.0.19" />
 			<dependency id="Microsoft.Bcl.Async" version="1.0.16" />
 			<dependency id="Microsoft.Bcl.Build" version="1.0.5" />

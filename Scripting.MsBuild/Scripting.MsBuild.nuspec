@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>ClrPlus.Scripting.MsBuild</id>
-    <version>1.8.0.81</version>
+    <version>1.8.0.82</version>
     <title>CLRPlus MSBuild Scripting Library</title>
     <authors>Garrett Serack</authors>
     <owners>Garrett Serack</owners>
@@ -20,17 +20,17 @@
     <tags>ClrPlus CoApp Scripting MsBuild</tags>
     <dependencies>
         <group targetFramework="net45">
-            <dependency  id="ClrPlus.Core" version="1.8.0.81" />
-            <dependency  id="ClrPlus.Platform" version="1.8.0.81" />
-            <dependency  id="ClrPlus.Scripting" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Core" version="1.8.0.82" />
+            <dependency  id="ClrPlus.Platform" version="1.8.0.82" />
+            <dependency  id="ClrPlus.Scripting" version="1.8.0.82" />
             <dependency id="CSharpTest.Net.RpcLibrary" version="2.12.810.409" />
             <dependency id="CS-Script" version="3.5.9.0" />
             <dependency id="ServiceStack.Text" version="3.9.46" />
         </group>        
         <group targetFramework="net40">
-            <dependency  id="ClrPlus.Core" version="1.8.0.81" />
-            <dependency  id="ClrPlus.Platform" version="1.8.0.81" />
-            <dependency  id="ClrPlus.Scripting" version="1.8.0.81" />
+            <dependency  id="ClrPlus.Core" version="1.8.0.82" />
+            <dependency  id="ClrPlus.Platform" version="1.8.0.82" />
+            <dependency  id="ClrPlus.Scripting" version="1.8.0.82" />
             <dependency id="CSharpTest.Net.RpcLibrary" version="2.12.810.409" />
             <dependency id="CS-Script" version="3.5.9.0" />
             <dependency id="ServiceStack.Text" version="3.9.46" />
