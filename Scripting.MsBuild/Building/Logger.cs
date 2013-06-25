@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 
 namespace ClrPlus.Scripting.MsBuild.Building {
+    using System.Threading.Tasks;
     using CSharpTest.Net.RpcLibrary;
     using Core.Extensions;
     using Core.Tasks;
@@ -60,63 +61,68 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             eventSource.WarningRaised += eventSource_WarningRaised;
         }
 
+        private void Execute(BuildMessage message) {
+            Task.Factory.StartNew(() => {
+                _client.Execute(message.ToByteArray());
+            });
+        }
+
         void eventSource_WarningRaised(object sender, BuildWarningEventArgs e) {
-            
-            _client.Execute(new BuildMessage { EventType = "WarningRaised", SourceLocation = new SourceLocation { Column = e.ColumnNumber, Row= e.LineNumber, SourceFile = e.File }, Message = e.Message }.ToByteArray());
+            Execute(new BuildMessage { EventType = "WarningRaised", SourceLocation = new SourceLocation { Column = e.ColumnNumber, Row= e.LineNumber, SourceFile = e.File }, Message = e.Message });
         }
 
         void eventSource_TaskStarted(object sender, TaskStartedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "TaskStarted",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "TaskStarted",  Message = e.Message});
         }
 
         void eventSource_TaskFinished(object sender, TaskFinishedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "TaskFinished",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "TaskFinished",  Message = e.Message});
         }
 
         void eventSource_TargetStarted(object sender, TargetStartedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "TargetStarted",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "TargetStarted",  Message = e.Message});
         }
 
         void eventSource_TargetFinished(object sender, TargetFinishedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "TargetFinished", Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "TargetFinished", Message = e.Message});
         }
 
         void eventSource_StatusEventRaised(object sender, BuildStatusEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "StatusEventRaised", Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "StatusEventRaised", Message = e.Message});
         }
 
         void eventSource_ProjectStarted(object sender, ProjectStartedEventArgs e) {
-                _client.Execute(new BuildMessage {
+                Execute(new BuildMessage {
                     EventType = "ProjectStarted",
                     Message = e.Message
-                }.ToByteArray());
+                });
         }
 
         void eventSource_ProjectFinished(object sender, ProjectFinishedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "ProjectFinished",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "ProjectFinished",  Message = e.Message});
         }
 
         void eventSource_MessageRaised(object sender, BuildMessageEventArgs e) {
             if (e.Message.IndexOf("task from assembly") > -1 || e.Message.IndexOf("Building with tools version") > -1) {
                 return;
             }
-            _client.Execute(new BuildMessage { EventType = "MessageRaised",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "MessageRaised",  Message = e.Message});
         }
 
         void eventSource_ErrorRaised(object sender, BuildErrorEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "ErrorRaised", SourceLocation = new SourceLocation { Column = e.ColumnNumber, Row= e.LineNumber, SourceFile = e.File }, Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "ErrorRaised", SourceLocation = new SourceLocation { Column = e.ColumnNumber, Row= e.LineNumber, SourceFile = e.File }, Message = e.Message});
         }
 
         void eventSource_CustomEventRaised(object sender, CustomBuildEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "CustomEventRaised",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "CustomEventRaised",  Message = e.Message});
         }
 
         void eventSource_BuildStarted(object sender, BuildStartedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "BuildStarted", Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "BuildStarted", Message = e.Message});
         }
 
         void eventSource_BuildFinished(object sender, BuildFinishedEventArgs e) {
-            _client.Execute(new BuildMessage { EventType = "BuildFinished",  Message = e.Message}.ToByteArray());
+            Execute(new BuildMessage { EventType = "BuildFinished",  Message = e.Message});
         }
 
         public void Dispose() {

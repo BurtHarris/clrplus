@@ -23,7 +23,8 @@ namespace ClrPlus.Scripting.Languages.PropertySheet {
 
         public static SourceLocation[] Unknowns = new [] { Unknown};
 
-        public string SourceFile;
+        public string SourceFile {get; set;}
+
         private Token _sourceToken;
 
         public SourceLocation() {

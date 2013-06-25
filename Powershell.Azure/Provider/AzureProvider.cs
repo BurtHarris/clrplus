@@ -11,6 +11,7 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Powershell.Azure.Provider {
+    using System;
     using System.Collections.ObjectModel;
     using System.IO;
     using System.Management.Automation;
@@ -26,9 +27,13 @@ namespace ClrPlus.Powershell.Azure.Provider {
 
         public static readonly Regex AccountFromHostPortRegex = new Regex(@"(?<account>\w+).blob.core.windows.net(?::\d+)?");
         static AzureProvider() {
-            var file = Assembly.GetExecutingAssembly().ExtractFileResourceToPath("Azure.format.ps1xml", Path.Combine(FilesystemExtensions.TempPath, "Azure.format.ps1xml"));
-            // var file = Assembly.GetExecutingAssembly().ExtractFileResourceToTemp("Azure.format.ps1xml");
-            new SessionState().InvokeCommand.InvokeScript("Update-FormatData -PrependPath '{0}'".format(file));
+            try {
+                var file = Assembly.GetExecutingAssembly().ExtractFileResourceToPath("Azure.format.ps1xml", Path.Combine(FilesystemExtensions.TempPath, "Azure.format.ps1xml"));
+                // var file = Assembly.GetExecutingAssembly().ExtractFileResourceToTemp("Azure.format.ps1xml");
+                new SessionState().InvokeCommand.InvokeScript("Update-FormatData -PrependPath '{0}'".format(file));
+            } catch (Exception e) {
+             ///   Console.WriteLine("{0}/{1}/{2}",e.GetType().Name, e.Message, e.StackTrace);
+            }
         }
 
         /// <summary>

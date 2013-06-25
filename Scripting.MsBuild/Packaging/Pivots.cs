@@ -10,6 +10,8 @@
 // </license>
 //-----------------------------------------------------------------------
 
+#define NEW_MODEL
+
 namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
     using System.Collections.Generic;
@@ -49,14 +51,14 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                       pivot.UsedChoices.Add(choice);
 
                       if (!pivot.IsBuiltIn) {
-                          return "'$({1}-{0})' == '{2}'".format(projectName.MakeSafeFileName().Replace(".","_"), pivot.Name, choice);
+                          return "'$({1}-{0}.ToLower())' == '{2}'".format(projectName.MakeSafeFileName().Replace(".", "_"), pivot.Name, choice.ToLower());
                       }
 
                       if (pivot.Conditions.ContainsKey(choice)) {
                           return pivot.Conditions[choice];
                       }
 
-                      return "'$({0})' == '{1}'".format(pivot.Key, choice);
+                      return "'$({0}.ToLower())' == '{1}'".format(pivot.Key, choice.ToLower());
                   }
               };
 
@@ -104,11 +106,14 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         private AnswerCache<bool[]> _expressionArrayCache = new AnswerCache<bool[]>();
         private AnswerCache<string> _expressionCache = new AnswerCache<string>();
 
+
+        private AnswerCache<Pivot[]> _pivotsUsedCache = new AnswerCache<Pivot[]>();
+
         private static readonly Regex WordRx = new Regex(@"^\w*$");
 
         private static readonly Regex ExpressionRx = new Regex(
             @"^\s*
-	(\(              # Match an opening parenthesis. (with a potential !
+    (\(              # Match an opening parenthesis. (with a potential !
       (?>             # Then either match (possessively):
        [^()]+         #  any characters except parentheses
       |               # or
@@ -118,23 +123,23 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
       )*              # Repeat as needed.
      (?(Depth)(?!))   # Assert that the parens counter is at zero.
      \)               # Then match a closing parenthesis.
-	 |\s*|
-	  &+
-	  |
-	  \|+
-	  |
-	  /+
-	  |
-	  \\+
-	  |
-	  \,+
-	  |
-	  !+
-	  |
-	  \w+
-	  |
+     |\s*|
+      &+
+      |
+      \|+
+      |
+      /+
+      |
+      \\+
+      |
+      \,+
+      |
+      !+
+      |
+      \w+
+      |
       .*
-	  )*\s*$", RegexOptions.IgnorePatternWhitespace);
+      )*\s*$", RegexOptions.IgnorePatternWhitespace);
 
         private readonly HashSet<string> _canonicalExpressions = new HashSet<string>();
         private readonly Dictionary<string, Pivot> _pivots = new Dictionary<string, Pivot>();
@@ -217,8 +222,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             if (string.IsNullOrEmpty(expression)) {
                 return string.Empty;
             }
-
-            return GenerateExpression(packageName, NormalizeExpression(expression), ExpressionTemplate.Path);
+            
+            return GenerateExpression(packageName, NormalizeExpression(expression), ExpressionTemplate.Path, new List<Pivot>());
         }
 
         public string GetExpressionLabel(string expression) {
@@ -226,25 +231,33 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 return string.Empty;
             }
 
-            return GenerateExpression("", NormalizeExpression(expression), ExpressionTemplate.Label);
+            return GenerateExpression("", NormalizeExpression(expression), ExpressionTemplate.Label,new List<Pivot>());
         }
 
         
         public string GetMSBuildCondition(string projectName, string expression) {
-            return GenerateExpression(projectName, NormalizeExpression(expression), ExpressionTemplate.MSBuild);
+            return GenerateExpression(projectName, NormalizeExpression(expression), ExpressionTemplate.MSBuild,new List<Pivot>());
         }
 
-
-        internal bool[] GetExpressionArray(string rightExpression) {
+        internal bool[] GetExpressionArray(string rightExpression, string rightexpress,Pivot[] pivotsUsed) {
 
             return _expressionArrayCache.GetCachedAnswer(() => {
 
+#if NEW_MODEL
+
+                //var pivotKeys = pivotsUsed.Select(each => each.Name).ToArray();
+                var param = pivotsUsed.Select((each, i) => "{0} {0},".format(each.Name)).Aggregate((current, each) => current + each).Trim(',');
+                var enums = pivotsUsed.Select(each => each.EnumCode).Aggregate((current, each) => "{0}\r\n{1}".format(current, each));
+                var fors = pivotsUsed.Select((each, i) => "foreach (var _{1} in Enum.GetValues(typeof ({0})).Cast<{0}>()) {{\r\n".format(each.Name, i)).ToArray();
+#else 
                 var param = _pivots.Keys.Select((each, i) => "{0} {0},".format(each)).Aggregate((current, each) => current + each).Trim(',');
 
-                var rightexpress = GenerateExpression("", rightExpression, ExpressionTemplate.CSharp);
+                var used = new List<Pivot>();
+                rightexpress = GenerateExpression("", rightExpression, ExpressionTemplate.CSharp, used);
                 var enums = _pivots.Values.Select(each => each.EnumCode).Aggregate((current, each) => "{0}\r\n{1}".format(current, each));
-                
                 var fors = _pivots.Keys.Select((each, i) => "foreach (var _{1} in Enum.GetValues(typeof ({0})).Cast<{0}>()) {{\r\n".format(each, i)).ToArray();
+#endif
+
                 var call = fors.Select((each, i) => "_{0},".format(i)).Aggregate((current, each) => current + each).Trim(',');
                 var fn = "result[--n] = ProcessRight({0});".format(call);
                 var close = fors.Select(each => "}\r\n").Aggregate((each, current) => current + each);
@@ -272,16 +285,32 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
     //enums
     {3}
-".format(param, rightexpress, loops, enums);
+".format(param, rightexpress.Is() ? rightexpress : "true", loops, enums);
                
+#if NEW_MODEL
+                var c = pivotsUsed.Select(each => each.Choices.Count + 1).Aggregate(1, (current, i) => current*i);
+#else
                 var c = _pivots.Values.Select(each => each.Choices.Count + 1).Aggregate(1, (current, i) => current*i);
-                dynamic s = CSScript.Evaluator.LoadCode(script);
-                
-                
-                
-                bool[] result = s.GetAll(c+10);
-                return result;
-               
+#endif
+
+                 // Event<Verbose>.Raise("Script", "\r\n======\r\n{0}\r\n======", script);
+
+                try {
+                    Event<Verbose>.Raise("Pivots", "Pivot Count: {0}".format(c));
+                    dynamic s = CSScript.Evaluator.LoadCode(script);
+                    bool[] result = s.GetAll(c + 10);
+                    return result;
+                } catch {
+                    // GS01 : This f'er is throwing the first time. And only the first time.
+                    // No idea WHY this happens, or more importantly, why it doesn't throw ever the second time.
+                    // it's got something going haywire with loading AsyncExtensions Class 
+                    // (not that we actually use that here)
+                    // *sigh*
+                    Event<Verbose>.Raise("GS01", "ODD BUG STILL HERE");
+                    dynamic s = CSScript.Evaluator.LoadCode(script);
+                    bool[] result = s.GetAll(c + 10);
+                    return result;
+                }
                 //Event<Verbose>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
             },  rightExpression);
         }
@@ -290,64 +319,36 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             if(leftExpression.IndexOf("$(") > -1 || rightExpression.IndexOf("$(") > -1) {
                 return false;
             }
-            var v1 = GetExpressionArray(leftExpression);
-            var v2 = GetExpressionArray(rightExpression);
+
+            if (leftExpression.Equals(rightExpression)) {
+                return true;
+            }
+
+#if NEW_MODEL
+            var rightPivotsUsed = new List<Pivot>();
+            var rightexpress = GenerateExpression("", rightExpression, ExpressionTemplate.CSharp, rightPivotsUsed);
+
+            var leftPivotsUsed = new List<Pivot>();
+            var leftexpress = GenerateExpression("", leftExpression, ExpressionTemplate.CSharp, leftPivotsUsed);
+
+            if (rightPivotsUsed.Count == leftPivotsUsed.Count && rightPivotsUsed.ContainsAll(leftPivotsUsed) ) {
+                var used = rightPivotsUsed.ToArray();
+                var v1 = GetExpressionArray(leftExpression, leftexpress, used);
+                var v2 = GetExpressionArray(rightExpression, rightexpress, used);
+                return v1.SequenceEqual(v2);
+            }
+             return false;
+#else 
+            var v1 = GetExpressionArray(leftExpression,null,null);
+            var v2 = GetExpressionArray(rightExpression, null, null);
             return v1.SequenceEqual(v2);
-
-#if old_way
-            return _compareCache.GetCachedAnswer(() => {
-
-                var param = _pivots.Keys.Select((each, i) => "{0} {0},".format(each)).Aggregate((current, each) => current + each).Trim(',');
-                // var fixedparam = _pivots.Keys.Select( (each, i) => "{0} {0} = (0)p{1};\r\n".format(each, i) ).Aggregate((current, each) => current + each );
-                var leftexpress = GenerateExpression("", leftExpression, ExpressionTemplate.CSharp);
-                var rightexpress = GenerateExpression("", rightExpression, ExpressionTemplate.CSharp);
-                var enums = _pivots.Values.Select(each => each.EnumCode).Aggregate((current, each) => "{0}\r\n{1}".format(current, each));
-
-                var fors = _pivots.Keys.Select((each, i) => "foreach (var _{1} in Enum.GetValues(typeof ({0})).Cast<{0}>()) {{\r\n".format(each, i)).ToArray();
-                var call = fors.Select((each, i) => "_{0},".format(i)).Aggregate((current, each) => current + each).Trim(',');
-                var fn = "if( ProcessLeft({0}) != ProcessRight({0}) ) return false;".format(call);
-                var close = fors.Select(each => "}\r\n").Aggregate((each, current) => current + each);
-                var loops = fors.Aggregate((current, each) => current + each) + fn + close;
-
-                var script = @"
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-
-    public class Script
-    {{
-        // takes a variable list of all the values from all the pivots
-        public bool ProcessLeft({0}) {{
-            return {1};
-        }}
-
-        public bool ProcessRight({0}) {{
-            return {2};
-        }}
-
-        public bool AreEqual() {{
-            {3}
-
-            return true;
-        }}
-    }}
-
-    //enums
-    {4}
-".format(param, leftexpress, rightexpress, loops, enums);
-
-                dynamic s = CSScript.Evaluator.LoadCode(script);
-                bool result = s.AreEqual();
-
-                //Event<Verbose>.Raise("Pivots.CompareExpressions", "[{0}] vs [{1}] == {2}", leftExpression, rightExpression, result);
-                return result;
-            }, leftExpression, rightExpression);
 #endif
         }
 
-        private string GenerateExpression(string projectName, string expression,ExpressionTemplate template ) {
-            return _expressionCache.GetCachedAnswer(() => {
+        private string GenerateExpression(string projectName, string expression,ExpressionTemplate template, List<Pivot> pivotsUsed  ) {
+            
+
+            var theresult = _expressionCache.GetCachedAnswer(() => {
                 if (expression.IndexOf("$(") > -1) {
                     // skip the whole parsing, we know this is a MSBuild expression
                     return expression;
@@ -387,7 +388,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                             case '(':
                                 if (item.EndsWith(")")) {
                                     // parse nested expression.
-                                    state = AppendExpression(template, result, state, template.Container.format(GenerateExpression(projectName, item.Substring(1, item.Length - 2), template)));
+                                    state = AppendExpression(template, result, state, template.Container.format(GenerateExpression(projectName, item.Substring(1, item.Length - 2), template, pivotsUsed)));
                                     continue;
                                 }
                                 throw new ClrPlusException("Mismatched '(' in expression");
@@ -404,7 +405,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                                 if (!GetChoice(item, out choice, out pivot)) {
                                     throw new ClrPlusException("Unmatched configuration choice '{0}".format(item));
                                 }
-
+                                if (!pivotsUsed.Contains(pivot)) {
+                                    pivotsUsed.Add(pivot);
+                                }
                                 state = AppendExpression(template, result, state, template.Comparison(projectName, choice, pivot));
                                 break;
                         }
@@ -414,6 +417,12 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 return result.ToString();
             }, projectName, expression, template);
+
+            var pU = _pivotsUsedCache.GetCachedAnswer(() => pivotsUsed.ToArray(), expression);
+            if (pivotsUsed.Count == 0) {
+                pivotsUsed.AddRange(pU);
+            }
+            return theresult;
         }
 
         private static ExpressionState AppendExpression(ExpressionTemplate template, StringBuilder result, ExpressionState state, string expr) {
@@ -464,8 +473,6 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             }
             return state;
         }
-
-        
 
         private bool GetChoice(string item, out string choice, out Pivot pivot) {
             foreach (var p in _pivots.Keys) {

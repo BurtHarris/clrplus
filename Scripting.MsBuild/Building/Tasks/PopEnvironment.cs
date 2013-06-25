@@ -13,9 +13,9 @@
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using Microsoft.Build.Framework;
 
-    public class PushEnvironment : ITask {
+    public class PopEnvironment : ITask {
         public bool Execute() {
-            EnvironmentManager.Instance.Push();
+            EnvironmentManager.Instance.Pop();
             return true;
         }
 

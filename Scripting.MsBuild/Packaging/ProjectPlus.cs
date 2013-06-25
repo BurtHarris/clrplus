@@ -35,12 +35,27 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
         internal StringPropertyList InitialTargets;
         private Dictionary<ProjectTargetElement, FileCopyList> _copyToTargets;
         private Dictionary<ProjectItemGroupElement, FileCopyList> _embedOutputs;
+        private Dictionary<string, FileCopyList> _buildTimePaths;
+        private HashSet<string> _copyToTargetsDuplicateCheck = new HashSet<string>();
+
+        private ProjectTargetElement _firstInit;
+        private ProjectTargetElement _secondInit;
+
+        private ProjectTargetElement FirstInitTarget { get {
+            return _firstInit ?? (_firstInit = AddInitTarget(SafeName + "_init"));
+        }}
+
+        private ProjectTargetElement SecondInitTarget { get {
+            var x = FirstInitTarget;
+            return _secondInit ?? (_secondInit = AddInitTarget(SafeName + "_init_2"));
+        }}
+
 
         public ProjectPlus(IProjectOwner owner, string filename) {
             _owner = owner;
             FullPath = Path.Combine(_owner.Directory, filename);
 
-            InitialTargets = new StringPropertyList(() => Xml.InitialTargets, v => Xml.InitialTargets = v, target => LookupTarget(target, null));
+            InitialTargets = new StringPropertyList(() => Xml.InitialTargets, v => Xml.InitialTargets = v, target => LookupTarget(target, null),true);
         }
 
         internal string Name {
@@ -115,6 +130,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             yield return "ItemDefinitionGroup".MapTo<string>(condition => LookupItemDefinitionGroup(condition), ItemDefinitionGroupChildren);
             yield return "CopyToOutput".MapTo<string>(condition => CopyToOutput(condition));
             yield return "EmbedInOutput".MapTo<string>(condition => EmbedInOutput(condition));
+            yield return "BuildTimePath".MapTo<string>(condition => BuildTimePath(condition));
             yield return "ImportGroup".MapTo<string>(condition => LookupImportGroup(condition), ImportGroupChildren);
             yield return "ItemGroup".MapTo<string>(condition => LookupItemGroup(condition), ItemGroupChildren);
             yield return "PropertyGroup".MapTo<string>(condition => LookupPropertyGroup(condition), PropertyGroupChildren);
@@ -162,7 +178,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         private IEnumerable<ToRoute> ItemGroupChildren {
             get {
-                yield break;
+                yield return "".MapTo<ProjectItemGroupElement>((parent, view) => {
+                    var prop = LookupItem(parent, view.MemberName);
+                    return new Accessor(() => {
+                        return prop.Include;
+                    }, v => {
+                        prop.Include = v.ToString();
+                    });
+
+                });
             }
         }
 
@@ -490,9 +514,19 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 _copyToTargets = new Dictionary<ProjectTargetElement, FileCopyList>();
             }
 
+            
+
             var itemGroup = LookupItemGroup(condition);
             var target = LookupTarget("AfterBuild", condition, true);
             return _copyToTargets.GetOrAdd(target, () => new FileCopyList(s => {
+                // check to see if the file is here already
+                var key = (condition + "+" + s).ToLower();
+
+                if(_copyToTargetsDuplicateCheck.Contains( key ) ) {
+                    return;
+                }
+                _copyToTargetsDuplicateCheck.Add(key);
+
                 // copy it using a task
                 var tsk = target.AddTask("Copy");   
                 tsk.SetParameter("SourceFiles", s);
@@ -522,8 +556,34 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             var itemGroup = LookupItemGroup(condition);
 
             return _embedOutputs.GetOrAdd(itemGroup, () => new FileCopyList(s => {
+                var key = (condition + "+" + s).ToLower();
+
+                if(_copyToTargetsDuplicateCheck.Contains(key)) {
+                    return;
+                }
+                _copyToTargetsDuplicateCheck.Add(key);
+
+
                 var item = itemGroup.AddItem("None", s);
                 item.AddMetadata("DeploymentContent", "true");
+            }));
+        }
+
+        internal FileCopyList BuildTimePath(string condition) {
+            // put a <setenv> task in the init target to add this directory to the 
+            if(_buildTimePaths == null) {
+                _buildTimePaths = new Dictionary<string, FileCopyList>();
+            }
+            
+            return _buildTimePaths.GetOrAdd(condition, () => new FileCopyList(path => {
+                
+                var tsk = SecondInitTarget.AddTask("SetEnv");
+                tsk.Condition = Pivots.GetMSBuildCondition(Name, condition);
+
+                tsk.SetParameter("Name", "PATH");
+                tsk.SetParameter("Prefix", "true");
+                tsk.SetParameter("Value", path);
+                tsk.AddOutputProperty("OutputEnvironmentVariable", "PATH");
             }));
         }
 
@@ -559,7 +619,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             // thank you.
             body.XmlElement().Append("Code").InnerText = @"Result = ((Text ?? """").Split(';').Contains(Library) ) ? Value : String.Empty;";
 
-            return AddInitTarget(SafeName + "_init" );
+            return FirstInitTarget;
         }
 
         public IDictionary<string, string> ConditionCreate() {
@@ -787,6 +847,34 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             return property;
         }
 
+        internal ProjectItemElement LookupItem(ProjectItemGroupElement parent, string name, string condition = null) {
+            ProjectItemElement property = null;
+
+            var label = Pivots.GetExpressionLabel(condition);
+            name = name.Replace(".", "_");
+
+            if(string.IsNullOrEmpty(condition)) {
+                property = parent.Items.FirstOrDefault(each => name == each.ItemType && string.IsNullOrEmpty(each.Condition));
+                if(property != null) {
+                    return property;
+                }
+                return parent.AddItem(name, "UNUSED");
+            }
+
+            var conditionExpression = Pivots.GetMSBuildCondition(Name, condition);
+            property = parent.Items.FirstOrDefault(each => name == each.ItemType && each.Condition == conditionExpression);
+            if(property != null) {
+                return property;
+            }
+
+            property = parent.AddItem(name, "UNUSED");
+
+            property.Label = label;
+            property.Condition = conditionExpression;
+            
+            return property;
+        }
+
         internal ProjectPropertyGroupElement LookupPropertyGroup(string condition) {
             // look it up or create it.
             var label = Pivots.GetExpressionLabel(condition);
@@ -946,8 +1034,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         public ProjectTargetElement AddInitTarget(string name) {
             var tgt = LookupTarget(name, null, true);
-
             InitialTargets.Add(tgt.Name);
+            
             return tgt;
         }
 
@@ -973,7 +1061,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                     foreach(var choice in choices.Distinct()) {
                         var choicePropName = "{0}-{1}".format(pivot.Name, choice);
-
+                        
                         var tsk = initTarget.AddTask(SafeName + "_Contains");
                         tsk.SetParameter("Text", choicePropName);
                         tsk.SetParameter("Library", SafeName);

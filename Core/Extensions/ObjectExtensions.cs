@@ -70,7 +70,7 @@ namespace ClrPlus.Core.Extensions {
 
             return objects.Select(each => {
                 each = (each ?? "null");
-                return (each.ToString() + each.GetHashCode()).MD5Hash();
+                return (each.ToString() + each.GetHashCode());
             }).Aggregate((current, each) => current + each).MD5Hash();
         }
 

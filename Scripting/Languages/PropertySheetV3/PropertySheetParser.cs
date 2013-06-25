@@ -726,11 +726,16 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         private IValue ExpectingForeachObjectExpression(ObjectNode context, TokenTypes terminators, ObjectIterator rvalue, int depth = 0) {
             // do we need the context? 
 
+            var x = rvalue.Template.Count == 0 ? NextAfter(WhiteSpaceOrComments) : NextAfter(Comments);
+
+            /*
             switch(rvalue.Template.Count == 0 ? NextAfter(WhiteSpaceOrComments) : NextAfter(Comments)) {
                 case TokenType.Lambda:
                     // can't chain foreach object expressions.
                     throw Fail(ErrorCode.TokenNotExpected, "Object ForEach Expressions can not be nested.");
             }
+             */
+
             if (depth == 0) {
                 if (terminators.Contains(Type)) {
                     // we got to the end. finish up the expression and return it as the rvalue;

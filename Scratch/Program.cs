@@ -207,11 +207,12 @@ namespace Scratch {
 #if true
 
             try {
-                Environment.CurrentDirectory = @"C:\root\tmp\pthreads\CoPKG";
+                Environment.CurrentDirectory = @"C:\root\V2\coapp-packages\openssl\copkg";
                 Console.WriteLine("Package script");
-                using(var script = new PackageScript("pthread.autopkg")) {
+                using(var script = new PackageScript("openssl.autopkg")) {
                     script.Save(PackageTypes.NuGet, false);
                 }
+                Console.WriteLine();
             } catch (Exception e) {
                 Console.WriteLine("{0} =>\r\n\r\nat {1}", e.Message, e.StackTrace.Replace("at ClrPlus.Scripting.Languages.PropertySheetV3.PropertySheetParser", "PropertySheetParser"));
             }

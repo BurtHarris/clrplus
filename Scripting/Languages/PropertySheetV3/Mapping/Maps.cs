@@ -784,6 +784,7 @@
             IEnumerable<string> IHasValueFromBackingStorage.Values {
                 get {
                     var result = ((IList)ComputedValue);
+                    
                     if (result != null) {
                         return result.Cast<object>().Select(each => each.ToString());
                     }
@@ -961,6 +962,19 @@
                     if (result == null) {
                         yield break;
                     }
+                     if (result is string ) {
+                         var r = result.ToString().Split( new[] {','} , StringSplitOptions.RemoveEmptyEntries);
+                         if (r.Length > 1) {
+                             foreach (var s in r) {
+                                 yield return s.Trim();
+                             }
+                         } else {
+                             yield return result.ToString();
+                         }
+
+                         yield break;
+                     }
+
                     if (result.GetType().IsIEnumerable()) {
                         foreach (var i in from object i in (IEnumerable)result where i != null select i) {
                             yield return i.ToString();
@@ -1026,6 +1040,20 @@
                 get {
                     var result = ComputedValue;
                     if (result != null) {
+                        if(result is string) {
+                            var r = result.ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                            if(r.Length > 1) {
+                                foreach(var s in r) {
+                                    yield return s.Trim();
+                                }
+                            }
+                            else {
+                                yield return result.ToString();
+                            }
+
+                            yield break;
+                        }
+
                         if (result is IEnumerable) {
                             foreach (var each in ((IEnumerable)result).Cast<object>().Where(each => each != null)) {
                                 yield return each.ToString();

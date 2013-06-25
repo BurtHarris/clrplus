@@ -142,7 +142,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
              "releaseNotes".MapTo(() => (string)_nuSpec.metadata.releaseNotes, v => _nuSpec.metadata.releaseNotes = v.SafeToString()),
              "copyright".MapTo(() => (string)_nuSpec.metadata.copyright, v => _nuSpec.metadata.copyright = v.SafeToString()),
              "language".MapTo(() => (string)_nuSpec.metadata.language, v => _nuSpec.metadata.language = v.SafeToString()),
-             "tags".MapTo(() => (string)_nuSpec.metadata.tags, v => _nuSpec.metadata.tags = v.SafeToString()),
+             "tags".MapTo(() => (string)_nuSpec.metadata.tags, v => _nuSpec.metadata.tags = v.SafeToString().Replace(","," ")),
 
              "licenseUrl".MapTo(() => (string)_nuSpec.metadata.licenseUrl, v => _nuSpec.metadata.licenseUrl = v.SafeToString()),
              "projectUrl".MapTo(() => (string)_nuSpec.metadata.projectUrl, v => _nuSpec.metadata.projectUrl = v.SafeToString()),
@@ -283,11 +283,27 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             temporaryFiles.Add(cfgPath);
             AddFileToNuSpec(cfgPath, @"\build\{0}".format(configurationsFilename));
 
-            Event<Verbose>.Raise("NugetPackage.Save", "Saving nuget spec file to [{0}].", FullPath);
+            var publisherInfoFilename = @"publisher-info.txt";
+            var pifPath = Path.Combine(Directory, publisherInfoFilename);
+            pifPath.TryHardToDelete();
+            SavePifFile(pifPath);
+            temporaryFiles.Add(pifPath);
+            AddFileToNuSpec(pifPath, @"\build\{0}".format(publisherInfoFilename));
 
+            Event<Verbose>.Raise("NugetPackage.Save", "Saving nuget spec file to [{0}].", FullPath);
+                
             foreach(var src in _files.Keys) {
                 AddFileToNuSpec(_files[src], src );
             }
+
+            string tags = _nuSpec.metadata.tags;
+            tags = tags.Replace(",", " ");
+
+            if (tags.IndexOf("nativepackage") == -1) {
+                tags = tags + " nativepackage";
+            }
+
+            _nuSpec.metadata.tags = tags;
 
             switch (PkgRole) {
                     // do any last minute stuff here.
@@ -328,6 +344,11 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             }
         }
 
+        private List<string> _packages;
+        public IEnumerable<string> Packages { get {
+            return _packages.IsNullOrEmpty() ? Enumerable.Empty<string>() : _packages;
+        }}
+
         private bool SaveConfigurationFile(string cfgPath) {
             var sb = new StringBuilder();
             sb.Append("configurations {\r\n");
@@ -352,6 +373,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             sb.Append("};\r\n");
 
             File.WriteAllText(cfgPath, sb.ToString());
+            return true;
+        }
+
+        private bool SavePifFile(string pifPath) {
+            var sb = new StringBuilder();
+            sb.Append("Package Created: {0}\r\n".format(DateTime.Now.ToUniversalTime()));
+            sb.Append("CoApp tools version: {0}\r\n".format(this.Assembly().Version()));
+
+            File.WriteAllText(pifPath, sb.ToString());
             return true;
         }
 
@@ -394,7 +424,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
         public void NuPack(string path) {
             using(dynamic ps = Runspace.DefaultRunspace.Dynamic()) {
-                var results = ps.InvokeExpression(@"nuget.exe pack ""{0}"" 2>&1".format(path));
+                DynamicPowershellResult results = ps.InvokeExpression(@"nuget.exe pack ""{0}"" 2>&1".format(path));
+
                 bool lastIsBlank = false;
                 foreach(var r in results) {
                     string s = r.ToString();
@@ -416,7 +447,14 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                         if(s.IndexOf("issue(s) found with package") > -1) {
                             continue;
                         }
-                        
+
+                        if (s.IndexOf("Successfully created package '") > -1) {
+                            var scp = s.IndexOf('\'') + 1;
+                            var pkg = s.Substring(scp, s.LastIndexOf('\'') - scp);
+                            if (pkg.Length > 0) {
+                                (_packages ?? (_packages = new List<string>())).Add(pkg);
+                            }
+                        }
                         lastIsBlank = false;
                     }
                     
@@ -425,6 +463,10 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     // Solution: Move it into the 'lib' folder if it should be referenced.
                     
                     Event<Message>.Raise(" >", "{0}", s);
+                   
+                }
+                if (results.LastIsTerminatingError) {
+                    throw new ClrPlusException("NuGet Pack Failed");
                 }
             }
         }

@@ -1,0 +1,17 @@
+// Implicity loaded template script for Autopackage
+
+nuget := {
+    targets {
+		[Debug,ltcg,RuntimeLibraryNull] {
+			RuntimeLibrary = MultiThreadedDebug;
+		}
+
+		[Release,ltcg,RuntimeLibraryNull] {
+			RuntimeLibrary = MultiThreaded;
+		}
+		
+		[ltcg] {
+			ItemDefinitionGroup.ClCompile.RuntimeLibrary = $(RuntimeLibrary);
+		}
+    }
+}

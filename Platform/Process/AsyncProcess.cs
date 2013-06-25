@@ -13,6 +13,7 @@ namespace ClrPlus.Platform.Process {
     using System.Linq;
     using Core.Extensions;
 
+#if BAD_IDEA
     public class ProcessStartInfo {
         internal readonly System.Diagnostics.ProcessStartInfo _processStartInfo = new System.Diagnostics.ProcessStartInfo();
         private XDictionary<string, string> _environmentVariables;
@@ -163,6 +164,8 @@ namespace ClrPlus.Platform.Process {
             }
         }
     }
+#endif
+
 
     public class AsyncProcess {
         protected Process _process;
@@ -174,8 +177,22 @@ namespace ClrPlus.Platform.Process {
         }
 
         public static AsyncProcess Start(ProcessStartInfo startInfo) {
+            return Start(startInfo, null);
+        }
+
+        public static AsyncProcess Start(ProcessStartInfo startInfo, IDictionary environment) {
+            startInfo.RedirectStandardError = true;
+            startInfo.RedirectStandardOutput = true;
+            startInfo.UseShellExecute = false;
+
+            if (environment != null) {
+                foreach (var i in environment.Keys) {
+                    startInfo.EnvironmentVariables[(string)i] = (string)environment[i];
+                }
+            }
+
             var process = new Process {
-                StartInfo = startInfo._processStartInfo
+                StartInfo = startInfo
             };
 
             var result =new  AsyncProcess(process);
@@ -209,9 +226,12 @@ namespace ClrPlus.Platform.Process {
                 return _stdOut;     
             }
         }
+#if BAD_IDEA
         public static AsyncProcess Start(System.Diagnostics.ProcessStartInfo startInfo) {
             return Start(new ProcessStartInfo(startInfo));
         }
+
+#endif
 
         public static AsyncProcess Start(string fileName) {
             return Start(new ProcessStartInfo {
@@ -219,6 +239,18 @@ namespace ClrPlus.Platform.Process {
             });
         }
 
+        public static AsyncProcess Start(string fileName, IDictionary environment ) {
+            return Start(new ProcessStartInfo {
+                FileName = fileName
+            }, environment);
+        }
+
+        public static AsyncProcess Start(string fileName, string parameters, IDictionary environment) {
+            return Start(new ProcessStartInfo {
+                FileName = fileName,
+                Arguments = parameters
+            }, environment);
+        }
         public static AsyncProcess Start(string fileName, string parameters) {
             return Start(new ProcessStartInfo {
                 FileName = fileName,

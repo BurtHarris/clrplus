@@ -45,7 +45,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
                 return new [] {string.Empty};
             }
 
-            return this.Select(each => (currentContext??Context).ResolveMacrosInContext(each.GetValue(currentContext ?? Context), null));
+            return this.Select(each => (currentContext??Context).ResolveMacrosInContext(each.GetValue(currentContext ?? Context), null, false));
         }
 
         public string GetValue(IValueContext currentContext) {

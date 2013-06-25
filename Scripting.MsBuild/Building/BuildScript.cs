@@ -21,6 +21,7 @@ namespace ClrPlus.Scripting.MsBuild.Building {
     using System.Reflection;
     using System.Threading;
     using CSharpTest.Net.RpcLibrary;
+    using Core.Exceptions;
     using Core.Extensions;
     using Core.Tasks;
     using Languages.PropertySheetV3;
@@ -62,6 +63,8 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 Dispose();
             }
         }
+
+        public int MaxThreads = Environment.ProcessorCount;
 
         public void AddMacro(string key, string value ) {
             _macros.AddOrSet(key.ToLower(), value);
@@ -128,7 +131,14 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             path.TryHardToDelete();
             return result;
         }
-         
+
+        private static string[] filterMessages = new string[] { "due to false condition" , "Environment Variables passed to tool" };
+
+        private bool _stop;
+        public void Stop() {
+            _stop = true;
+        }
+
         public void Execute(string[] targets = null) {
             _sheet.CopyToModel();
 
@@ -160,17 +170,24 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                         return new byte[0];
                     };
 
-                Event<Verbose>.Raise("script", "\r\n\r\n{0}\r\n\r\n", File.ReadAllText(path));
+                // Event<Verbose>.Raise("script", "\r\n\r\n{0}\r\n\r\n", File.ReadAllText(path));
                 
                 var targs = targets.IsNullOrEmpty() ? string.Empty : targets.Aggregate("/target:", (cur, each) => cur + each + ";").TrimEnd(';');
 
-                Event<Verbose>.Raise("msbuild", @"C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}"" {3} ""{4}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, targs, path));
-                
-                var proc = Process.Start(new ProcessStartInfo(@"C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe",
-                    @" /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}"" {3} ""{4}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, targs, path)) {
+                var etcPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc")+ "/";
+                Environment.SetEnvironmentVariable("CoAppEtcDirectory", etcPath);
+
+                EnvironmentUtility.EnvironmentPath = EnvironmentUtility.EnvironmentPath.Append(EnvironmentUtility.DotNetFrameworkFolder);
+
+
+                Event<Verbose>.Raise("msbuild", @"{6}\MSBuild.exe",
+                    @" /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}""  /m:{7} /p:MaxThreads={7} ""/p:CoAppEtcDirectory={3}"" {4} ""{5}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, etcPath, targs, path, EnvironmentUtility.DotNetFrameworkFolder, MaxThreads > 0 ? MaxThreads : Environment.ProcessorCount));
+
+                var proc = Process.Start(new ProcessStartInfo(@"{0}\MSBuild.exe".format(EnvironmentUtility.DotNetFrameworkFolder),
+                    @" /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}"" /m:{6} /p:MaxThreads={6} ""/p:CoAppEtcDirectory={3}"" {4} ""{5}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, etcPath, targs, path, MaxThreads > 0 ? MaxThreads : Environment.ProcessorCount)) {
                         RedirectStandardError = true,
                         RedirectStandardOutput = true,
-                        UseShellExecute = false
+                        UseShellExecute = false,
                     });
                 
                 while (!proc.HasExited) {
@@ -203,11 +220,13 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                                     break;
 
                                 case "MessageRaised":
-                                    if (obj.Message.IndexOf("due to false condition") > -1) {
+                                    if (filterMessages.Any(each => obj.Message.IndexOf(each) > -1)) {
                                         Event<Verbose>.Raise("", obj.Message);
-                                    } else {
+                                    }
+                                    else {
                                         Event<Message>.Raise("", obj.Message);
                                     }
+
                                     break;
 
                                 default:
@@ -217,7 +236,12 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                         }
                     }
                 }
-                proc.WaitForExit();
+                while (!proc.WaitForExit(20)) {
+                    if (_stop) {
+                        proc.Kill();
+                    }
+                }
+                
 
                 var stderr = proc.StandardError.ReadToEnd();
                 if (stderr.Is()) {

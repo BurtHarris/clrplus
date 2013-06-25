@@ -55,7 +55,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             if (Context == null) {
                 return _content;
             }
-            return (currentContext??Context).ResolveMacrosInContext(_content,null);
+            return (currentContext ?? Context).ResolveMacrosInContext(_content, null, false);
         }
 
         public IEnumerable<string> GetValues(IValueContext currentContext) {

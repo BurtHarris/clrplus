@@ -22,6 +22,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
     using Languages.PropertySheetV3;
     using Mapping;
     using Utility;
+    using PropertySheet = PropertySheetV3.PropertySheet;
     using PropertySheetParser = PropertySheetV3.PropertySheetParser;
 
     public class Iterator : List<IValue>, IValue {
@@ -62,7 +63,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
             // processing the template.
             // then, should return the collection of generated values 
             var t = Template.Select(each => (string)each.Data.ToString()).Aggregate((c, e) => c + e);
-            return Permutations.Select(each => (currentContext??Context).ResolveMacrosInContext(t, each));
+            return Permutations.Select(each => (currentContext ?? Context).ResolveMacrosInContext(t, each, false));
         }
 
         public static implicit operator string(Iterator rvalue) {
@@ -147,9 +148,10 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
         public string Prefix { get; set;}
 
         public IEnumerable<ToRoute> GetContents(IValueContext currentContext) {
+            int counter = 0;
 
             IEnumerable<ToRoute> result = Enumerable.Empty<ToRoute>();
-            var ps = new PropertySheetV3.PropertySheet();
+            var ps = new PropertySheetV3.PropertySheet((Context as ObjectNode).Root);
             var context = ps.Children[(Context as ObjectNode).Selector];
             var propertySheetParser = new PropertySheetParser(Enumerable.Empty< Token>(), ps, "");
            
@@ -158,19 +160,30 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.RValue {
 
                 if (tokens.FirstOrDefault().Type != TokenType.OpenBrace) {
                     tokens = open.Concat(tokens).Concat(close);
-                }
+                } 
 
-                tokens = PropertySheetTokenizer.Tokenize((currentContext ?? Context).ResolveMacrosInContext(tokens.Select(each => each.Data.ToString()).Aggregate((cur, each) => cur + each),permutation), TokenizerVersion.V3);
-                ;
+                //tokens = PropertySheetTokenizer.Tokenize((currentContext ?? Context).ResolveMacrosInContext(tokens.Select(each => each.Data.ToString()).Aggregate((cur, each) => cur + each),permutation), TokenizerVersion.V3);
 
-                var tokenArray = tokens.ToArray();
+                tokens = PropertySheetTokenizer.Tokenize((currentContext ?? Context).ResolveMacrosInContext(
+                    tokens.Select(each => each.Data.ToString()
+                ).Aggregate((cur, each) => cur + each), permutation, true).Replace("${#", "${"), TokenizerVersion.V3);
+                
 #if DEBUG
-                Event<Debug>.Raise("", DoIt(tokenArray).ToArray().Select(each => (string)each.Data.ToString()).CollapseToString(""));
+                var tokenArray = tokens.ToArray();
+
+                Event<Verbose>.Raise("Prefix:'{0}#{1}'".format(Prefix, counter), DoIt(tokenArray).ToArray().Select(each => (string)each.Data.ToString()).CollapseToString(""));
+
+                Event<Debug>.Raise("Prefix:'{0}#{1}'".format(Prefix, counter), tokenArray.Select(each => (string)each.Data.ToString()).CollapseToString(""));
+
+                Event<Debug>.Raise("Prefix:'{0}#{1}'".format(Prefix,counter), DoIt(tokenArray).ToArray().Select(each => (string)each.Data.ToString()).CollapseToString(""));
+                propertySheetParser.ResetParser(tokenArray);
+#else
+                propertySheetParser.ResetParser(tokens);
 #endif
 
-                propertySheetParser.ResetParser(tokenArray);
 
-                propertySheetParser.ParseItemAsDictionary(context, Prefix + "#") ;
+
+                propertySheetParser.ParseItemAsDictionary(context, "{0}#{1}#".format(Prefix, counter++)) ;
                 result = result.Concat(context.Routes);
             }
 

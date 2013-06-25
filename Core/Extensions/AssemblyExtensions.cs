@@ -108,28 +108,48 @@ namespace ClrPlus.Core.Extensions {
         }
 
         public static string ExtractFileResourceToPath(this Assembly assembly, string name, string filePath) {
-            var s = assembly.GetManifestResourceStream(assembly.ResolveManifestResource(name));
-            if (s != null) {
-                var buf = new byte[s.Length];
+            name = assembly.ResolveManifestResource(name, out assembly);
+            if (assembly != null) {
+                var s = assembly.GetManifestResourceStream(name);
+                if (s != null) {
+                    var buf = new byte[s.Length];
 
-                var targetFile = new FileStream(filePath, FileMode.Create);
-                var sz = s.Read(buf, 0, buf.Length);
-                targetFile.Write(buf, 0, sz);
-                s.Close();
-                targetFile.Close();
-                return filePath;
+                    var targetFile = new FileStream(filePath, FileMode.Create);
+                    var sz = s.Read(buf, 0, buf.Length);
+                    targetFile.Write(buf, 0, sz);
+                    s.Close();
+                    targetFile.Close();
+                    return filePath;
+                }
             }
             throw new ClrPlusException("Resource '{0}' not found in assembly.".format(name));
         }
 
         public static string ExtractFileResource(this Assembly assembly, string name) {
-            using(var s = new StreamReader(assembly.GetManifestResourceStream(assembly.ResolveManifestResource(name)))) {
-                return s.ReadToEnd();
+            name = assembly.ResolveManifestResource(name, out assembly);
+            if (assembly != null) {
+                using (var s = new StreamReader(assembly.GetManifestResourceStream(name))) {
+                    return s.ReadToEnd();
+                }
             }
+            throw new ClrPlusException("Resource '{0}' not found in assembly.".format(name));
         }
 
-        public static string ResolveManifestResource(this Assembly assembly, string name) {
-          return assembly.GetManifestResourceNames().FirstOrDefault(each => each.EndsWith(name, StringComparison.CurrentCultureIgnoreCase));
+        public static string ResolveManifestResource(this Assembly assembly, string name, out Assembly actualAssembly) {
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies()) {
+                try {
+                    var n = a.GetManifestResourceNames().FirstOrDefault(each => each.EndsWith(name, StringComparison.CurrentCultureIgnoreCase));
+                    if (n != null) {
+                        actualAssembly = a;
+                        return n;
+                    }
+                } catch {
+                    
+                }
+            }
+
+            actualAssembly = null;
+            return null;
         }
 
 #if TODO 

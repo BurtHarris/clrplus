@@ -225,6 +225,7 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
             return result;
         }
+
     }
 
     public abstract class RestableCmdlet : PSCmdlet {
@@ -269,6 +270,19 @@ namespace ClrPlus.Powershell.Rest.Commands {
 
             
         }
+
+        private string _originalDir; 
+        protected override void BeginProcessing() {
+            _originalDir = Environment.CurrentDirectory;
+            Environment.CurrentDirectory = (SessionState.PSVariable.GetValue("pwd") ?? "").ToString();
+        }
+
+        protected override void EndProcessing() {
+            if (_originalDir != null) {
+                Environment.CurrentDirectory = _originalDir;
+            }
+        }
+
     }
 }
 

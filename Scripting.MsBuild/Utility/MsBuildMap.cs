@@ -16,6 +16,7 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
     using System.Linq;
     using System.Collections;
     using System.Reflection;
+    using System.Threading.Tasks;
     using System.Xml;
     using ClrPlus.Core.Collections;
     using ClrPlus.Core.Extensions;
@@ -48,31 +49,36 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
             "HostObject",
             "Log"
         };
-        static MsBuildMap() {
-            // ensure a few assemblies are loaded.
-            AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Tasks.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
-            AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Utilities.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
-            AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
 
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach(var asm in assemblies) {
-                var tasks = asm.GetTypes().Where(each => each.GetInterfaces().Contains(typeof(ITask))).Where(each => each.IsPublic);
-                foreach(var t in tasks) {
-                    var properties = t.GetProperties().Where(each => !_ignoreProperties.Contains(each.Name)).ToArray();
-                    _taskClasses.Add(t.Name, new MSBuildTaskType {
-                        TaskClass = t,
-                        Outputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "OutputAttribute")).Select(each => each.Name).ToArray(),
-                        RequiredInputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "RequiredAttribute")).Select(each => each.Name).ToArray(),
-                        OptionalInputs = properties.Where(each => each.GetCustomAttributes(true).All(attr => attr.GetType().Name != "OutputAttribute" && attr.GetType().Name != "RequiredAttribute")).Select(each => each.Name).ToArray()
-                    });
+        private static Task initTask;
+
+        static MsBuildMap() {
+            initTask = Task.Factory.StartNew(() => {
+
+                // ensure a few assemblies are loaded.
+                AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Tasks.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
+                AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Utilities.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
+                AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
+
+                var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                foreach (var asm in assemblies) {
+                    var tasks = asm.GetTypes().Where(each => each.GetInterfaces().Contains(typeof (ITask))).Where(each => each.IsPublic);
+                    foreach (var t in tasks) {
+                        var properties = t.GetProperties().Where(each => !_ignoreProperties.Contains(each.Name)).ToArray();
+                        _taskClasses.Add(t.Name, new MSBuildTaskType {
+                            TaskClass = t,
+                            Outputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "OutputAttribute")).Select(each => each.Name).ToArray(),
+                            RequiredInputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "RequiredAttribute")).Select(each => each.Name).ToArray(),
+                            OptionalInputs = properties.Where(each => each.GetCustomAttributes(true).All(attr => attr.GetType().Name != "OutputAttribute" && attr.GetType().Name != "RequiredAttribute")).Select(each => each.Name).ToArray()
+                        });
+                    }
                 }
-            }
+            });
+
         }
 
 
         internal static ProjectElement GetTargetItem(this ProjectTargetElement target, View view) {
-           
-
             // get the member name and data from the view, and create/lookup the item.
             // return the item.
             switch (view.MemberName) {
@@ -83,6 +89,10 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                 case "AfterTargets":
                     break;
                 default:
+                    // 
+                    if (!initTask.IsCompleted) {
+                        initTask.Wait();
+                    }
                     var taskName = view.MemberName;
                     if (_taskClasses.ContainsKey(taskName)) {
                         // for tasks we recognize
@@ -109,7 +119,7 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                             }
 
                            
-                            tsk.SetParameter(n, prop);
+                            tsk.SetParameter(n, prop.Values.CollapseToString(";"));
                         }
 
                         foreach (var r in required) {

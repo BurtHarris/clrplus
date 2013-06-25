@@ -32,9 +32,11 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
     public class PackageScript : IDisposable {
         private static readonly string _requiredTemplate = Assembly.GetExecutingAssembly().ExtractFileResource("PackageScriptTemplate.autopkg");
+        private static readonly string _requiredTemplateStatic = Assembly.GetExecutingAssembly().ExtractFileResource("PackageScriptTemplate_static.autopkg");
+        private static readonly string _requiredTemplateLTCG = Assembly.GetExecutingAssembly().ExtractFileResource("PackageScriptTemplate_ltcg.autopkg");
         
         internal readonly Pivots Pivots;
-        internal string PackageDirectory {
+        internal string PackageDirectory {  
             get {
                 return Directory.GetParent(FullPath).FullName;
             }
@@ -58,10 +60,24 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             // get the full path to the .autopkgFile
             FullPath = filename.GetFullPath();
 
+
+
             // parse the script
             _sheet.ParseFile(filename);
+            
+            
             _sheet.ImportText(_requiredTemplate, "required");
 
+            // temp hack to work around static & ltcg getting marked as used when they are just in the template.
+            var scriptText = File.ReadAllText(filename);
+            if (scriptText.IndexOf("static", StringComparison.InvariantCultureIgnoreCase) > -1) {
+                _sheet.ImportText(_requiredTemplateStatic, "required_static");    
+            }
+
+            // end hack
+            if (scriptText.IndexOf("ltcg", StringComparison.InvariantCultureIgnoreCase) > -1) {
+                _sheet.ImportText(_requiredTemplateLTCG, "required_ltcg");
+            }
             // ensure we have at least the package ID
             var packageName = _sheet.View.nuget.nuspec.id;
             if (string.IsNullOrEmpty(packageName)) {
@@ -329,7 +345,8 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     continue;
                 }
                 
-                var filemasks = container.Values;
+                // GS01 Workaround for bug in Values not caching the output set when a collection is added to ?
+                var filemasks = container.Values.Distinct().ToArray();
                 var relativePaths = new Dictionary<string, string>();
 
                 foreach (var mask in filemasks) {
@@ -410,6 +427,11 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             }
         }
 
+        public IEnumerable<string> Packages {
+            get {
+                return _nugetPackages.Values.SelectMany(each => each.Packages);
+            }
+        }
 
         private IEnumerable<ToRoute> MapDependencies() {
             yield break;

@@ -113,7 +113,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
         }
         */
 
-        public string ResolveMacrosInContext(string value, object[] items = null) {
+        public string ResolveMacrosInContext(string value, object[] items = null, bool itemsOnly = false) {
             return CurrentView.ResolveMacrosInContext(value, items);
         }
 

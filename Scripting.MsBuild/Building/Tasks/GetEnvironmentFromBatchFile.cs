@@ -1,4 +1,16 @@
-﻿namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
+﻿//-----------------------------------------------------------------------
+// <copyright company="CoApp Project">
+//     Copyright (c) 2010-2013 Garrett Serack and CoApp Contributors. 
+//     Contributors can be discovered using the 'git log' command.
+//     All rights reserved.
+// </copyright>
+// <license>
+//     The software is licensed under the Apache 2.0 License (the "License")
+//     You may not use the software except in compliance with the License. 
+// </license>
+//-----------------------------------------------------------------------
+
+namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -6,12 +18,15 @@
     using Core.Extensions;
     using Microsoft.Build.Framework;
     using Platform.Process;
-    using ProcessStartInfo = Platform.Process.ProcessStartInfo;
 
     public class GetEnvironmentFromBatchFile : ITask {
         public bool Execute() {
             try {
                 var cmd = Environment.ExpandEnvironmentVariables(@"%SystemRoot%\system32\cmd.exe");
+                if (!System.IO.File.Exists(BatchFile.ItemSpec)) {
+                    return false;
+                }
+
                 var args = @"/c ""{0}"" {1} & set ".format(BatchFile.ItemSpec , Parameters.Select(each => each.ItemSpec).Aggregate((cur, each) => cur + @" ".format(each)));
 
                 var proc = AsyncProcess.Start(
@@ -20,7 +35,11 @@
                         WindowStyle = ProcessWindowStyle.Normal,
                     });
                 proc.WaitForExit();
-                
+
+                if (proc.ExitCode != 0) {
+                    return false;
+                }
+
                 // var dictionary = new Dictionary<string, string>();
                 foreach (var each in proc.StandardOutput.Where(each => each.Is() && each.IndexOf('=') > -1)) {
                     var p = each.IndexOf('=');
@@ -35,8 +54,9 @@
             }
             catch(Exception e) {
                 Console.WriteLine("{0},{1},{2}", e.GetType().Name, e.Message, e.StackTrace);
-                return false;
+               
             }
+            return false;
         }
 
         [Required]

@@ -181,9 +181,12 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
 
 
         public string GetSingleMacroValue(string innerMacro, object[] items = null) {
-            var v = LookupMacroValue(innerMacro, this).ToArray();
-            if (v.Length > 0) {
-                return ResolveMacrosInContext(v.CollapseToString(), items);    
+            var v = LookupMacroValue(innerMacro, this);
+            if ( v != null ) {
+                var a = v.ToArray();
+                if (a.Length > 0) {
+                    return ResolveMacrosInContext(a.CollapseToString(), items);        
+                }
             }
             return null;
         }
@@ -193,7 +196,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
             return vals == null? null: vals.Select(each => ResolveMacrosInContext(each, items));
         }
 
-        public string ResolveMacrosInContext(string value, object[] eachItems = null) {
+        public string ResolveMacrosInContext(string value, object[] eachItems = null, bool itemsOnly = false) {
             bool keepGoing;
 
             if(string.IsNullOrEmpty(value)) {
@@ -212,7 +215,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3.Mapping {
                     string replacement = null;
 
                     var ndx = GetIndex(innerMacro);
-                    if(ndx < 0) {
+                    if(!itemsOnly && ndx < 0) {
                         // get the first responder.
                         var indexOfDot = innerMacro.IndexOf('.');
 

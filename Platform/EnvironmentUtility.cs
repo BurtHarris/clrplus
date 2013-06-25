@@ -19,6 +19,7 @@ namespace ClrPlus.Platform {
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Core.Exceptions;
     using Core.Extensions;
     using Windows.Api;
 
@@ -175,5 +176,34 @@ namespace ClrPlus.Platform {
             // Step 3: Return the result.
             return (s.Length == 0 ? filename : s.ToString());
         }
+
+        public static string DotNetFrameworkFolders {
+            get {
+                if (Environment.Is64BitOperatingSystem) {
+                    return Environment.ExpandEnvironmentVariables(@"%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319;%SystemRoot%\Microsoft.NET\Framework\v4.0.30319");
+                }
+                return Environment.ExpandEnvironmentVariables(@"%SystemRoot%\Microsoft.NET\Framework\v4.0.30319");
+            }
+        }
+
+        public static string DotNetFrameworkFolder {
+            get {
+                if (Environment.Is64BitOperatingSystem) {
+                    var p = Environment.ExpandEnvironmentVariables(@"%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319");
+                    if (System.IO.Directory.Exists(p)) {
+                        return p;
+                    }
+                }
+
+                var d = Environment.ExpandEnvironmentVariables(@"%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319");
+                if (System.IO.Directory.Exists(d)) {
+                    return d;
+                }
+
+                throw new ClrPlusException("Unable to identify .NET 4.0/4.5 framework directory.");
+            }
+        }
+
+
     }
 }

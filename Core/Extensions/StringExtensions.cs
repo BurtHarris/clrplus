@@ -1004,5 +1004,39 @@ namespace ClrPlus.Core.Extensions {
         public static bool StartsWithNumber(this string str) {
             return !string.IsNullOrEmpty(str) && (str[0] >= '0' && str[0] <= '9');
         }
+
+        /// <summary>
+        /// Case insensitive version of String.Replace().
+        /// </summary>
+        /// <param name="s">String that contains patterns to replace</param>
+        /// <param name="oldValue">Pattern to find</param>
+        /// <param name="newValue">New pattern to replaces old</param>
+        /// <param name="comparisonType">String comparison type</param>
+        /// <returns></returns>
+        public static string Replace(this string s, string oldValue, string newValue,
+            StringComparison comparisonType) {
+            if(s == null)
+                return null;
+
+            if(String.IsNullOrEmpty(oldValue))
+                return s;
+
+            var result = new StringBuilder(Math.Min(4096, s.Length));
+            var pos = 0;
+
+            while(true) {
+                var i = s.IndexOf(oldValue, pos, comparisonType);
+                if(i < 0)
+                    break;
+
+                result.Append(s, pos, i - pos);
+                result.Append(newValue);
+
+                pos = i + oldValue.Length;
+            }
+            result.Append(s, pos, s.Length - pos);
+
+            return result.ToString();
+        }
     }
 }

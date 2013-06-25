@@ -13,13 +13,12 @@
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using Microsoft.Build.Framework;
 
-    public class PushEnvironment : ITask {
-        public bool Execute() {
-            EnvironmentManager.Instance.Push();
-            return true;
-        }
-
+    public class AppendEnvironment : ITask {
         public IBuildEngine BuildEngine {get; set;}
         public ITaskHost HostObject {get; set;}
+
+        public bool Execute() {
+            return true;
+        }
     }
 }

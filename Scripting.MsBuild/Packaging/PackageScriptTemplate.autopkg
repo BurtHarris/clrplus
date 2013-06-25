@@ -2,18 +2,20 @@
 // This file is automatically imported into Autopackage to set the defaults 
 
 #defines { 
-    // ElementId = "/";
     conditionFolder = ${ElementId};
 }
 
 configurations {
     Toolset { 
         key : "PlatformToolset"; 
-        choices: { v110, v100, v90, v80, v71, v70, v60, gcc, v110_xp, v110_wp80 };  
-		// Explicitly Not including pivot variants:  "WindowsKernelModeDriver8.0", "WindowsApplicationForDrivers8.0", "WindowsUserModeDriver8.0" 
-		
-		// We're normalizing out the concept of the v110 platform -- Overloading the $(PlatformToolset) variable for additional pivots was a dumb idea.
-		v110.condition = "( $(PlatformToolset.IndexOf('v110')) > -1 Or '$(PlatformToolset)' == 'WindowsKernelModeDriver8.0' Or '$(PlatformToolset)' == 'WindowsApplicationForDrivers8.0' Or '$(PlatformToolset)' == 'WindowsUserModeDriver8.0' )";
+        choices: { v120, v110, v100, v90, v80, v71, v70, v60, gcc, v110_xp, v110_wp80, v120_xp, v120_wp80 };  
+        // Explicitly Not including pivot variants:  "WindowsKernelModeDriver8.0", "WindowsApplicationForDrivers8.0", "WindowsUserModeDriver8.0" 
+        
+        // We're normalizing out the concept of the v110 platform -- Overloading the $(PlatformToolset) variable for additional pivots was a dumb idea.
+        v110.condition = "( $(PlatformToolset.ToLower().IndexOf('v110')) > -1 Or '$(PlatformToolset.ToLower())' == 'windowskernelmodedriver8.0' Or '$(PlatformToolset.ToLower())' == 'windowsapplicationfordrivers8.0' Or '$(PlatformToolset.ToLower())' == 'windowsusermodedriver8.0' )";
+        
+        // We're normalizing out the concept of the v120 platform -- Overloading the $(PlatformToolset) variable for additional pivots was a dumb idea.
+        v120.condition = "( $(PlatformToolset.ToLower().IndexOf('v120')) > -1 Or '$(PlatformToolset.ToLower())' == 'windowskernelmodedriver8.0' Or '$(PlatformToolset.ToLower())' == 'windowsapplicationfordrivers8.0' Or '$(PlatformToolset.ToLower())' == 'windowsusermodedriver8.0' )";
     };
  
     Platform {
@@ -27,12 +29,12 @@ configurations {
 
     Configuration {
         key : "Configuration"; 
-		choices: { Release, Debug };
+        choices: { Release, Debug };
 
-		Release.condition = "( $(Configuration.ToLower().IndexOf('debug')) == -1 )";
-		Debug.condition = "( $(Configuration.ToLower().IndexOf('debug')) > -1 )";
+        Release.condition = "( $(Configuration.ToLower().IndexOf('debug')) == -1 )";
+        Debug.condition = "( $(Configuration.ToLower().IndexOf('debug')) > -1 )";
     };
-	
+    
     Linkage { 
         choices : { dynamic, static, ltcg, sxs };
         description = "Which version of the .lib file to link to this library";
@@ -59,55 +61,55 @@ configurations {
         clrcall.restricted-to = "Win32";
     };
 
-	Other {
-		Key:OTHER_STUFF;
-		choices: { RuntimeLibraryNull };
-		RuntimeLibraryNull.condition = "('$(RuntimeLibrary)' == '')";
-	}
-	/* 
-		Since the MSBuild  property for identifying if a project is compiling a Win8 Store App
-		is a boolean, and we don't want to actually key off that, we're going to generate 
-		a property that gets a value based on that boolean, and key off of that.
-		
-		We'll declare that property in the props file (so that it happens early in the MSBuild)
-		(see the props section down near the bottom)
-	*/
+    Other {
+        Key:OTHER_STUFF;
+        choices: { RuntimeLibraryNull };
+        RuntimeLibraryNull.condition = "('$(RuntimeLibrary)' == '')";
+    }
+    /* 
+        Since the MSBuild  property for identifying if a project is compiling a Win8 Store App
+        is a boolean, and we don't want to actually key off that, we're going to generate 
+        a property that gets a value based on that boolean, and key off of that.
+        
+        We'll declare that property in the props file (so that it happens early in the MSBuild)
+        (see the props section down near the bottom)
+    */
 
-	TargetApplicationType {
-		key: "TargetApplicationType";
-		
-		choices: { Desktop,  WinRT, Phone8, KernelModeDriver, ApplicationForDriver, UserModeDriver }; // "WindowsKernelModeDriver8.0", "WindowsApplicationForDrivers8.0", "WindowsUserModeDriver8.0" 
-		
-		#defines {
-			// we are going to define the conditions here
-			// so that we can reuse them to detect 'desktop', since it's the absence 
-			// of all others, and I don't want to accidentally make a copy/paste error.
+    TargetApplicationType {
+        key: "TargetApplicationType";
+        
+        choices: { Desktop,  WinRT, Phone8, KernelModeDriver, ApplicationForDriver, UserModeDriver }; // "WindowsKernelModeDriver8.0", "WindowsApplicationForDrivers8.0", "WindowsUserModeDriver8.0" 
+        
+        #defines {
+            // we are going to define the conditions here
+            // so that we can reuse them to detect 'desktop', since it's the absence 
+            // of all others, and I don't want to accidentally make a copy/paste error.
 
-			KernelModeDriver_condition = "('$(PlatformToolset)' == 'WindowsKernelModeDriver8.0')";
-			ApplicationForDriver_condition = "('$(PlatformToolset)' == 'WindowsApplicationForDrivers8.0')";
-			UserModeDriver_condition = "('$(PlatformToolset)' == 'WindowsUserModeDriver8.0')";
+            KernelModeDriver_condition = "('$(PlatformToolset.ToLower())' == 'windowskernelmodedriver8.0')";
+            ApplicationForDriver_condition = "('$(PlatformToolset.ToLower())' == 'windowsapplicationfordrivers8.0')";
+            UserModeDriver_condition = "('$(PlatformToolset.ToLower())' == 'windowsusermodedriver8.0')";
 
-			Phone8_condition = "('$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0')";
-			WinRT_condition = "('$(AppContainerApplication)' == 'true')";
-			Desktop_condition =  "( !${KernelModeDriver_condition} And !${ApplicationForDriver_condition} And !${UserModeDriver_condition} And !${Phone8_condition} And !${WinRT_condition} )";
-		}
+            Phone8_condition = "('$(TargetPlatformIdentifier.ToLower())' == 'windows phone' And '$(TargetPlatformVersion)' == '8.0')";
+            WinRT_condition = "('$(AppContainerApplication.ToLower())' == 'true')";
+            Desktop_condition =  "( !${KernelModeDriver_condition} And !${ApplicationForDriver_condition} And !${UserModeDriver_condition} And !${Phone8_condition} And !${WinRT_condition} )";
+        }
 
-		Desktop.aliases : { Desktop, NotWinRT };
-		WinRT.aliases : { WinRT, Metro, Modern };
-		Phone8.aliases : { Phone8, Phone, WindowsPhone };
-		
-		KernelModeDriver.aliases : { KernelModeDriver, Kernel, KernelDriver ,Driver };
-		ApplicationForDriver.aliases : { ApplicationForDriver };
-		UserModeDriver.aliases  : { UserModeDriver, UserMode, UserDriver };
+        Desktop.aliases : { Desktop, NotWinRT };
+        WinRT.aliases : { WinRT, Metro, Modern };
+        Phone8.aliases : { Phone8, Phone, WindowsPhone };
+        
+        KernelModeDriver.aliases : { KernelModeDriver, Kernel, KernelDriver ,Driver };
+        ApplicationForDriver.aliases : { ApplicationForDriver };
+        UserModeDriver.aliases  : { UserModeDriver, UserMode, UserDriver };
 
-		KernelModeDriver.condition = ${KernelModeDriver_condition};
-		ApplicationForDriver.condition = ${ApplicationForDriver_condition};
-		UserModeDriver.condition = ${UserModeDriver_condition};
+        KernelModeDriver.condition = ${KernelModeDriver_condition};
+        ApplicationForDriver.condition = ${ApplicationForDriver_condition};
+        UserModeDriver.condition = ${UserModeDriver_condition};
 
-		Phone8.condition = ${Phone8_condition};
-		WinRT.condition = ${WinRT_condition};
-		Desktop.condition =  ${Desktop_condition};
-	}
+        Phone8.condition = ${Phone8_condition};
+        WinRT.condition = ${WinRT_condition};
+        Desktop.condition =  ${Desktop_condition};
+    }
 }
 
 nuget := {
@@ -116,29 +118,29 @@ nuget := {
     
         framework      = native,
     
-        content_root   = \content\${framework},
-        tools_root     = \tools\${framework},
-        lib_root       = \lib\${framework},
-        build_root     = \build\${framework},
-        src_root       = \src\${framework},
+        content_root   = /content/${framework},
+        tools_root     = /tools/${framework},
+        lib_root       = /lib/${framework},
+        build_root     = /build/${framework},
+        src_root       = /src/${framework},
 
-        d_include   = ${build_root}\include\${conditionFolder},
-        d_docs      = ${build_root}\docs\${conditionFolder},
-        d_bin       = ${build_root}\bin\${conditionFolder},  
-        d_lib       = ${build_root}\lib\${conditionFolder},
-        d_tools     = ${tools_root}\${conditionFolder},
-		d_src       = ${src_root}\${conditionFolder},
+        d_include   = ${build_root}/include/${conditionFolder},
+        d_docs      = ${build_root}/docs/${conditionFolder},
+        d_bin       = ${build_root}/bin/${conditionFolder},  
+        d_lib       = ${build_root}/lib/${conditionFolder},
+        d_tools     = ${tools_root}/${conditionFolder},
+        d_src       = ${src_root}/${conditionFolder},
 
         // since the generated msbuild props/targets files are always in a directory two 
         // deep from the package root.
-        pkg_root    = $(MSBuildThisFileDirectory)..\..\,
+        pkg_root    = $(MSBuildThisFileDirectory)../../,
     };
     
     // one of the pivots for the targets/props []  parameter.
     #output-packages {
         default : ${pkgname};
         redist : ${pkgname}.redist;
-		symbols : ${pkgname}.symbols;
+        symbols : ${pkgname}.symbols;
     }
 
     files {
@@ -153,8 +155,10 @@ nuget := {
                 package : { redist, symbols };
             };
 
-            #add-each-file : ::nuget.[redist]targets.[${condition}].CopyToOutput;,
-				
+            #add-each-file : ::nuget.[redist]targets.[${condition}].CopyToOutput;
+
+            #add-folder : ::nuget.[redist]targets.[${condition}].BuildTimePath;
+
             #destination : ${d_bin};  
         };
 
@@ -166,21 +170,21 @@ nuget := {
             #destination : ${d_bin};  
         };
 
-		symbols += {  
+        symbols += {  
             #output {
                 package = symbols;
             };
             #destination : ${d_bin};  
         };
 
-		source += {  
+        source += {  
             #output {
                 package = symbols;
             };
             #destination : ${d_src};  
         };
 
-		src += {  
+        src += {  
             #output {
                 package = symbols;
             };
@@ -195,17 +199,19 @@ nuget := {
         lib += { 
             // add each file as a link rule
             #add-each-file : {
-				::nuget.targets.[${condition}].Libraries,
-				
-			};
-			//::nuget.targets.[${condition}].LibLibraries;
+                ::nuget.targets.[${condition}].Libraries,
+            };
+            //::nuget.targets.[${condition}].LibLibraries;
 
             #flatten = true;
             #destination = ${d_lib}; 
         };
 
         include += { 
-            #add-folder : ::nuget.targets.[${condition}].Includes;
+            #add-folder : { 
+                ::nuget.targets.[${condition}].Includes;
+                ::nuget.targets.[${condition}].RcIncludes;
+            };
             #destination : ${d_include}; 
         };
 
@@ -217,67 +223,17 @@ nuget := {
     
     targets {
         @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
+        @alias RcIncludes = ItemDefinitionGroup.ResourceCompile.AdditionalIncludeDirectories;
         @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
         @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
-		@alias LibLibraries = ItemDefinitionGroup.Lib.AdditionalDependencies;
-        // BuildTimePath : "";
-        // CopyToOutput : "";
-
-		/*
-		// if AppContainerApplication is true, it's a WinRT app 
-		['$(AppContainerApplication)' == 'true']
-		TargetApplicationType = WinRT;
-
-		['$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0' ]
-		TargetApplicationType = Phone8;
-
-		// if AppContainerApplication is undefined, it's a Desktop app 
-		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
-		TargetApplicationType = Desktop;
-		*/
-
-		
-		[Debug,Static,RuntimeLibraryNull] {
-			RuntimeLibrary = MultiThreadedDebug;
-		}
-
-		[Debug,Dynamic,RuntimeLibraryNull] {
-			RuntimeLibrary = MultiThreadedDebugDLL;
-		}
-
-		[Release,Static,RuntimeLibraryNull] {
-			RuntimeLibrary = MultiThreaded;
-		}
-
-		// if it still didn't make it in...
-		[RuntimeLibraryNull] 
-		RuntimeLibrary = MultiThreadedDLL;
-
-		ItemDefinitionGroup.ClCompile.RuntimeLibrary = $(RuntimeLibrary);
+        @alias LibLibraries = ItemDefinitionGroup.Lib.AdditionalDependencies;
     }
     
     props {
         @alias Includes = ItemDefinitionGroup.ClCompile.AdditionalIncludeDirectories;
+        @alias RcIncludes = ItemDefinitionGroup.ResourceCompile.AdditionalIncludeDirectories;
         @alias Libraries = ItemDefinitionGroup.Link.AdditionalDependencies;
         @alias Defines = ItemDefinitionGroup.ClCompile.PreprocessorDefinitions;
-		@alias LibLibraries = ItemDefinitionGroup.Lib.AdditionalDependencies;
-
-        // BuildTimePath : "";
-        // CopyToOutput : "";
-		
-		/*
-		// if AppContainerApplication is true, it's a WinRT app 
-		['$(AppContainerApplication)' == 'true']
-		TargetApplicationType = WinRT;
-
-		['$(TargetPlatformIdentifier)' == 'Windows Phone' And '$(TargetPlatformVersion)' == '8.0' ]
-		TargetApplicationType = Phone8;
-
-		// if AppContainerApplication is undefined, it's a Desktop app 
-		['$(AppContainerApplication)' == '' And 'TargetApplicationType' == '']
-		TargetApplicationType = Desktop;
-		*/
-
-		
-	}
+        @alias LibLibraries = ItemDefinitionGroup.Lib.AdditionalDependencies;
+    }
 }
