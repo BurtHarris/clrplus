@@ -214,19 +214,19 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             if (_canonicalExpressions.Keys.Contains(expression)) {
                 return expression;
             }*/
-            foreach (var i in _canonicalExpressions.Keys) {
+            foreach (var i in _canonicalExpressions.Keys.ToArray()) {
                 if (_canonicalExpressions[i].Contains(expression)) {
                     return i;
                 }
             }
 
-            foreach (var i in _canonicalExpressions.Keys) {
+            foreach (var i in _canonicalExpressions.Keys.ToArray()) {
                 if (CompareExpressions(i, expression)) {
                     _canonicalExpressions[i].Add(expression);
                     return i;
                 }
             }
-            _canonicalExpressions.Add(expression,new List<string>{expression});
+            _canonicalExpressions.GetOrAdd(expression,() => new List<string>{expression});
             return expression;
         }
 
