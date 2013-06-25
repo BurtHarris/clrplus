@@ -12,6 +12,7 @@
 
 namespace ClrPlus.Platform {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
@@ -204,6 +205,39 @@ namespace ClrPlus.Platform {
             }
         }
 
+        public static void Push() {
+            EnvironmentStack.Instance.Push();
+        }
 
+        public static void Pop() {
+            EnvironmentStack.Instance.Pop();
+        }
+
+        public static void Apply(IDictionary env) {
+            var keys = env.Keys.ToEnumerable<object>().Select(each => (string)each).ToList();
+
+            var current = Environment.GetEnvironmentVariables();
+            foreach (var key in current.Keys.ToEnumerable<object>().Select(each => each.ToString())) {
+                if (keys.Contains(key)) {
+                    var curval = current[key].ToString();
+                    var val = env[key].ToString();
+                    if (val != curval) {
+                        Environment.SetEnvironmentVariable(key, val);
+                        keys.Remove(key);
+                    }
+                    continue;
+                }
+                Environment.SetEnvironmentVariable(key, null);
+            }
+            foreach (var key in keys) {
+                if (key.Equals("path", StringComparison.InvariantCultureIgnoreCase)) {
+                    var p = (string)env[key];
+                    Environment.SetEnvironmentVariable(key, p.Split(";".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Append(EnvironmentUtility.DotNetFrameworkFolder).Aggregate((c, each) => c + ";" + each));
+                }
+                else {
+                    Environment.SetEnvironmentVariable(key, (string)env[key]);
+                }
+            }
+        }
     }
 }

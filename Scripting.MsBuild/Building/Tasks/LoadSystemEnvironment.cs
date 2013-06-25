@@ -14,9 +14,8 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System;
     using System.Linq;
     using Core.Extensions;
-    using Microsoft.Build.Framework;
 
-    public class LoadSystemEnvironment : ITask {
+    public class LoadSystemEnvironment : MsBuildTaskBase {
         private string[] _ignore = new[] {
             "SYSTEMDRIVE",
             "PROGRAMFILES(X86)",
@@ -44,8 +43,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             "MSBUILDLOADMICROSOFTTARGETSREADONLY",
         };
 
-        public bool Execute() {
-
+        public override bool Execute() {
             var keys = Environment.GetEnvironmentVariables().Keys.ToEnumerable<object>().Select(each => each.ToString()).Union(
                 Environment.GetEnvironmentVariables(EnvironmentVariableTarget.Machine).Keys.ToEnumerable<object>().Select(each => each.ToString())).Union(
                     Environment.GetEnvironmentVariables(EnvironmentVariableTarget.User).Keys.ToEnumerable<object>().Select(each => each.ToString())).ToArray();
@@ -58,7 +56,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                 var s = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Machine);
                 var u = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.User);
                 var val = string.Empty;
-                if (key.ToLower().IndexOf("path") > -1 || (s.Is() && s.IndexOf(';') > -1) || (u.Is() && u.IndexOf(';') > -1) ||key.ToLower() == "lib" || key.ToLower() == "include") {
+                if (key.ToLower().IndexOf("path") > -1 || (s.Is() && s.IndexOf(';') > -1) || (u.Is() && u.IndexOf(';') > -1) || key.ToLower() == "lib" || key.ToLower() == "include") {
                     // combine these fields
                     if (s.Is()) {
                         val = s;
@@ -81,15 +79,11 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                     val = null;
                 }
                 if (val != Environment.GetEnvironmentVariable(key)) {
-                    
-                    Environment.SetEnvironmentVariable(key, val);    
+                    Environment.SetEnvironmentVariable(key, val);
                 }
             }
 
             return true;
         }
-
-        public IBuildEngine BuildEngine { get; set; }
-        public ITaskHost HostObject { get; set; }
     }
 }

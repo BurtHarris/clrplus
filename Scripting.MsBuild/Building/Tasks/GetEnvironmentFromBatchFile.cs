@@ -12,25 +12,30 @@
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System;
-    using System.Collections.Generic;
     using System.Diagnostics;
+    using System.IO;
     using System.Linq;
     using Core.Extensions;
     using Microsoft.Build.Framework;
     using Platform.Process;
 
-    public class GetEnvironmentFromBatchFile : ITask {
-        public bool Execute() {
+    public class GetEnvironmentFromBatchFile : MsBuildTaskBase {
+        [Required]
+        public ITaskItem BatchFile {get; set;}
+
+        [Required]
+        public ITaskItem[] Parameters {get; set;}
+
+        public override bool Execute() {
             try {
                 var cmd = Environment.ExpandEnvironmentVariables(@"%SystemRoot%\system32\cmd.exe");
-                if (!System.IO.File.Exists(BatchFile.ItemSpec)) {
+                if (!File.Exists(BatchFile.ItemSpec)) {
                     return false;
                 }
 
-                var args = @"/c ""{0}"" {1} & set ".format(BatchFile.ItemSpec , Parameters.Select(each => each.ItemSpec).Aggregate((cur, each) => cur + @" ".format(each)));
+                var args = @"/c ""{0}"" {1} & set ".format(BatchFile.ItemSpec, Parameters.Select(each => each.ItemSpec).Aggregate((cur, each) => cur + @" ".format(each)));
 
                 var proc = AsyncProcess.Start(
-
                     new ProcessStartInfo(cmd, args) {
                         WindowStyle = ProcessWindowStyle.Normal,
                     });
@@ -51,21 +56,10 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                 }
 
                 return true;
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 Console.WriteLine("{0},{1},{2}", e.GetType().Name, e.Message, e.StackTrace);
-               
             }
             return false;
         }
-
-        [Required]
-        public ITaskItem BatchFile { get; set; }
-
-        [Required]
-        public ITaskItem[] Parameters { get; set; }
-
-        public IBuildEngine BuildEngine { get; set; }
-        public ITaskHost HostObject { get; set; }
     }
 }

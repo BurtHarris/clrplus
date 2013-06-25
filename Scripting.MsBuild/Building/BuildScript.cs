@@ -12,35 +12,37 @@
 
 namespace ClrPlus.Scripting.MsBuild.Building {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
-    using System.Management.Automation.Runspaces;
     using System.Reflection;
     using System.Threading;
     using CSharpTest.Net.RpcLibrary;
-    using Core.Exceptions;
     using Core.Extensions;
     using Core.Tasks;
     using Languages.PropertySheetV3;
     using Languages.PropertySheetV3.Mapping;
     using Languages.PropertySheetV3.RValue;
     using Microsoft.Build.Construction;
-    using Microsoft.Build.Framework;
     using Packaging;
     using Platform;
-    using Powershell.Core;
-    using Remoting;
+    using ServiceStack.Text;
     using Utility;
 
     public class BuildScript : IDisposable, IProjectOwner {
+        private static string[] filterMessages = new[] {
+            "due to false condition", "Environment Variables passed to tool"
+        };
+
         private readonly Pivots _pivots;
         private readonly ProjectPlus _project;
+        public int MaxThreads = Environment.ProcessorCount;
+        private IDictionary<string, string> _macros = new Dictionary<string, string>();
         protected RootPropertySheet _sheet;
+        private bool _stop;
         internal IDictionary<string, IValue> productInformation;
-        private IDictionary<string, string> _macros = new Dictionary<string, string>() ;
+
         public BuildScript(string filename) {
             try {
                 Filename = filename.GetFullPath();
@@ -56,18 +58,12 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 // _sheet.AddChildRoutesForType(typeof (ProjectTargetElement), _project.TargetRoutes);
 
                 _sheet.CurrentView.AddMacroHandler((name, context) => _macros.ContainsKey(name.ToLower()) ? _macros[name.ToLower()] : null);
-                _sheet.CurrentView.AddMacroHandler((name, context) => System.Environment.GetEnvironmentVariable(name));
+                _sheet.CurrentView.AddMacroHandler((name, context) => Environment.GetEnvironmentVariable(name));
                 // convert #product-info into a dictionary.
                 productInformation = _sheet.Metadata.Value.Keys.Where(each => each.StartsWith("product-info")).ToXDictionary(each => each.Substring(12), each => _sheet.Metadata.Value[each]);
             } catch {
                 Dispose();
             }
-        }
-
-        public int MaxThreads = Environment.ProcessorCount;
-
-        public void AddMacro(string key, string value ) {
-            _macros.AddOrSet(key.ToLower(), value);
         }
 
         public string Filename {get; set;}
@@ -119,6 +115,10 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             }
         }
 
+        public void AddMacro(string key, string value) {
+            _macros.AddOrSet(key.ToLower(), value);
+        }
+
         public string EmitScript() {
             _sheet.CopyToModel();
             return Save();
@@ -132,9 +132,6 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             return result;
         }
 
-        private static string[] filterMessages = new string[] { "due to false condition" , "Environment Variables passed to tool" };
-
-        private bool _stop;
         public void Stop() {
             _stop = true;
         }
@@ -144,13 +141,13 @@ namespace ClrPlus.Scripting.MsBuild.Building {
 
             targets = targets ?? new string[0];
             var messages = new Queue<BuildMessage>();
-            
+
             var path = Save();
 
             Guid iid = Guid.NewGuid();
             // Guid iid = new Guid("12345678123456781234567812345678");
 
-            string pipeName = @"\pipe\ptk_{0}".format(System.Diagnostics.Process.GetCurrentProcess().Id);
+            string pipeName = @"\pipe\ptk_{0}".format(Process.GetCurrentProcess().Id);
             // string pipeName = @"\pipe\ptk_1".format(System.Diagnostics.Process.GetCurrentProcess().Id);
 
             using (var server = new RpcServerApi(iid)) {
@@ -165,31 +162,28 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 server.OnExecute +=
                     (client, arg) => {
                         lock (messages) {
-                            messages.Enqueue(ServiceStack.Text.JsonSerializer.DeserializeFromString<BuildMessage>(arg.ToUtf8String()));
+                            messages.Enqueue(JsonSerializer.DeserializeFromString<BuildMessage>(arg.ToUtf8String()));
                         }
                         return new byte[0];
                     };
 
                 // Event<Verbose>.Raise("script", "\r\n\r\n{0}\r\n\r\n", File.ReadAllText(path));
-                
+
                 var targs = targets.IsNullOrEmpty() ? string.Empty : targets.Aggregate("/target:", (cur, each) => cur + each + ";").TrimEnd(';');
 
-                var etcPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc")+ "/";
+                var etcPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc") + "/";
                 Environment.SetEnvironmentVariable("CoAppEtcDirectory", etcPath);
 
                 EnvironmentUtility.EnvironmentPath = EnvironmentUtility.EnvironmentPath.Append(EnvironmentUtility.DotNetFrameworkFolder);
 
-
-                Event<Verbose>.Raise("msbuild", @"{6}\MSBuild.exe",
-                    @" /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}""  /m:{7} /p:MaxThreads={7} ""/p:CoAppEtcDirectory={3}"" {4} ""{5}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, etcPath, targs, path, EnvironmentUtility.DotNetFrameworkFolder, MaxThreads > 0 ? MaxThreads : Environment.ProcessorCount));
-
                 var proc = Process.Start(new ProcessStartInfo(@"{0}\MSBuild.exe".format(EnvironmentUtility.DotNetFrameworkFolder),
-                    @" /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}"" /m:{6} /p:MaxThreads={6} ""/p:CoAppEtcDirectory={3}"" {4} ""{5}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, etcPath, targs, path, MaxThreads > 0 ? MaxThreads : Environment.ProcessorCount)) {
-                        RedirectStandardError = true,
-                        RedirectStandardOutput = true,
-                        UseShellExecute = false,
-                    });
-                
+                    @" /nologo /noconsolelogger ""/logger:ClrPlus.Scripting.MsBuild.Building.Logger,{0};{1};{2}"" /m:{6} /p:MaxThreads={6} ""/p:CoAppEtcDirectory={3}"" {4} ""{5}""".format(Assembly.GetExecutingAssembly().Location, pipeName, iid, etcPath, targs,
+                        path, MaxThreads > 0 ? MaxThreads : Environment.ProcessorCount)) {
+                            RedirectStandardError = true,
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                        });
+
                 while (!proc.HasExited) {
                     // check our messages -- we need to work on the calling thread. 
                     // Thanks powershell, I appreciate working like it's 1989 again. 
@@ -199,13 +193,12 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                         while (messages.Any()) {
                             var obj = messages.Dequeue();
                             switch (obj.EventType) {
-
                                 case "WarningRaised":
-                                    Event<SourceWarning>.Raise("WARNING", obj.SourceLocation.SingleItemAsEnumerable(), obj.Message);
+                                    Event<SourceWarning>.Raise(obj.Message.IndexOf('»') == -1 ? "WARNING" : string.Empty, obj.SourceLocation.SingleItemAsEnumerable(), obj.Message);
                                     break;
 
                                 case "ErrorRaised":
-                                    Event<SourceError>.Raise("ERROR", obj.SourceLocation.SingleItemAsEnumerable(), obj.Message);
+                                    Event<SourceError>.Raise(obj.Message.IndexOf('»') == -1 ? "ERROR" : string.Empty, obj.SourceLocation.SingleItemAsEnumerable(), obj.Message);
                                     break;
 
                                 case "ProjectStarted":
@@ -222,8 +215,7 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                                 case "MessageRaised":
                                     if (filterMessages.Any(each => obj.Message.IndexOf(each) > -1)) {
                                         Event<Verbose>.Raise("", obj.Message);
-                                    }
-                                    else {
+                                    } else {
                                         Event<Message>.Raise("", obj.Message);
                                     }
 
@@ -241,7 +233,6 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                         proc.Kill();
                     }
                 }
-                
 
                 var stderr = proc.StandardError.ReadToEnd();
                 if (stderr.Is()) {
@@ -249,7 +240,7 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                 }
 
                 var stdout = proc.StandardOutput.ReadToEnd();
-                if(stdout.Is()) {
+                if (stdout.Is()) {
                     Event<Verbose>.Raise("stdout", stdout);
                 }
 
@@ -257,7 +248,7 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             }
         }
 
-        public string Save(string filename=null) {
+        public string Save(string filename = null) {
             filename = filename ?? Filename + ("." + DateTime.Now.Ticks + ".msbuild").MakeSafeFileName(); //  filename ?? "pkt.msbuild".GenerateTemporaryFilename();
             _project.Save(filename);
             return filename;

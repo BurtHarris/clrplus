@@ -82,7 +82,7 @@
     <Compile Include="$(SolutionDir)Common\AssemblyStrongName.cs" />
     <Compile Include="Building\BuildScript.cs" />
     <Compile Include="Building\Tasks\AppendEnvironment.cs" />
-    <Compile Include="Building\Tasks\EnvironmentManager.cs" />
+    <Compile Include="Building\Tasks\MsBuildTaskBase.cs" />
     <Compile Include="Building\Tasks\ExecEx.cs" />
     <Compile Include="Building\Logger.cs" />
     <Compile Include="Building\ProjectTargetElementExtensions.cs" />
@@ -93,8 +93,11 @@
     <Compile Include="Building\Tasks\NuGet.cs" />
     <Compile Include="Building\Tasks\PopEnvironment.cs" />
     <Compile Include="Building\Tasks\PushEnvironment.cs" />
+    <Compile Include="Building\Tasks\Script.cs" />
     <Compile Include="Building\Tasks\SetEnvironmentFromTarget.cs" />
     <Compile Include="Building\Tasks\UsePowershell.cs" />
+    <Compile Include="Building\Tasks\WaitForTasks.cs" />
+    <Compile Include="Building\Tasks\WriteNugetPackage.cs" />
     <Compile Include="Building\ToolCache.cs" />
     <Compile Include="Packaging\AnswerCache.cs" />
     <Compile Include="Utility\CustomPropertyList.cs" />

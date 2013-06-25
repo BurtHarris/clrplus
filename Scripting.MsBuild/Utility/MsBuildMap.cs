@@ -40,7 +40,7 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
 
         // private static MSBuildTaskUtility _taskUtility;
 
-        private static Dictionary<string, MSBuildTaskType> _taskClasses = new Dictionary<string, MSBuildTaskType>();
+        
         private static string[] _ignoreProperties = new string[] {
             "BuildEngine",
             "BuildEngine2",
@@ -50,12 +50,13 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
             "Log"
         };
 
-        private static Task initTask;
+        private static AsyncLazy<Dictionary<string, MSBuildTaskType>> TaskClasses;
 
         static MsBuildMap() {
-            initTask = Task.Factory.StartNew(() => {
+            TaskClasses = new AsyncLazy<Dictionary<string, MSBuildTaskType>>(() => {
+                var _taskClasses = new Dictionary<string, MSBuildTaskType>();
 
-                // ensure a few assemblies are loaded.
+               // ensure a few assemblies are loaded.
                 AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Tasks.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
                 AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Utilities.v4.0, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
                 AppDomain.CurrentDomain.Load(new AssemblyName("Microsoft.Build.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"));
@@ -65,16 +66,19 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     var tasks = asm.GetTypes().Where(each => each.GetInterfaces().Contains(typeof (ITask))).Where(each => each.IsPublic);
                     foreach (var t in tasks) {
                         var properties = t.GetProperties().Where(each => !_ignoreProperties.Contains(each.Name)).ToArray();
-                        _taskClasses.Add(t.Name, new MSBuildTaskType {
-                            TaskClass = t,
-                            Outputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "OutputAttribute")).Select(each => each.Name).ToArray(),
-                            RequiredInputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "RequiredAttribute")).Select(each => each.Name).ToArray(),
-                            OptionalInputs = properties.Where(each => each.GetCustomAttributes(true).All(attr => attr.GetType().Name != "OutputAttribute" && attr.GetType().Name != "RequiredAttribute")).Select(each => each.Name).ToArray()
-                        });
+                        if (!_taskClasses.Keys.Contains(t.Name)) {
+                            _taskClasses.Add(t.Name, new MSBuildTaskType {
+                                TaskClass = t,
+                                Outputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "OutputAttribute")).Select(each => each.Name).ToArray(),
+                                RequiredInputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "RequiredAttribute")).Select(each => each.Name).ToArray(),
+                                OptionalInputs = properties.Where(each => each.GetCustomAttributes(true).All(attr => attr.GetType().Name != "OutputAttribute" && attr.GetType().Name != "RequiredAttribute")).Select(each => each.Name).ToArray()
+                            });
+                        }
+                        
                     }
                 }
+                return _taskClasses;
             });
-
         }
 
 
@@ -90,13 +94,11 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     break;
                 default:
                     // 
-                    if (!initTask.IsCompleted) {
-                        initTask.Wait();
-                    }
+                    
                     var taskName = view.MemberName;
-                    if (_taskClasses.ContainsKey(taskName)) {
+                    if (TaskClasses.Value.ContainsKey(taskName)) {
                         // for tasks we recognize
-                        var tskType = _taskClasses[taskName];
+                        var tskType = TaskClasses.Value[taskName];
 
                         var tsk = target.AddTask(taskName);
                         var required = tskType.RequiredInputs.ToList();

@@ -11,13 +11,8 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
-    using Microsoft.Build.Framework;
-
-    public class AppendEnvironment : ITask {
-        public IBuildEngine BuildEngine {get; set;}
-        public ITaskHost HostObject {get; set;}
-
-        public bool Execute() {
+    public class AppendEnvironment : MsBuildTaskBase {
+        public override bool Execute() {
             return true;
         }
     }

@@ -96,9 +96,6 @@
     <None Include="template.autopkg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="test.autopkg">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="test.buildinfo">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

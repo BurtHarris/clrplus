@@ -11,15 +11,12 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
-    using Microsoft.Build.Framework;
+    using Platform;
 
-    public class PopEnvironment : ITask {
-        public bool Execute() {
-            EnvironmentManager.Instance.Pop();
+    public class PopEnvironment : MsBuildTaskBase {
+        public override bool Execute() {
+            EnvironmentUtility.Pop();
             return true;
         }
-
-        public IBuildEngine BuildEngine {get; set;}
-        public ITaskHost HostObject {get; set;}
     }
 }

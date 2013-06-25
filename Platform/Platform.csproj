@@ -70,6 +70,7 @@
     <Compile Include="CommandLine.cs" />
     <Compile Include="Console\ConsoleApi.cs" />
     <Compile Include="CurrentProcess.cs" />
+    <Compile Include="EnvironmentStack.cs" />
     <Compile Include="EnvironmentUtility.cs" />
     <Compile Include="Exceptions\UnsupportedPlatformException.cs" />
     <Compile Include="FileSystem.cs" />

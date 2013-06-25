@@ -11,9 +11,9 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
-    using Microsoft.Build.Framework;
+    using System;
 
-    public class UsePowershell : ITask {
+    public class UsePowershell : MsBuildTaskBase {
         /*
         private void EvaluateAllUsingTasks() {
             Expander expander = new Expander(this.evaluatedProperties, this.evaluatedItemsByName);
@@ -23,26 +23,8 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
         }
         */
 
-        public bool Execute() {
-            throw new System.NotImplementedException();
-        }
-
-        public IBuildEngine BuildEngine {
-            get {
-                throw new System.NotImplementedException();
-            }
-            set {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        public ITaskHost HostObject {
-            get {
-                throw new System.NotImplementedException();
-            }
-            set {
-                throw new System.NotImplementedException();
-            }
+        public override bool Execute() {
+            throw new NotImplementedException();
         }
     }
 }

@@ -11,15 +11,12 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
-    using Microsoft.Build.Framework;
+    using Platform;
 
-    public class PushEnvironment : ITask {
-        public bool Execute() {
-            EnvironmentManager.Instance.Push();
+    public class PushEnvironment : MsBuildTaskBase {
+        public override bool Execute() {
+            EnvironmentUtility.Push();
             return true;
         }
-
-        public IBuildEngine BuildEngine {get; set;}
-        public ITaskHost HostObject {get; set;}
     }
 }

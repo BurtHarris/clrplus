@@ -15,162 +15,68 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System.Collections;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
-    using System.Collections.Specialized;
     using System.Diagnostics;
     using System.Linq;
     using System.Reflection;
     using System.Runtime.InteropServices;
+    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using CSharpTest.Net.RpcLibrary;
     using Core.Collections;
     using Core.Extensions;
-    using Core.Utility;
     using Microsoft.Build.Framework;
-    using Microsoft.Build.Utilities;
     using Platform;
     using Platform.Process;
-    using ProcessStartInfo = System.Diagnostics.ProcessStartInfo;
-    using Task = System.Threading.Tasks.Task;
+    using ServiceStack.Text;
 
-
-    public class WaitForTasks : ITask {
-        public IBuildEngine BuildEngine {
-            get;
-            set;
-        }
-        public ITaskHost HostObject {
-            get;
-            set;
-        }
-
-        private TaskLoggingHelper log;
-
-        public WaitForTasks() {
-            log = new TaskLoggingHelper(this);
-        }
-
-        public TaskLoggingHelper Log {
-            get {
-                return this.log;
-            }
-        }
-
-        public bool Execute() {
-            while (MsBuildEx.AnyBuildsRunning) {
-                foreach (var msbuild in MsBuildEx.Builds) {
-
-                    // Yeah, as if this ever worked...
-                    // (BuildEngine as IBuildEngine3).Yield();
-                    BuildMessage message;
-                    while (msbuild.Messages.TryDequeue(out message)) {
-                        message.Message = "{0,4} » {1}".format(msbuild.Index, message.Message);
-                        switch (message.EventType) {
-                            case "WarningRaised":
-                                Log.LogWarning(""+msbuild.Index, "", "", message.SourceLocation.SourceFile, message.SourceLocation.Row, message.SourceLocation.Column, 0, 0, message.Message);
-                                break;
-                            case "ErrorRaised":
-                                Log.LogError("" + msbuild.Index, "", "", message.SourceLocation.SourceFile, message.SourceLocation.Row, message.SourceLocation.Column, 0, 0, message.Message);
-                                break;
-                            case "ProjectStarted":
-                                // Log.LogExternalProjectStarted(message.Message, "", currentProjectName, "");
-                                break;
-                            case "ProjectFinished":
-                                // Log.LogExternalProjectFinished(message.Message, "", currentProjectName, true);
-                                break;
-                            case "TaskStarted":
-                                // Log.LogMessage(message.Message);
-                                break;
-                            case "TaskFinished":
-                                // Log.LogMessage(message.Message);
-                                break;
-                            case "TargetStarted":
-                                Log.LogMessage(message.Message);
-                                break;
-                            case "TargetFinished":
-                                Log.LogMessage(message.Message);
-                                break;
-                            case "BuildStarted":
-                                Log.LogMessage(message.Message);
-                                break;
-                            case "BuildFinished":
-                                Log.LogMessage(message.Message);
-                                break;
-                            case "MessageRaised":
-                                Log.LogMessage(message.Message);
-                                break;
-                            default:
-                                Log.LogMessage(message.Message);
-                                break;
-                        }
-                    }
-
-                    // psshhhh.
-                    // (BuildEngine as IBuildEngine3).Reacquire();
-
-                    if (msbuild.Completed.WaitOne(0)) {
-                        // remove it from the list of active builds
-                        MsBuildEx.RemoveBuild(msbuild);
-
-                        // if it failed, then signal the build as a failure
-                        if (!msbuild.Result) {
-                            MsBuildEx.KillOutstandingBuilds();
-                            return false;
-                        }
-                    }
-                }
-            }
-
-            return true;
-        }
-    }
-
-    public class MsBuildEx : ITask {
-        public IBuildEngine BuildEngine {
-            get;
-            set;
-        }
-        public ITaskHost HostObject {
-            get;
-            set;
-        }
-
+    public class MsBuildEx : MsBuildTaskBase {
         private static int _maxThreads;
         private static MSBuildTaskScheduler _scheduler;
         private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
-        private static TaskScheduler Scheduler { get {
-            lock (typeof (MsBuildEx)) {
-                if (_scheduler == null) {
-                    var max = Environment.GetEnvironmentVariable("MaxThreads");
-                    var n = max.ToInt32(0);
-                    if (n == 0) {
-                        n = Environment.ProcessorCount;
-                    }
-                    _scheduler = new MSBuildTaskScheduler(_maxThreads != 0 ? _maxThreads: n);
-                }
-                return _scheduler;
-            }
-        }}
-
-        private static void ReleaseScheduler() {
-            lock (typeof (MsBuildEx)) {
-                if (_scheduler != null && !_scheduler.IsRunning) {
-                    _scheduler = null;
-                }
-            }
-        }
-
-        public static void KillOutstandingBuilds() {
-            cancellationTokenSource.Cancel();
-        }
-
         private static readonly List<MsBuildEx> _builds = new List<MsBuildEx>();
-        public static bool AnyBuildsRunning { get {
-            lock (_builds) {
-                return _builds.Any();
+        private static int Counter;
+
+        private static Regex[] filters = new[] {
+            new Regex("Target.*skipped. Previously"),
+            new Regex("Overriding target"),
+        };
+
+        internal ManualResetEvent Completed = new ManualResetEvent(false);
+        public int Index;
+        internal ConcurrentQueue<BuildMessage> Messages = new ConcurrentQueue<BuildMessage>();
+        private IDictionary _environment;
+        protected string[] projectFiles;
+        private bool skip;
+
+        public MsBuildEx() {
+            ResetEnvironmentFirst = true;
+        }
+
+        private static TaskScheduler Scheduler {
+            get {
+                lock (typeof (MsBuildEx)) {
+                    if (_scheduler == null) {
+                        var max = Environment.GetEnvironmentVariable("MaxThreads");
+                        var n = max.ToInt32(0);
+                        if (n == 0) {
+                            n = Environment.ProcessorCount;
+                        }
+                        _scheduler = new MSBuildTaskScheduler(_maxThreads != 0 ? _maxThreads : n);
+                    }
+                    return _scheduler;
+                }
             }
-        }}
+        }
+
+        public static bool AnyBuildsRunning {
+            get {
+                lock (_builds) {
+                    return _builds.Any();
+                }
+            }
+        }
 
         public static MsBuildEx[] Builds {
             get {
@@ -180,40 +86,8 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             }
         }
 
-        public static void RemoveBuild(MsBuildEx build ){
-            lock (_builds) {
-                _builds.Remove(build);
-            }
-        }
+        public bool Result {set; get;}
 
-
-        public bool Result {set;get;}
-
-        public bool Execute() {
-            if (!ValidateParameters()) {
-                return false;
-            }
-
-            if (skip) {
-                return true;
-            }
-
-            _builds.Add(this);
-
-            Task.Factory.StartNew(ExecuteTool, cancellationTokenSource.Token, TaskCreationOptions.LongRunning, Scheduler);
-
-            return true;
-        }
-
-        private IDictionary _environment;
-
-        public MsBuildEx() {
-            ResetEnvironmentFirst = true;
-        }
-
-        internal ManualResetEvent Completed = new ManualResetEvent(false);
-
-        private bool skip;
         public bool ResetEnvironmentFirst {get; set;}
         public string SkippingMessage {get; set;}
         public string StartMessage {get; set;}
@@ -243,15 +117,42 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             }
         }
 
-        internal ConcurrentQueue<BuildMessage> Messages = new ConcurrentQueue<BuildMessage>();
+        private static void ReleaseScheduler() {
+            lock (typeof (MsBuildEx)) {
+                if (_scheduler != null && !_scheduler.IsRunning) {
+                    _scheduler = null;
+                }
+            }
+        }
 
-        protected string[] projectFiles;
+        public static void KillOutstandingBuilds() {
+            cancellationTokenSource.Cancel();
+        }
+
+        public static void RemoveBuild(MsBuildEx build) {
+            lock (_builds) {
+                _builds.Remove(build);
+            }
+        }
+
+        public override bool Execute() {
+            if (!ValidateParameters()) {
+                return false;
+            }
+
+            if (skip) {
+                return true;
+            }
+
+            _builds.Add(this);
+
+            Task.Factory.StartNew(ExecuteTool, cancellationTokenSource.Token, TaskCreationOptions.LongRunning, Scheduler);
+
+            return true;
+        }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true, CallingConvention = CallingConvention.Winapi)]
         public static extern short GetKeyState(int keyCode);
-
-        private static int Counter;
-        public int Index;
 
         protected bool ValidateParameters() {
             Index = ++Counter;
@@ -259,16 +160,16 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             if ((((ushort)GetKeyState(0x91)) & 0xffff) != 0) {
                 Debugger.Break();
             }
-            
+
             if (Projects.IsNullOrEmpty()) {
                 return false;
             }
 
             projectFiles = Projects.Select(each => each.ItemSpec.GetFullPath()).ToArray();
 
-            lock (typeof(MsBuildEx)) {
+            lock (typeof (MsBuildEx)) {
                 try {
-                    EnvironmentManager.Instance.Push();
+                    EnvironmentUtility.Push();
 
                     if (ResetEnvironmentFirst) {
                         new LoadSystemEnvironment().Execute();
@@ -301,9 +202,8 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                     foreach (var i in vars.Keys) {
                         _environment.Add(i.ToString(), ((string)vars[i]) ?? "");
                     }
-
                 } finally {
-                    EnvironmentManager.Instance.Pop();
+                    EnvironmentUtility.Pop();
                 }
             }
             return true;
@@ -323,7 +223,6 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                         EventType = "",
                         Message = StartMessage
                     });
-
                 }
 
                 Guid iid = Guid.NewGuid();
@@ -343,8 +242,10 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                     server.OnExecute +=
                         (client, arg) => {
                             // deserialize the message object and replay thru this logger. 
-                            var message = ServiceStack.Text.JsonSerializer.DeserializeFromString<BuildMessage>(arg.ToUtf8String());
-                            Messages.Enqueue(message);
+                            var message = JsonSerializer.DeserializeFromString<BuildMessage>(arg.ToUtf8String());
+                            if (!filters.Any(each => each.IsMatch(message.Message))) {
+                                Messages.Enqueue(message);
+                            }
 
                             return new byte[0];
                         };
@@ -361,7 +262,6 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                                 EventType = "",
                                 Message = ProjectStartMessage
                             });
-
                         }
 
                         try {
@@ -388,7 +288,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                                     proc.Kill();
                                 }
                             }
-                            
+
                             // StdErr = proc.StandardError.Where(each => each.Is()).Select(each => (ITaskItem)new TaskItem(each)).ToArray();
                             // StdOut = proc.StandardOutput.Where(each => each.Is()).Select(each => (ITaskItem)new TaskItem(each)).ToArray();
                             if (proc.ExitCode != 0) {
@@ -397,10 +297,9 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                             }
                             ;
                         } catch (Exception e) {
-                            
                             Messages.Enqueue(new BuildMessage {
                                 EventType = "ErrorRaised",
-                                Message = "{0},{1},{2}".format( e.GetType().Name, e.Message, e.StackTrace)
+                                Message = "{0},{1},{2}".format(e.GetType().Name, e.Message, e.StackTrace)
                             });
 
                             Result = false;
@@ -426,15 +325,13 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                 Messages.Enqueue(new BuildMessage {
                     EventType = "ErrorRaised",
                     Message = "{0},{1},{2}".format(
-                    e.GetType().Name,
-                    e.Message,
-                    e.StackTrace)
+                        e.GetType().Name,
+                        e.Message,
+                        e.StackTrace)
                 });
-
             } finally {
                 Completed.Set();
             }
-
         }
     }
 }

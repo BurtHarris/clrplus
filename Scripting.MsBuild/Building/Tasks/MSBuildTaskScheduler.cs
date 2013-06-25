@@ -18,34 +18,48 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System.Threading.Tasks;
 
     /// Provides a task scheduler that ensures a maximum concurrency level while 
-    /// running on top of the ThreadPool. 
-    /// </summary> 
+    /// running on top of the ThreadPool.
+    /// </summary>
     public class MSBuildTaskScheduler : TaskScheduler {
         /// <summary>Whether the current thread is processing work items.</summary>
         [ThreadStatic]
         private static bool _currentThreadIsProcessingItems;
 
-        /// <summary>The list of tasks to be executed.</summary> 
-        private readonly LinkedList<Task> _tasks = new LinkedList<Task>(); // protected by lock(_tasks) 
-
-        /// <summary>The maximum concurrency level allowed by this scheduler.</summary> 
+        /// <summary>The maximum concurrency level allowed by this scheduler.</summary>
         private readonly int _maxDegreeOfParallelism;
 
-        /// <summary>Whether the scheduler is currently processing work items.</summary> 
-        private int _delegatesQueuedOrRunning = 0; // protected by lock(_tasks) 
+        /// <summary>The list of tasks to be executed.</summary>
+        private readonly LinkedList<Task> _tasks = new LinkedList<Task>(); // protected by lock(_tasks) 
 
-        /// <summary> 
-        /// Initializes an instance of the LimitedConcurrencyLevelTaskScheduler class with the 
-        /// specified degree of parallelism. 
-        /// </summary> 
+        /// <summary>Whether the scheduler is currently processing work items.</summary>
+        private int _delegatesQueuedOrRunning; // protected by lock(_tasks) 
+
+        /// <summary>
+        ///     Initializes an instance of the LimitedConcurrencyLevelTaskScheduler class with the
+        ///     specified degree of parallelism.
+        /// </summary>
         /// <param name="maxDegreeOfParallelism">The maximum degree of parallelism provided by this scheduler.</param>
         public MSBuildTaskScheduler(int maxDegreeOfParallelism) {
-            if (maxDegreeOfParallelism < 1)
+            if (maxDegreeOfParallelism < 1) {
                 maxDegreeOfParallelism = 1;
+            }
             _maxDegreeOfParallelism = maxDegreeOfParallelism;
         }
 
-        /// <summary>Queues a task to the scheduler.</summary> 
+        /// <summary>Gets the maximum concurrency level supported by this scheduler.</summary>
+        public override sealed int MaximumConcurrencyLevel {
+            get {
+                return _maxDegreeOfParallelism;
+            }
+        }
+
+        public bool IsRunning {
+            get {
+                return _delegatesQueuedOrRunning > 0;
+            }
+        }
+
+        /// <summary>Queues a task to the scheduler.</summary>
         /// <param name="task">The task to be queued.</param>
         protected override sealed void QueueTask(Task task) {
             // Add the task to the list of tasks to be processed.  If there aren't enough 
@@ -59,9 +73,9 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             }
         }
 
-        /// <summary> 
-        /// Informs the ThreadPool that there's work to be executed for this scheduler. 
-        /// </summary> 
+        /// <summary>
+        ///     Informs the ThreadPool that there's work to be executed for this scheduler.
+        /// </summary>
         private void NotifyThreadPoolOfPendingWork() {
             ThreadPool.UnsafeQueueUserWorkItem(_ => {
                 // Note that the current thread is now processing work items. 
@@ -95,57 +109,48 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             }, null);
         }
 
-        /// <summary>Attempts to execute the specified task on the current thread.</summary> 
+        /// <summary>Attempts to execute the specified task on the current thread.</summary>
         /// <param name="task">The task to be executed.</param>
         /// <param name="taskWasPreviouslyQueued"></param>
-        /// <returns>Whether the task could be executed on the current thread.</returns> 
+        /// <returns>Whether the task could be executed on the current thread.</returns>
         protected override sealed bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued) {
             // If this thread isn't already processing a task, we don't support inlining 
-            if (!_currentThreadIsProcessingItems)
+            if (!_currentThreadIsProcessingItems) {
                 return false;
+            }
 
             // If the task was previously queued, remove it from the queue 
-            if (taskWasPreviouslyQueued)
+            if (taskWasPreviouslyQueued) {
                 TryDequeue(task);
+            }
 
             // Try to run the task. 
             return base.TryExecuteTask(task);
         }
 
-        /// <summary>Attempts to remove a previously scheduled task from the scheduler.</summary> 
+        /// <summary>Attempts to remove a previously scheduled task from the scheduler.</summary>
         /// <param name="task">The task to be removed.</param>
-        /// <returns>Whether the task could be found and removed.</returns> 
+        /// <returns>Whether the task could be found and removed.</returns>
         protected override sealed bool TryDequeue(Task task) {
             lock (_tasks)
                 return _tasks.Remove(task);
         }
 
-        /// <summary>Gets the maximum concurrency level supported by this scheduler.</summary> 
-        public override sealed int MaximumConcurrencyLevel {
-            get {
-                return _maxDegreeOfParallelism;
-            }
-        }
-
-        public bool IsRunning {
-            get {
-                return _delegatesQueuedOrRunning > 0;
-            }
-        }
-
-        /// <summary>Gets an enumerable of the tasks currently scheduled on this scheduler.</summary> 
-        /// <returns>An enumerable of the tasks currently scheduled.</returns> 
+        /// <summary>Gets an enumerable of the tasks currently scheduled on this scheduler.</summary>
+        /// <returns>An enumerable of the tasks currently scheduled.</returns>
         protected override sealed IEnumerable<Task> GetScheduledTasks() {
             bool lockTaken = false;
             try {
                 Monitor.TryEnter(_tasks, ref lockTaken);
-                if (lockTaken)
+                if (lockTaken) {
                     return _tasks.ToArray();
-                else
+                } else {
                     throw new NotSupportedException();
+                }
             } finally {
-                if (lockTaken)
+                if (lockTaken) {
                     Monitor.Exit(_tasks);
+                }
             }
         }
     }
