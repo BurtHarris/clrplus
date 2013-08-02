@@ -93,13 +93,17 @@
     <Compile Include="Building\Tasks\NuGet.cs" />
     <Compile Include="Building\Tasks\PopEnvironment.cs" />
     <Compile Include="Building\Tasks\PushEnvironment.cs" />
+    <Compile Include="Building\Tasks\Remove.cs" />
     <Compile Include="Building\Tasks\Script.cs" />
     <Compile Include="Building\Tasks\SetEnvironmentFromTarget.cs" />
     <Compile Include="Building\Tasks\UsePowershell.cs" />
     <Compile Include="Building\Tasks\WaitForTasks.cs" />
     <Compile Include="Building\Tasks\WriteNugetPackage.cs" />
     <Compile Include="Building\ToolCache.cs" />
+    <Compile Include="Utility\MSBuildProcess.cs" />
     <Compile Include="Packaging\AnswerCache.cs" />
+    <Compile Include="Packaging\ComparableHashSet.cs" />
+    <Compile Include="Packaging\PivotsExpression.cs" />
     <Compile Include="Utility\CustomPropertyList.cs" />
     <Compile Include="Utility\FileCopyList.cs" />
     <Compile Include="Utility\MsBuildMap.cs" />

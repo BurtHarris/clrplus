@@ -13,6 +13,7 @@
 namespace ClrPlus.Scripting.MsBuild.Building {
     using Languages.PropertySheetV3.Mapping;
     using Microsoft.Build.Construction;
+    using MsBuild.Utility;
     using Utility;
 
     internal static class ProjectTargetElementExtensions {

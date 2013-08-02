@@ -481,7 +481,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
                     var n = new ExpansionPropertyNode();
                     context.Properties[Guid.NewGuid().ToString()] = n; // unique node for the item
                     n.ObjectIterator = ParseMatrixForEach(context, Semicolon, new ObjectIterator(context, new SourceLocation(Token, Filename)) {
-                        Prefix = prefix ?? (context.IndexValue - 1).ToString()
+                        Prefix = prefix ?? (context.CurrentIndex).ToString()
                     }) as ObjectIterator;
 
                     return justOneItem ? (onComplete ?? Continue)() : ParseItemsInDictionary(context, onComplete, prefix: prefix);
@@ -498,7 +498,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
 
             var selector = ParseSelector(MemberTerminator);
             if (selector.Name.StartsWith(".")) {
-                selector = new Selector( (prefix ?? string.Empty) + context.IndexValue + selector.Name, selector.Parameter, selector.SourceLocation);
+                selector = new Selector( (prefix ?? string.Empty) + context.NextIndexValue + selector.Name, selector.Parameter, selector.SourceLocation);
             }
 
             switch (Type) {

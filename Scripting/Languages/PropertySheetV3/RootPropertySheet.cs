@@ -24,7 +24,7 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
     public delegate bool SourceWarning(string messageCode, IEnumerable<SourceLocation> sourceLocation, string message, params object[] args);
     public delegate bool SourceError(string messageCode, IEnumerable<SourceLocation> sourceLocation, string message, params object[] args);
     public delegate bool SourceDebug(string messageCode, IEnumerable<SourceLocation> sourceLocation, string message, params object[] args);
-
+    
 
     public class PropertySheet : ObjectNode {
         internal string FullPath;

@@ -16,6 +16,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.IO;
     using System.Linq;
     using System.Reflection;
     using System.Runtime.InteropServices;
@@ -24,11 +25,17 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
     using System.Threading.Tasks;
     using CSharpTest.Net.RpcLibrary;
     using Core.Collections;
+    using Core.Exceptions;
     using Core.Extensions;
+    using Core.Tasks;
+    using Core.Utility;
+    using Languages.PropertySheet;
+    using Languages.PropertySheetV3;
     using Microsoft.Build.Framework;
     using Platform;
     using Platform.Process;
     using ServiceStack.Text;
+    using Debug = System.Diagnostics.Debug;
 
     public class MsBuildEx : MsBuildTaskBase {
         private static int _maxThreads;
@@ -42,6 +49,8 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             new Regex("Target.*skipped. Previously"),
             new Regex("Overriding target"),
         };
+
+        internal static bool _stopOnError;
 
         internal ManualResetEvent Completed = new ManualResetEvent(false);
         public int Index;
@@ -86,6 +95,15 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             }
         }
 
+        public bool StopOnFirstError {
+            get {
+                return _stopOnError;
+            }
+            set {
+                _stopOnError = value;
+            }
+        }
+
         public bool Result {set; get;}
 
         public bool ResetEnvironmentFirst {get; set;}
@@ -126,7 +144,9 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
         }
 
         public static void KillOutstandingBuilds() {
-            cancellationTokenSource.Cancel();
+            if (_stopOnError) {
+                cancellationTokenSource.Cancel();
+            }
         }
 
         public static void RemoveBuild(MsBuildEx build) {
@@ -151,8 +171,6 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             return true;
         }
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true, CallingConvention = CallingConvention.Winapi)]
-        public static extern short GetKeyState(int keyCode);
 
         protected bool ValidateParameters() {
             Index = ++Counter;
@@ -164,8 +182,22 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
             if (Projects.IsNullOrEmpty()) {
                 return false;
             }
+            var badFiles = new List<string>();
 
-            projectFiles = Projects.Select(each => each.ItemSpec.GetFullPath()).ToArray();
+            projectFiles = Projects.Select(each => {
+                var r = each.ItemSpec.GetFullPath();
+                if (File.Exists(r)) {
+                    return each.ItemSpec.GetFullPath();
+                }
+                badFiles.Add(each.ItemSpec);
+                return null;
+            }).ToArray();
+
+            if (badFiles.Count > 0) {
+                LogError("Unable to resolve location of project files:");
+                badFiles.ForEach(each => LogError("»  {0}".format(each)));
+                return false;
+            }
 
             lock (typeof (MsBuildEx)) {
                 try {
@@ -185,10 +217,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                             seft.Execute();
                             if (!seft.IsEnvironmentValid) {
                                 if (SkippingMessage.Is()) {
-                                    Messages.Enqueue(new BuildMessage {
-                                        EventType = "",
-                                        Message = SkippingMessage
-                                    });
+                                    Messages.Enqueue( new BuildMessage( SkippingMessage));
                                 }
                                 skip = true;
                                 return true;
@@ -219,10 +248,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                 }
 
                 if (StartMessage.Is()) {
-                    Messages.Enqueue(new BuildMessage {
-                        EventType = "",
-                        Message = StartMessage
-                    });
+                    Messages.Enqueue( new BuildMessage( StartMessage));
                 }
 
                 Guid iid = Guid.NewGuid();
@@ -246,6 +272,11 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                             if (!filters.Any(each => each.IsMatch(message.Message))) {
                                 Messages.Enqueue(message);
                             }
+                            if (cancellationTokenSource.IsCancellationRequested) {
+                                return new byte[1] {
+                                    0x01
+                                };
+                            }
 
                             return new byte[0];
                         };
@@ -258,10 +289,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
 
                         currentProjectName = project;
                         if (ProjectStartMessage.Is()) {
-                            Messages.Enqueue(new BuildMessage {
-                                EventType = "",
-                                Message = ProjectStartMessage
-                            });
+                            Messages.Enqueue(new BuildMessage(ProjectStartMessage));
                         }
 
                         try {
@@ -281,6 +309,7 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                             var proc = AsyncProcess.Start(
                                 new ProcessStartInfo(MSBuildExecutable, parameters) {
                                     WindowStyle = ProcessWindowStyle.Normal
+                                    ,
                                 }, _environment);
 
                             while (!proc.WaitForExit(20)) {
@@ -297,9 +326,8 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                             }
                             ;
                         } catch (Exception e) {
-                            Messages.Enqueue(new BuildMessage {
-                                EventType = "ErrorRaised",
-                                Message = "{0},{1},{2}".format(e.GetType().Name, e.Message, e.StackTrace)
+                            Messages.Enqueue( new BuildMessage( "{0},{1},{2}".format(e.GetType().Name, e.Message, e.StackTrace)) {
+                                EventType = "BuildError",
                             });
 
                             Result = false;
@@ -307,31 +335,172 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                         }
 
                         if (ProjectEndMessage.Is()) {
-                            Messages.Enqueue(new BuildMessage {
-                                EventType = "ErrorRaised",
-                                Message = ProjectEndMessage
-                            });
+                            Messages.Enqueue(new BuildMessage (ProjectEndMessage));
                         }
                     }
                 }
 
                 if (EndMessage.Is()) {
-                    Messages.Enqueue(new BuildMessage {
-                        EventType = "ErrorRaised",
-                        Message = EndMessage
-                    });
+                    Messages.Enqueue(new BuildMessage(EndMessage));
                 }
             } catch (Exception e) {
-                Messages.Enqueue(new BuildMessage {
-                    EventType = "ErrorRaised",
-                    Message = "{0},{1},{2}".format(
-                        e.GetType().Name,
-                        e.Message,
-                        e.StackTrace)
+                Messages.Enqueue(new BuildMessage("{0},{1},{2}".format(e.GetType().Name, e.Message, e.StackTrace)) {
+                    EventType = "BuildError",
                 });
             } finally {
                 Completed.Set();
             }
+        }
+    }
+
+    public class InvokeBuild : MsBuildTaskBase {
+        public string Location {get; set;}
+        public string ScriptFile {get; set;}
+        public ITaskItem[] Defines {
+            get;
+            set;
+        }
+        public ITaskItem[] Targets {
+            get;
+            set;
+        }
+
+        public int MaxThreads {
+            get;
+            set;
+        }
+
+        private static int MaxBuildId = 0;
+
+        public override bool Execute() {
+            int buildId;
+
+            try {
+                dynamic buildEngine = BuildEngine.AccessPrivate();
+
+                var host = buildEngine.host;
+                dynamic pHost = new AccessPrivateWrapper(host);
+                var bp = pHost.buildParameters;
+                dynamic pBp = new AccessPrivateWrapper(bp);
+
+                buildId = pBp.buildId;
+
+                lock (typeof(InvokeBuild)) {
+                    if (buildId <= MaxBuildId) {
+                        // this happens when we build a solution, and it wants to build each project
+                        return true;
+                    }
+                    MaxBuildId = buildId;
+                }
+            }
+            catch {
+            
+            }
+
+            using (new PushDirectory(Environment.CurrentDirectory)) {
+                try {
+                    if (Location.Is()) {
+                        Environment.CurrentDirectory = Location.GetFullPath();
+                    }
+
+                    if (string.IsNullOrWhiteSpace(ScriptFile)) {
+                        // search for it.
+                        ScriptFile = new[] {
+                            @"copkg\.buildinfo", @"contrib\.buildinfo", @"contrib\coapp\.buildinfo", @".buildinfo"
+                        }.WalkUpPaths();
+
+                        if (string.IsNullOrEmpty(ScriptFile)) {
+                            throw new ClrPlusException(@"Unable to find .buildinfo file anywhere in the current directory structure.");
+                        }
+                    }
+
+                    if (!File.Exists(ScriptFile)) {
+                        throw new ClrPlusException(@"Unable to find Invoke-build script file '{0}'.".format(ScriptFile));
+                    }
+
+                    string[] defines = Defines.IsNullOrEmpty() ? new string[0] : Defines.Select(each => each.ItemSpec).ToArray();
+
+                    using (var buildScript = new BuildScript(ScriptFile)) {
+
+                        buildScript.BuildMessage += message => {
+                            try {
+                                switch (message.EventType) {
+                                    case "BuildWarning":
+                                        Log.LogWarning(message.Subcategory, message.Code, message.HelpKeyword, message.File, message.LineNumber, message.ColumnNumber, message.EndLineNumber, message.EndColumnNumber, message.Message);
+                                        break;
+                                    case "BuildError":
+                                        Log.LogError(message.Subcategory, message.Code, message.HelpKeyword, message.File, message.LineNumber, message.ColumnNumber, message.EndLineNumber, message.EndColumnNumber, message.Message);
+                                        break;
+                                    case "ProjectStarted":
+                                        Log.LogExternalProjectStarted(message.Message, message.HelpKeyword, message.ProjectFile, message.TargetNames);
+                                        break;
+                                    case "ProjectFinished":
+                                        Log.LogExternalProjectFinished(message.Message, message.HelpKeyword, message.ProjectFile, message.Succeeded);
+                                        break;
+                                    case "TaskStarted":
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                    case "TaskFinished":
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                    case "TargetStarted":
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                    case "TargetFinished":
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                    case "BuildStarted":
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                    case "BuildFinished":
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                    case "BuildMessage":
+                                        Log.LogMessage((MessageImportance)message.Importance, message.Message);
+                                        break;
+                                    default:
+                                        Log.LogMessage(MessageImportance.Low, message.Message);
+                                        break;
+                                }
+                                
+                            }
+                            catch (Exception e) {
+                                LogError("{0}/{1}/{2}", e.GetType().Name, e.Message, e.StackTrace );
+                            }
+                            return false;
+                        };
+
+                        foreach (var i in defines) {
+                            var p = i.IndexOf("=");
+                            var k = p > -1 ? i.Substring(0, p) : i;
+                            var v = p > -1 ? i.Substring(p + 1) : "";
+                            buildScript.AddMacro(k, v);
+                        }
+
+                        var targets = Targets.IsNullOrEmpty() ? new string[0] : Targets.Select(each => each.ItemSpec).ToArray();
+
+                        if (Targets.IsNullOrEmpty()) {
+                            targets = new string[] {
+                                "default"
+                            };
+                        }
+
+                        Environment.SetEnvironmentVariable("MaxThreads", "" + MaxThreads);
+                        Environment.SetEnvironmentVariable("HIDE_THREADS", "true");
+
+                        buildScript.MaxThreads = MaxThreads;
+                        return buildScript.Execute(targets);
+                    }
+
+                } catch (Exception e) {
+                    LogError("{0}/{1}/{2}".format(e.GetType().Name, e.Message, e.StackTrace));
+                    return false;
+                } finally {
+                    Environment.SetEnvironmentVariable("HIDE_THREADS", null);
+                    Environment.SetEnvironmentVariable("MaxThreads", null);
+                }
+            }
+
         }
     }
 }

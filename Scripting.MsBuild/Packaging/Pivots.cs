@@ -16,18 +16,22 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Reflection;
     using System.Text;
     using System.Text.RegularExpressions;
-    using CSScriptLibrary;
     using Core.Collections;
     using Core.Exceptions;
     using Core.Extensions;
-    using Core.Tasks;
     using Languages.PropertySheetV3.Mapping;
+#if USE_DYNAMIC_CRAP
+    using System.Reflection;
+    using CSScriptLibrary;
+    using Core.Tasks;
+#endif
 
     public class Pivots : AbstractDictionary<string, Pivots.Pivot> {
           private class ExpressionTemplate {
+#if USE_DYNAMIC_CRAP
+
               internal static ExpressionTemplate CSharp = new ExpressionTemplate {
                   And = " && ",
                   Or = " || ",
@@ -37,8 +41,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                   Container = "( {0} )",
                   Comparison = (projectName, choice, pivot) => "{0} == {0}.@{1}".format(pivot.Name, choice),
               };
+#endif
 
-              internal static ExpressionTemplate MSBuild = new ExpressionTemplate {
+              internal static readonly ExpressionTemplate MSBuild = new ExpressionTemplate {
                   And = " And ",
                   Or = " Or ",
                   AndNot = " And !",
@@ -62,7 +67,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                   }
               };
 
-              internal static ExpressionTemplate Label = new ExpressionTemplate {
+              internal static readonly ExpressionTemplate Label = new ExpressionTemplate {
                   And = " and ",
                   Or = " or ",
                   AndNot = " and not ",
@@ -76,7 +81,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                   }  
               };
 
-              internal static ExpressionTemplate Path = new ExpressionTemplate {
+              internal static readonly ExpressionTemplate Path = new ExpressionTemplate {
                   And = "\\",
                   Or = "+",
                   AndNot = "\\!",
@@ -101,17 +106,22 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             internal delegate string GenerateComparison(string projectName, string item, Pivot pivot);
         }
 
-
+#if USE_DYNAMIC_CRAP
         private AnswerCache<bool> _compareCache = new AnswerCache<bool>();
         private AnswerCache<bool[]> _expressionArrayCache = new AnswerCache<bool[]>();
-        private AnswerCache<string> _expressionCache = new AnswerCache<string>();
-
-
         private AnswerCache<Pivot[]> _pivotsUsedCache = new AnswerCache<Pivot[]>();
+        private readonly Dictionary<string,List<string>> _canonicalExpressions = new Dictionary<string, List<string>>();
+#endif
 
-        private static readonly Regex WordRx = new Regex(@"^\w*$");
+          private readonly Dictionary<string, Pivot> _pivots = new Dictionary<string, Pivot>();
 
-        private static readonly Regex ExpressionRx = new Regex(
+          private readonly AnswerCache<string> _expressionCache = new AnswerCache<string>();
+
+
+
+        internal static readonly Regex WordRx = new Regex(@"^\w*$", RegexOptions.Compiled);
+
+        internal static readonly Regex ExpressionRx = new Regex(
             @"^\s*
     (\(              # Match an opening parenthesis. (with a potential !
       (?>             # Then either match (possessively):
@@ -132,7 +142,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
       |
       /+
       |
-      \\+|
+      \\+
       |
       \,+
       |
@@ -141,11 +151,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
       \w+
       |
       .*
-      )*\s*$", RegexOptions.IgnorePatternWhitespace);
-
-        // private readonly HashSet<string> _canonicalExpressions = new HashSet<string>();
-        private readonly Dictionary<string,List<string>> _canonicalExpressions = new Dictionary<string, List<string>>();
-        private readonly Dictionary<string, Pivot> _pivots = new Dictionary<string, Pivot>();
+      )*\s*$", RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
 
         internal Pivots(View configurationsView) {
             var names = configurationsView.GetChildPropertyNames();
@@ -160,11 +166,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     Name = n,
                     Key = eachPivot.HasChild("key") ? eachPivot.GetProperty("key").Value : null,
                     Description = eachPivot.HasChild("description") ? eachPivot.GetProperty("description").Value : n,
+#if USE_DYNAMIC_CRAP
+
                     EnumCode = @"[Flags] 
                     enum {0} : ulong  {{
                         None  = 0
                         {1}
                     }};".format(n, choices.Select((choice, bit) => "   ,@{0} = {1}\r\n".format(choice, (1 << bit))).Aggregate((current, each) => current + each))
+#endif
+
                 };
 
                 foreach (var choice in choices) {
@@ -206,36 +216,58 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             }
         }
 
+        private Dictionary<PivotsExpression, string> _normalizedPivots = new Dictionary<PivotsExpression, string>();
         public string NormalizeExpression(string expression) {
-            if (string.IsNullOrEmpty(expression)) {
-                return expression;
-            }
-            /*
+#if USE_DYNAMIC_CRAP
+
+            if (Environment.GetEnvironmentVariable("USE_DYNAMIC").IsTrue()) {
+                if (string.IsNullOrEmpty(expression)) {
+                    return expression;
+                }
+                /*
             if (_canonicalExpressions.Keys.Contains(expression)) {
                 return expression;
             }*/
-            foreach (var i in _canonicalExpressions.Keys.ToArray()) {
-                if (_canonicalExpressions[i].Contains(expression)) {
-                    return i;
+                foreach (var i in _canonicalExpressions.Keys.ToArray()) {
+                    if (_canonicalExpressions[i].Contains(expression)) {
+                        return i;
+                    }
                 }
-            }
 
-            foreach (var i in _canonicalExpressions.Keys.ToArray()) {
-                if (CompareExpressions(i, expression)) {
-                    _canonicalExpressions[i].Add(expression);
-                    return i;
+                foreach (var i in _canonicalExpressions.Keys.ToArray()) {
+                    if (CompareExpressions(i, expression)) {
+                        _canonicalExpressions[i].Add(expression);
+                        return i;
+                    }
                 }
+                _canonicalExpressions.GetOrAdd(expression, () => new List<string> {
+                    expression
+                });
+                return expression;
             }
-            _canonicalExpressions.GetOrAdd(expression,() => new List<string>{expression});
-            return expression;
+#endif
+
+            // the non dynamic way. 
+            var pivotExpression = PivotsExpression.ReadExpression(_pivots, (string item, out string choice, out string name) => {
+                Pivot pivot;
+                var result = GetChoice(item, out choice, out pivot);
+                name = pivot.Name;
+                return result;
+            }, expression);
+
+            return _normalizedPivots.GetOrAdd(pivotExpression, () => expression);
+
         }
 
         public string GetExpressionFilepath(string packageName, string expression) {
             if (string.IsNullOrEmpty(expression)) {
                 return string.Empty;
             }
-            
+#if USE_DYNAMIC_CRAP
             return GenerateExpression(packageName, NormalizeExpression(expression), ExpressionTemplate.Path, new List<Pivot>());
+#else 
+            return GenerateExpression(packageName, NormalizeExpression(expression), ExpressionTemplate.Path);
+#endif
         }
 
         public string GetExpressionLabel(string expression) {
@@ -243,14 +275,24 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                 return string.Empty;
             }
 
+#if USE_DYNAMIC_CRAP
             return GenerateExpression("", NormalizeExpression(expression), ExpressionTemplate.Label,new List<Pivot>());
+#else
+            return GenerateExpression("", NormalizeExpression(expression), ExpressionTemplate.Label);
+#endif 
         }
+
 
         
         public string GetMSBuildCondition(string projectName, string expression) {
+#if USE_DYNAMIC_CRAP
             return GenerateExpression(projectName, NormalizeExpression(expression), ExpressionTemplate.MSBuild,new List<Pivot>());
+#else 
+            return GenerateExpression(projectName, NormalizeExpression(expression), ExpressionTemplate.MSBuild);
+#endif
         }
 
+#if USE_DYNAMIC_CRAP
         internal bool[] GetExpressionArray(string rightExpression, string rightexpress,Pivot[] pivotsUsed) {
 
             return _expressionArrayCache.GetCachedAnswer(() => {
@@ -356,10 +398,15 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             return v1.SequenceEqual(v2);
 #endif
         }
+#endif
 
+
+#if USE_DYNAMIC_CRAP
         private string GenerateExpression(string projectName, string expression,ExpressionTemplate template, List<Pivot> pivotsUsed  ) {
-            
+#else 
+        private string GenerateExpression(string projectName, string expression, ExpressionTemplate template) {
 
+#endif
             var theresult = _expressionCache.GetCachedAnswer(() => {
                 if (expression.IndexOf("$(") > -1) {
                     // skip the whole parsing, we know this is a MSBuild expression
@@ -374,7 +421,7 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                     foreach (var item in rxResult.Groups[1].Captures.Cast<Capture>().Select(each => each.Value.Trim()).Where(each => !string.IsNullOrEmpty(each))) {
                         switch (item[0]) {
                             case '!':
-                                if (state > ExpressionState.HasOperator) {
+                                if (state >= ExpressionState.HasNot) {
                                     throw new ClrPlusException("Invalid expression. (may not state ! on same item more than once)");
                                 }
                                 state = state | ExpressionState.HasNot;
@@ -401,7 +448,12 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                             case '(':
                                 if (item.EndsWith(")")) {
                                     // parse nested expression.
-                                    state = AppendExpression(template, result, state, template.Container.format(GenerateExpression(projectName, item.Substring(1, item.Length - 2), template, pivotsUsed)));
+#if USE_DYNAMIC_CRAP
+                                        state = AppendExpression(template, result, state, template.Container.format(GenerateExpression(projectName, item.Substring(1, item.Length - 2), template, pivotsUsed)));
+#else
+                                        state = AppendExpression(template, result, state, template.Container.format(GenerateExpression(projectName, item.Substring(1, item.Length - 2), template)));
+#endif
+                                    
                                     continue;
                                 }
                                 throw new ClrPlusException("Mismatched '(' in expression");
@@ -418,9 +470,13 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
                                 if (!GetChoice(item, out choice, out pivot)) {
                                     throw new ClrPlusException("Unmatched configuration choice '{0}".format(item));
                                 }
+#if USE_DYNAMIC_CRAP
+
                                 if (!pivotsUsed.Contains(pivot)) {
                                     pivotsUsed.Add(pivot);
                                 }
+#endif
+
                                 state = AppendExpression(template, result, state, template.Comparison(projectName, choice, pivot));
                                 break;
                         }
@@ -430,12 +486,16 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
 
                 return result.ToString();
             }, projectName, expression, template);
+
+#if USE_DYNAMIC_CRAP
+
             _canonicalExpressions.GetOrAdd(expression, () => new List<string>()).Add(theresult);
             
             var pU = _pivotsUsedCache.GetCachedAnswer(() => pivotsUsed.ToArray(), expression);
             if (pivotsUsed.Count == 0) {
                 pivotsUsed.AddRange(pU);
             }
+#endif
             return theresult;
         }
 
@@ -532,7 +592,9 @@ namespace ClrPlus.Scripting.MsBuild.Packaging {
             
             private string _key;
             internal string Description;
+#if USE_DYNAMIC_CRAP            
             internal string EnumCode;
+#endif 
             internal string Key { get {
                 return _key;
             } set {

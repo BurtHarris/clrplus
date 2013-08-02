@@ -11,12 +11,16 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
+    using System.Runtime.InteropServices;
     using Core.Extensions;
     using Microsoft.Build.Framework;
     using Microsoft.Build.Utilities;
 
     public abstract class MsBuildTaskBase : ITask {
         private TaskLoggingHelper log;
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true, CallingConvention = CallingConvention.Winapi)]
+        public static extern short GetKeyState(int keyCode);
 
         public MsBuildTaskBase() {
             log = new TaskLoggingHelper(this);
@@ -42,6 +46,12 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
         public void LogError(string message, params object[] objs) {
             if (message.Is()) {
                 Log.LogError(message, objs);
+            }
+        }
+
+        public void LogWarning(string message, params object[] objs) {
+            if (message.Is()) {
+                Log.LogWarning(message, objs);
             }
         }
     }

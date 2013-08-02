@@ -11,7 +11,9 @@
 //-----------------------------------------------------------------------
 
 namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
+    using System;
     using Core.Extensions;
+    using Microsoft.Build.Framework;
 
     public class WaitForTasks : MsBuildTaskBase {
         public override bool Execute() {
@@ -21,43 +23,45 @@ namespace ClrPlus.Scripting.MsBuild.Building.Tasks {
                     // (BuildEngine as IBuildEngine3).Yield();
                     BuildMessage message;
                     while (msbuild.Messages.TryDequeue(out message)) {
-                        message.Message = "{0,4} » {1}".format(msbuild.Index, message.Message);
+                        if (!Environment.GetEnvironmentVariable("HIDE_THREADS").IsTrue()) {
+                            message.Message = "{0,4} » {1}".format(msbuild.Index, message.Message);
+                        }
                         switch (message.EventType) {
-                            case "WarningRaised":
-                                Log.LogWarning("" + msbuild.Index, "", "", message.SourceLocation.SourceFile, message.SourceLocation.Row, message.SourceLocation.Column, 0, 0, message.Message);
+                            case "BuildWarning":
+                                Log.LogWarning(message.Subcategory, message.Code, message.HelpKeyword, message.File, message.LineNumber, message.ColumnNumber , message.EndLineNumber, message.EndColumnNumber, message.Message);
                                 break;
-                            case "ErrorRaised":
-                                Log.LogError("" + msbuild.Index, "", "", message.SourceLocation.SourceFile, message.SourceLocation.Row, message.SourceLocation.Column, 0, 0, message.Message);
+                            case "BuildError":
+                                Log.LogError(message.Subcategory, message.Code, message.HelpKeyword, message.File, message.LineNumber, message.ColumnNumber, message.EndLineNumber, message.EndColumnNumber, message.Message);
                                 break;
                             case "ProjectStarted":
-                                // Log.LogExternalProjectStarted(message.Message, "", currentProjectName, "");
+                                Log.LogExternalProjectStarted(message.Message, message.HelpKeyword, message.ProjectFile, message.TargetNames);
                                 break;
                             case "ProjectFinished":
-                                // Log.LogExternalProjectFinished(message.Message, "", currentProjectName, true);
+                                Log.LogExternalProjectFinished(message.Message, message.HelpKeyword, message.ProjectFile, message.Succeeded);
                                 break;
                             case "TaskStarted":
-                                // Log.LogMessage(message.Message);
+                                 // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
                             case "TaskFinished":
-                                // Log.LogMessage(message.Message);
+                                // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
                             case "TargetStarted":
-                                // Log.LogMessage(message.Message);
+                                // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
                             case "TargetFinished":
-                                // Log.LogMessage(message.Message);
+                                // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
                             case "BuildStarted":
-                                // Log.LogMessage(message.Message);
+                                // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
                             case "BuildFinished":
-                                // Log.LogMessage(message.Message);
+                                // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
-                            case "MessageRaised":
-                                Log.LogMessage(message.Message);
+                            case "BuildMessage":
+                                Log.LogMessage((MessageImportance)message.Importance, message.Message);
                                 break;
                             default:
-                                Log.LogMessage(message.Message);
+                                // Log.LogMessage(MessageImportance.Low, message.Message);
                                 break;
                         }
                     }

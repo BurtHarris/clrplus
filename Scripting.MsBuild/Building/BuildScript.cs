@@ -21,14 +21,15 @@ namespace ClrPlus.Scripting.MsBuild.Building {
     using CSharpTest.Net.RpcLibrary;
     using Core.Extensions;
     using Core.Tasks;
+    using Languages.PropertySheet;
     using Languages.PropertySheetV3;
     using Languages.PropertySheetV3.Mapping;
     using Languages.PropertySheetV3.RValue;
     using Microsoft.Build.Construction;
+    using MsBuild.Utility;
     using Packaging;
     using Platform;
     using ServiceStack.Text;
-    using Utility;
 
     public class BuildScript : IDisposable, IProjectOwner {
         private static string[] filterMessages = new[] {
@@ -136,36 +137,39 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             _stop = true;
         }
 
-        public void Execute(string[] targets = null) {
-            _sheet.CopyToModel();
+        private static Guid iid = Guid.NewGuid();
+        private static string pipeName = @"\pipe\ptk_{0}".format(Process.GetCurrentProcess().Id);
+        private static Lazy<RpcServerApi> server;
 
-            targets = targets ?? new string[0];
-            var messages = new Queue<BuildMessage>();
-
-            var path = Save();
-
-            Guid iid = Guid.NewGuid();
-            // Guid iid = new Guid("12345678123456781234567812345678");
-
-            string pipeName = @"\pipe\ptk_{0}".format(Process.GetCurrentProcess().Id);
-            // string pipeName = @"\pipe\ptk_1".format(System.Diagnostics.Process.GetCurrentProcess().Id);
-
-            using (var server = new RpcServerApi(iid)) {
-                //Allow up to 5 connections over named pipes
-                server.AddProtocol(RpcProtseq.ncacn_np, pipeName, 5);
+        static BuildScript() {
+            server = new Lazy<RpcServerApi>(() => {
+                var result = new RpcServerApi(iid);
+                result.AddProtocol(RpcProtseq.ncacn_np, pipeName, 5);
                 //Authenticate via WinNT
                 // server.AddAuthentication(RpcAuthentication.RPC_C_AUTHN_WINNT);
 
                 //Start receiving calls
-                server.StartListening();
+                result.StartListening();
+                return result;
+            });
+        }
+
+        public event MSBuildMessage BuildMessage;
+
+        private Queue<BuildMessage> messages = new Queue<BuildMessage>();
+
+        public bool Execute(string[] targets = null) {
+            _sheet.CopyToModel();
+
+            targets = targets ?? new string[0];
+            
+
+            var path = Save();
+            var result = true;
+
+            try {
                 //When a call comes, do the following:
-                server.OnExecute +=
-                    (client, arg) => {
-                        lock (messages) {
-                            messages.Enqueue(JsonSerializer.DeserializeFromString<BuildMessage>(arg.ToUtf8String()));
-                        }
-                        return new byte[0];
-                    };
+                server.Value.OnExecute += ServerOnOnExecute;
 
                 // Event<Verbose>.Raise("script", "\r\n\r\n{0}\r\n\r\n", File.ReadAllText(path));
 
@@ -173,6 +177,10 @@ namespace ClrPlus.Scripting.MsBuild.Building {
 
                 var etcPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "etc") + "/";
                 Environment.SetEnvironmentVariable("CoAppEtcDirectory", etcPath);
+
+                // remove some variables...
+                Environment.SetEnvironmentVariable("BuildingInsideVisualStudio", null);
+                Environment.SetEnvironmentVariable("UsePTKFromVisualStudio", null);
 
                 EnvironmentUtility.EnvironmentPath = EnvironmentUtility.EnvironmentPath.Append(EnvironmentUtility.DotNetFrameworkFolder);
 
@@ -192,13 +200,30 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                     lock (messages) {
                         while (messages.Any()) {
                             var obj = messages.Dequeue();
-                            switch (obj.EventType) {
-                                case "WarningRaised":
-                                    Event<SourceWarning>.Raise(obj.Message.IndexOf('»') == -1 ? "WARNING" : string.Empty, obj.SourceLocation.SingleItemAsEnumerable(), obj.Message);
+                            if (obj != null) {
+                                if (BuildMessage != null) {
+                                    BuildMessage(obj);
+                                }
+
+                                Event<MSBuildMessage>.Raise(obj);
+
+                                if (obj.EventType == "BuildError") {
+                                    result = false;
+                                }
+                            }
+                            
+                            /* switch (obj.EventType) {
+                                case "BuildWarning":
+                                    Event<SourceWarning>.Raise(obj.Code,  new SourceLocation{ Column = obj.ColumnNumber, Row = obj.LineNumber , SourceFile = obj.File}.SingleItemAsEnumerable(), obj.Message);
                                     break;
 
-                                case "ErrorRaised":
-                                    Event<SourceError>.Raise(obj.Message.IndexOf('»') == -1 ? "ERROR" : string.Empty, obj.SourceLocation.SingleItemAsEnumerable(), obj.Message);
+                                case "BuildError":
+                                    Event<SourceError>.Raise(obj.Code, new SourceLocation {
+                                        Column = obj.ColumnNumber,
+                                        Row = obj.LineNumber,
+                                        SourceFile = obj.File
+                                    }.SingleItemAsEnumerable(), obj.Message);
+                                    result = false;
                                     break;
 
                                 case "ProjectStarted":
@@ -212,10 +237,11 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                                     Event<Verbose>.Raise(obj.EventType, obj.Message);
                                     break;
 
-                                case "MessageRaised":
+                                case "BuildMessage":
                                     if (filterMessages.Any(each => obj.Message.IndexOf(each) > -1)) {
                                         Event<Verbose>.Raise("", obj.Message);
-                                    } else {
+                                    }
+                                    else {
                                         Event<Message>.Raise("", obj.Message);
                                     }
 
@@ -224,7 +250,8 @@ namespace ClrPlus.Scripting.MsBuild.Building {
                                 default:
                                     Event<Message>.Raise(obj.EventType, obj.Message);
                                     break;
-                            }
+                            } */
+
                         }
                     }
                 }
@@ -246,6 +273,20 @@ namespace ClrPlus.Scripting.MsBuild.Building {
 
                 path.TryHardToDelete();
             }
+            catch {
+                result = false;
+            }
+            finally {
+                server.Value.OnExecute -= ServerOnOnExecute;
+            }
+            return result;
+        }
+
+        private byte[] ServerOnOnExecute(IRpcClientInfo client, byte[] input) {
+            lock (messages) {
+                messages.Enqueue(JsonSerializer.DeserializeFromString<BuildMessage>(input.ToUtf8String()));
+            }
+            return new byte[0];
         }
 
         public string Save(string filename = null) {

@@ -31,9 +31,7 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
         public string[] OptionalInputs;
         public string[] RequiredInputs;
         public string[] Outputs;
-        
     }
-
 
     public static class MsBuildMap {
         internal static XDictionary<object,StringPropertyList>  _stringPropertyList = new XDictionary<object, StringPropertyList>();
@@ -67,7 +65,7 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     foreach (var t in tasks) {
                         var properties = t.GetProperties().Where(each => !_ignoreProperties.Contains(each.Name)).ToArray();
                         if (!_taskClasses.Keys.Contains(t.Name)) {
-                            _taskClasses.Add(t.Name, new MSBuildTaskType {
+                            _taskClasses.Add(t.Name.ToLower(), new MSBuildTaskType {
                                 TaskClass = t,
                                 Outputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "OutputAttribute")).Select(each => each.Name).ToArray(),
                                 RequiredInputs = properties.Where(each => each.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "RequiredAttribute")).Select(each => each.Name).ToArray(),
@@ -92,13 +90,14 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     break;
                 case "AfterTargets":
                     break;
+
                 default:
                     // 
                     
                     var taskName = view.MemberName;
-                    if (TaskClasses.Value.ContainsKey(taskName)) {
+                    if (TaskClasses.Value.ContainsKey(taskName.ToLower())) {
                         // for tasks we recognize
-                        var tskType = TaskClasses.Value[taskName];
+                        var tskType = TaskClasses.Value[taskName.ToLower()];
 
                         var tsk = target.AddTask(taskName);
                         var required = tskType.RequiredInputs.ToList();
@@ -117,10 +116,12 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                             } else {
                                 if (!tskType.OptionalInputs.Contains(n)) {
                                     Event<Warning>.Raise("Unknown Parameter", "Task '{0}' does not appear to have an input parameter '{1}'", taskName, n);
+
+                                    // could we set some item collection based on these?
+                                    // TODO: maybe.
                                 }
                             }
 
-                           
                             tsk.SetParameter(n, prop.Values.CollapseToString(";"));
                         }
 
@@ -159,13 +160,15 @@ namespace ClrPlus.Scripting.MsBuild.Utility {
                     // for tasks we don't recognize
                     var tsk2 = target.AddTask(taskName);
 
+                    Event<Warning>.Raise("Unrecognized Task", "Task '{0}' is not recognized.", taskName);
+
                     foreach (var n in view.GetChildPropertyNames()) {
                         var prop = view.GetProperty(n);
                         if(n == "Condition") {
                             tsk2.Condition = prop;
                             continue;
                         }
-                        tsk2.SetParameter(n, prop);
+                        tsk2.SetParameter(n, prop.Values.CollapseToString(";"));
                     }
 
                     foreach (var n in view.GetIndexedPropertyNames()) {

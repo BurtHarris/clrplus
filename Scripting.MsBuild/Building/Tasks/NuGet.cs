@@ -94,4 +94,29 @@
             return false;
         }
     }
+
+    public class Requires : MsBuildTaskBase {
+
+
+        public ITaskItem[] Library {get;set;}
+        public ITaskItem[] Libraries{get;set;}
+
+        public ITaskItem[] Tool{get;set;}
+        public ITaskItem[] Tools{get;set;}
+
+
+        public override bool Execute() {
+            return false;
+        }
+    }
+
+    public class Install : MsBuildTaskBase {
+
+        public ITaskItem[] Package{get;set;}
+        public ITaskItem[] Packages{get;set;}
+
+        public override bool Execute() {
+            return false;
+        }
+    } 
 }

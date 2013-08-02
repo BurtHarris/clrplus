@@ -12,7 +12,11 @@
 
 namespace ClrPlus.Scripting.MsBuild.Building {
     using System;
+    using System.Collections;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Runtime.InteropServices;
     using System.Threading;
     using System.Threading.Tasks;
     using CSharpTest.Net.RpcLibrary;
@@ -21,13 +25,226 @@ namespace ClrPlus.Scripting.MsBuild.Building {
     using Microsoft.Build.Framework;
     using ServiceStack.Text;
 
+    public delegate bool MSBuildMessage(BuildMessage message);
+
+
     public class BuildMessage {
-        public string EventType {get; set;}
-        public SourceLocation SourceLocation {get; set;}
-        public string Message {get; set;}
+        [DllImport("kernel32.dll")]
+        static extern void OutputDebugString(string lpOutputString);
 
         public byte[] ToByteArray() {
-            return JsonSerializer.SerializeToString(this).ToByteArray();
+            var result = JsonSerializer.SerializeToString(this);
+            OutputDebugString(result);
+
+            // return JsonSerializer.SerializeToString(this).ToByteArray();
+            return result.ToByteArray();
+        }
+
+        public string EventType {get; set;}
+        public string Message {get; set;}
+        public string Subcategory {get; set;}
+        public string Code {get; set;}
+        public string File {get; set;}
+        public string ProjectFile {get; set;}
+        public int LineNumber {get; set;}
+        public int ColumnNumber {get; set;}
+        public int EndLineNumber {get; set;}
+        public int EndColumnNumber {get; set;}
+        public string TaskName {get; set;}
+        public string TaskFile {get; set;}
+        public bool Succeeded {get; set;}
+        public string TargetName {get; set;}
+        public string TargetFile {get; set;}
+        public string ParentTarget {get; set;}
+        public int ProjectId {get; set;}
+        public string TargetNames {get; set;}
+        public string ToolsVersion {get; set;}
+        public int Importance {get; set;}
+
+        public string HelpKeyword {
+            get;
+            set;
+        }
+        public string SenderName {
+            get;
+            set;
+        }
+        public DateTime Timestamp {
+            get;
+            set;
+        }
+        public int ThreadId {
+            get;
+            set;
+        }
+
+        // private IEnumerable targetOutputs;
+        // private BuildEventContext parentProjectBuildEventContext;
+        // private IDictionary<string, string> globalProperties;
+        // private IEnumerable properties;
+        // private IEnumerable items;
+        // private IDictionary<string, string> environmentOnBuildStart;
+
+        public BuildMessage(string message) {
+            EventType = string.Empty;
+            Message = message;
+        }
+
+
+        public BuildMessage(BuildWarningEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Code = args.Code;
+            ColumnNumber = args.ColumnNumber;
+            EndColumnNumber = args.EndColumnNumber;
+            EndLineNumber = args.EndLineNumber;
+            File = args.File;
+            LineNumber = args.LineNumber;
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            Subcategory = args.Subcategory;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+
+        }
+
+        public BuildMessage(TaskStartedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            TaskFile = args.TaskFile;
+            TaskName = args.TaskName;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(TaskFinishedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            Succeeded = args.Succeeded;
+            TaskFile = args.TaskFile;
+            TaskName = args.TaskName;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(TargetStartedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            ParentTarget = args.ParentTarget;
+            ProjectFile = args.ProjectFile;
+            TargetFile = args.TargetFile;
+            TargetName = args.TargetName;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(TargetFinishedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            Succeeded = args.Succeeded;
+            TargetFile = args.TargetFile;
+            TargetName = args.TargetName;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(BuildStatusEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(BuildErrorEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Code = args.Code;
+            ColumnNumber = args.ColumnNumber;
+            EndColumnNumber = args.EndColumnNumber;
+            EndLineNumber = args.EndLineNumber;
+            File = args.File;
+            LineNumber = args.LineNumber;
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            Subcategory = args.Subcategory;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(CustomBuildEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(ProjectStartedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            ProjectId = args.ProjectId;
+            TargetNames = args.TargetNames;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(ProjectFinishedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            ProjectFile = args.ProjectFile;
+            Succeeded = args.Succeeded;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(BuildMessageEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Importance = (int)args.Importance;
+            Message = args.Message;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(BuildStartedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
+        }
+
+        public BuildMessage(BuildFinishedEventArgs args) {
+            EventType = args.GetType().Name.Replace("EventArgs", "");
+            Message = args.Message;
+            Succeeded = args.Succeeded;
+            HelpKeyword = args.HelpKeyword;
+            SenderName = args.SenderName;
+            Timestamp = args.Timestamp;
+            ThreadId = args.ThreadId;
         }
     }
 
@@ -49,6 +266,8 @@ namespace ClrPlus.Scripting.MsBuild.Building {
             }
         }
 
+        
+
         public override void Initialize(IEventSource eventSource) {
             if (eventSource == null) {
                 return;
@@ -65,15 +284,26 @@ namespace ClrPlus.Scripting.MsBuild.Building {
 
             _client = new RpcClientApi(iid, RpcProtseq.ncacn_np, null, pipeName);
             messagePump = Task.Factory.StartNew(() => {
-                BuildMessage msg;
+                try {
+                    BuildMessage msg;
 
-                while (!stop || _messages.Count > 0) {
-                    if (_messages.TryDequeue(out msg)) {
-                        _client.Execute(msg.ToByteArray());
-                        continue;
+                    while (!stop || _messages.Count > 0) {
+                        if (_messages.TryDequeue(out msg)) {
+                            var result = _client.Execute(msg.ToByteArray());
+                            if (result.Length > 0 && result[1] == 0x01) {
+                                // we've been asked to kill ourselves.
+                                stop = true;
+                            }
+                            continue;
+                        }
+                        Thread.Sleep(5);
                     }
-                    Thread.Sleep(5);
                 }
+                finally {
+                    stop = true;
+                }
+
+                
             });
 
             eventSource.BuildFinished += eventSource_BuildFinished;
@@ -96,108 +326,158 @@ namespace ClrPlus.Scripting.MsBuild.Building {
         }
 
         private void eventSource_WarningRaised(object sender, BuildWarningEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "WarningRaised",
-                SourceLocation = new SourceLocation {
-                    Column = e.ColumnNumber,
-                    Row = e.LineNumber,
-                    SourceFile = e.File
-                },
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+
+            if (stop) {
+                KillThyself();
+            }
         }
 
         private void eventSource_TaskStarted(object sender, TaskStartedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "TaskStarted",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_TaskFinished(object sender, TaskFinishedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "TaskFinished",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_TargetStarted(object sender, TargetStartedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "TargetStarted",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_TargetFinished(object sender, TargetFinishedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "TargetFinished",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_StatusEventRaised(object sender, BuildStatusEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "StatusEventRaised",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_ProjectStarted(object sender, ProjectStartedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "ProjectStarted",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_ProjectFinished(object sender, ProjectFinishedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "ProjectFinished",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_MessageRaised(object sender, BuildMessageEventArgs e) {
+            if (stop) {
+                return;
+            
+            }
             if (e.Message.IndexOf("task from assembly") > -1 || e.Message.IndexOf("Building with tools version") > -1) {
                 return;
             }
-            Execute(new BuildMessage {
-                EventType = "MessageRaised",
-                Message = e.Message
-            });
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_ErrorRaised(object sender, BuildErrorEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "ErrorRaised",
-                SourceLocation = new SourceLocation {
-                    Column = e.ColumnNumber,
-                    Row = e.LineNumber,
-                    SourceFile = e.File
-                },
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_CustomEventRaised(object sender, CustomBuildEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "CustomEventRaised",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
+        }
+
+        private void KillThyself() {
+            // Process.GetCurrentProcess().Kill();
+            System.Environment.Exit(1);
         }
 
         private void eventSource_BuildStarted(object sender, BuildStartedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "BuildStarted",
-                Message = e.Message
-            });
+            if (stop) {
+                return;
+            }
+
+            Execute(new BuildMessage(e));
+            if (stop) {
+                KillThyself();
+            }
+
         }
 
         private void eventSource_BuildFinished(object sender, BuildFinishedEventArgs e) {
-            Execute(new BuildMessage {
-                EventType = "BuildFinished",
-                Message = e.Message
-            });
-            while (_messages.Count > 0) {
+            if (stop) {
+                return;
+            }
+
+            Execute(new BuildMessage(e));
+
+            while (_messages.Count > 0 && !stop) {
                 Thread.Sleep(10);
             }
         }

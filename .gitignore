@@ -16,3 +16,7 @@ ipch
 packages
 Scratch/snippets.txt
 Scratch/test2.props
+/Powershell.Provider/test.ps1
+/psexamples
+/_unused_code.cs
+/mar25.txt

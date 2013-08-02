@@ -101,17 +101,18 @@ namespace ClrPlus.Scripting.Languages.PropertySheetV3 {
             }
         }
 
-        private int _indexValue = 1;
-
-        internal int IndexValue { get {
-            return _indexValue++;
-        }}
-
-    /*
-        public IEnumerable<string> TryGetRValueInContext(string property) {
-            return CurrentView.TryGetRValueInContext(property);
+        private static int _indexValue = 1;
+        private int _currentIndex;
+        internal int CurrentIndex {
+            get {
+                return _currentIndex;
+            }
         }
-        */
+
+        internal int NextIndexValue { get {
+
+            return (_currentIndex = _indexValue++);
+        }}
 
         public string ResolveMacrosInContext(string value, object[] items = null, bool itemsOnly = false) {
             return CurrentView.ResolveMacrosInContext(value, items);
